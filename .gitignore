@@ -1,0 +1,24 @@
+# Credentials and private runtime state
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Local agent/runtime scratch
+runs/
+.tmp/
+.cache/
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/settings.json
+
+# Build artifacts (generic)
+bin/
+obj/
+node_modules/
+__pycache__/

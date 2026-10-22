@@ -1,0 +1,13 @@
+name: Validate workflow template
+on:
+  push:
+  pull_request:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate required files and skill frontmatter
+        run: bash scripts/validate-workflow.sh
