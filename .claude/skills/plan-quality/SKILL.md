@@ -28,8 +28,9 @@ For each applicable item, return **PASS**, **WARNING**, **BLOCK**, or **N/A**, p
 ## Behavior
 
 - Small task: only a concise inline sanity check, no formal artifact.
-- Medium task: one lightweight review and concise Codex handoff.
-- Large task: check existing Spec Kit documents; link to them rather than copying them.
+- Medium task: review the single concise **Claude-owned plan**, then prepare a Codex handoff; do not add a Superpowers plan.
+- Large task: review the **canonical Spec Kit specification and plan** when installed; link to them rather than copying or generating alternatives.
+- Do not invoke `superpowers:brainstorming`, `superpowers:writing-plans`, `/speckit-implement`, or `/speckit.implement` in this workflow.
 - Revise a blocked plan at most **two times**, then escalate unresolved decisions with clear options.
 - Do not call another model/reviewer or install packages unless there is an explicit need and approval.
 

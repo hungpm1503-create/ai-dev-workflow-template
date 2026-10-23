@@ -10,6 +10,15 @@ codex --version
 
 Install and authenticate Claude and Codex separately. This template does not install models, Spec Kit or Superpowers. If using Spec Kit, initialize carefully and inspect generated artifacts; do not force-overwrite project config. Verify Superpowers is installed before referring to its skills.
 
+## Tool ownership — avoid duplicate plans
+
+- **Small:** Claude prepares a compact handoff; Codex implements; Claude reviews.
+- **Medium:** Claude owns the only implementation plan; `plan-quality` verifies it; Codex implements.
+- **Large:** use Spec Kit for feature specification and architecture/implementation planning if installed; its artifacts are authoritative. `plan-quality` reviews those artifacts; Codex implements.
+- Superpowers is **only** for TDD, systematic debugging and verification where installed. Do not use its `brainstorming` or `writing-plans` skills in parallel with Claude/Spec Kit planning.
+- Do **not** run `/speckit-implement` or `/speckit.implement` under this workflow. Codex CLI is the implementation engine.
+- When a tool is unavailable, report it; do not pretend the associated skill or command ran. Reference a single canonical set of planning artifacts.
+
 ## 2. Configure each project
 
 Fill \`AGENTS.md > Project Configuration\`: actual stack, build/test/lint commands and protected paths. Protected paths are **literal repository-relative paths**, comma-separated, e.g. \`src/config/, infrastructure/\`. Directories end in \`/\`. The wrapper also protects \`CLAUDE.md\`, \`AGENTS.md\`, \`scripts/codex-delegate.sh\`, \`.claude/skills/\` and \`.github/workflows/\` by default. This is a **post-run detector**, not a file-system access control boundary.

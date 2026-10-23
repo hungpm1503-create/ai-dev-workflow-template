@@ -6,10 +6,18 @@ Never assume Spec Kit, Superpowers, Codex or an invocation bridge is configured:
 
 ## Task routing
 
-- **Small:** clear, narrow, low-risk; concise handoff to Codex, then lightweight review. No formal docs.
-- **Medium:** concise implementation plan; invoke \`/plan-quality\` (or read the skill when automatic discovery is unavailable); hand off to Codex; review evidence.
-- **Large:** use existing Spec Kit artifacts *if installed/configured*, architecture and implementation plan, \`/plan-quality\`, then hand off to Codex and review. If Spec Kit is missing, report and agree an appropriate plan rather than pretending it ran.
-- Use relevant Superpowers skills only when present and helpful; do not duplicate those procedures.
+- **Small:** clear, narrow, low-risk; Claude prepares a concise Codex handoff and performs lightweight review. No formal specs or plans.
+- **Medium:** Claude owns one concise implementation plan; run `plan-quality`, delegate implementation to Codex, then review evidence. Do not invoke Superpowers planning/brainstorming skills.
+- **Large:** if configured, Spec Kit is the **single source of truth** for feature specification and planning (specify → architecture/plan → relevant tasks). Claude reviews with `plan-quality`, delegates implementation to Codex, and reviews evidence. If Spec Kit is missing, agree a fallback instead of pretending it ran.
+
+## Tool ownership and non-duplication
+
+- **Claude Lead:** task classification, scope, architecture oversight, approvals, Codex handoff and final review.
+- **Spec Kit:** specification and planning **only for Large features** when installed/configured. Reuse its canonical artifacts; do not generate a parallel Superpowers specification or implementation plan.
+- **Codex CLI:** primary implementation executor for all task sizes. **Never invoke `/speckit-implement` or `/speckit.implement`** to implement an approved plan.
+- **Superpowers:** use only suitable **TDD, systematic debugging, and verification** skills when installed and accessible to the executing agent. Do **not** invoke `superpowers:brainstorming` or `superpowers:writing-plans` for the same feature or as another planning path.
+- **Quality Gate:** review the existing Claude plan (Medium) or canonical Spec Kit artifacts (Large), not create a second plan.
+- If an integration is unavailable or a task requires a deviation, state it explicitly and obtain approval for material changes. Never claim a skill was used without execution evidence.
 
 ## Before delegation
 

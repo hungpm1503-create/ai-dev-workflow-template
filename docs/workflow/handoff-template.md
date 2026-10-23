@@ -2,6 +2,8 @@
 
 Use Medium/Large plan details here; Small tasks may use a compact version. Save a unique approved handoff at \`.claude/handoffs/TASK-<id>.md\` (gitignored). Do not reuse \`latest.md\`.
 
+**Single source of truth:** for Medium tasks, reference the approved Claude plan; for Large tasks, reference the canonical Spec Kit specification/plan by path. Codex implements the approved handoff directly; do not invoke `/speckit-implement` or `/speckit.implement`. Superpowers may assist only with TDD, debugging and verification when installed, not `brainstorming` or `writing-plans`.
+
 ## Task ID
 TASK-<unique>
 

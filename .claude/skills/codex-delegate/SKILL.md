@@ -5,6 +5,12 @@ description: Delegate an approved task to Codex CLI using a unique ignored hando
 
 # Codex Delegation
 
+## Tool ownership
+
+- Codex is the implementation executor, including for Large features planned through Spec Kit. Never delegate implementation to `/speckit-implement` or `/speckit.implement`.
+- Reference the approved Claude plan (Medium) or canonical Spec Kit artifacts (Large); do not generate duplicate Superpowers plans.
+- Relevant Superpowers skills may support **TDD, systematic debugging, or verification** only when installed and actually accessible to the executing agent. Do not use `superpowers:brainstorming` or `superpowers:writing-plans`.
+
 1. Verify \`codex\` is installed and authenticated, and this Git repository has a clean worktree.
 2. Confirm scope is approved. Material architecture, security, costs and irreversible operations still require explicit user approval.
 3. For Medium/Large tasks use \`plan-quality\` and \`docs/workflow/handoff-template.md\`. Write \`.claude/handoffs/TASK-ID.md\` with **## Approval status** and exact **Status: APPROVED**, only after appropriate approval. This text is not cryptographic authorization.
