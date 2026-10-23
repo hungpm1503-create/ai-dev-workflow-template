@@ -1,62 +1,51 @@
 # AI Dev Workflow Template
 
-**Version:** 0.2.0 (pilot)  
-A small, stack-independent GitHub template for **Claude Lead → Codex CLI** with Planning Quality Gate, selective Learning Loop and optional Spec Kit/Superpowers.
+**Version:** 0.2.0 (pilot, patched PR)  
+Reusable, stack-independent workflow for **Claude Lead → Codex CLI** with selective Quality Gates and Learning Loop. Spec Kit and Superpowers are optional integrations when installed.
 
-> These are project-level instructions and scripts, not a packaged Claude/Codex installation. Authenticate both CLIs separately. A real Codex run consumes your available model usage and can edit files.
+## Start a new project
 
-## Workflow
+Enable **Settings → General → Template repository** on the source repository if not already enabled. Select **Use this template → Create a new repository**. Clone the independent project, fill \`AGENTS.md > Project Configuration\` and verify Claude/Codex locally.
 
-| Task | Flow |
-| --- | --- |
-| Small | Claude → Codex → lightweight review |
-| Medium | Claude plan → plan-quality → codex-delegate → review |
-| Large | Claude → Spec Kit (if installed) → plan-quality → codex-delegate → review |
+\`\`\`bash
+bash scripts/validate-workflow.sh
+bash scripts/test-secret-scan.sh
+bash scripts/test-codex-delegate.sh
+\`\`\`
 
-Superpowers skills can assist Codex implementation where installed and appropriate. Important architecture, business, security and destructive decisions still require user approval. No automatic commits, pushes, deployments or merges.
+No tests above call real Codex or bill tokens.
 
-## Project files
+## Routing
 
-- `CLAUDE.md` — Claude Lead routing, approval and delegation rules.
-- `AGENTS.md` — Codex implementation rules and project-specific placeholders.
-- `.claude/skills/plan-quality/SKILL.md` — plan checklist, blocks only critical issues.
-- `.claude/skills/codex-delegate/SKILL.md` — Codex invocation procedure, sandbox constraints and output review.
-- `.claude/skills/learn-from-task/SKILL.md` — evidence-based lessons (selective).
-- `.claude/lessons/INDEX.md` — project-local lesson index.
-- `docs/workflow/handoff-template.md` — per-task handoff contract.
-- `docs/workflow/project-setup.md` — tool checks and project bootstrap.
-- `docs/workflow/evaluation-template.md` — observable workflow metrics.
-- `scripts/codex-delegate.sh` — Codex CLI execution with ignored, isolated per-run logs.
-- `scripts/validate-workflow.sh` and `scripts/test-codex-delegate.sh` — offline structure and fake-Codex smoke tests.
-- `.github/workflows/validate-template.yml` — CI validation for push and pull requests.
+- **Small:** Claude → Codex → lightweight review.
+- **Medium:** Claude plan → \`plan-quality\` → \`codex-delegate\` → Claude review.
+- **Large:** Claude + existing Spec Kit if configured → architecture/plan → \`plan-quality\` → \`codex-delegate\` → review.
 
-## New project
+Superpowers is reused only where available. This repository does not install CLIs, models or skills.
 
-1. Choose **Use this template → Create a new repository** on GitHub.
-2. Clone the new repo and run `bash scripts/validate-workflow.sh` and `bash scripts/test-codex-delegate.sh`.
-3. Fill **Project Configuration** in `AGENTS.md` with real build/test/lint commands and protected paths.
-4. Verify Claude Code, Codex CLI, and any Spec Kit/Superpowers integrations on your machine.
-5. Run the first task; use `/plan-quality` for Medium/Large tasks when appropriate.
+## Delegation
 
-## Claude → Codex (approved task example)
+Create \`.claude/handoffs/TASK-LOGIN-001.md\` from \`docs/workflow/handoff-template.md\`. After genuine scope approval, put the exact \`Status: APPROVED\` under \`## Approval status\`. The marker is not proof of who approved the task.
 
-After Claude prepares a handoff at `.claude/handoffs/TASK-LOGIN-001.md`:
-
-```bash
+\`\`\`bash
 bash scripts/codex-delegate.sh --dry-run TASK-LOGIN-001
 bash scripts/codex-delegate.sh TASK-LOGIN-001
-```
+\`\`\`
 
-The second command **runs the model** using `codex exec --sandbox workspace-write`, reads the handoff from stdin, and stores `completion.md`, `codex.log` and `status.txt` in a unique ignored task run folder. Claude must verify the implementation diff and acceptance criteria; an exit code of zero alone is not acceptance.
+The second command invokes actual Codex via \`codex exec --sandbox workspace-write\`. It checks Git status and a worktree-wide lock, preserves the full prompt before invocation to avoid early-stdin SIGPIPE, records results/baselines under ignored \`.claude/handoffs/\`, and detects changes to protected paths. It imposes a portable timeout (default 1800 seconds). It never commits, pushes, merges or deploys.
 
-Never use full-access sandbox bypasses. Do not pass API tokens in handoffs. The wrapper does not grant additional permission beyond your tool approval policy.
+A zero exit code is **not** acceptance: Claude must inspect Git diff, verification commands, acceptance criteria and protected-path warnings. Postchecks cannot prevent modifications, and interrupted child processes require inspection. The secret pattern scan is only a heuristic, not a substitute for dedicated security scanners.
 
-## Limitations
+## Project structure
 
-- This template does not automatically install or authenticate third-party skills, agents or CLIs.
-- Codex execution needs a local Codex CLI and working model credentials; GitHub Actions uses a **fake** Codex only.
-- Tests validate wrapper behavior and project files, not actual model quality.
-- Commit reusable lessons back to the template only after evidence and review.
-- Existing projects made from earlier versions do not update automatically.
+- \`CLAUDE.md\` — Lead role and routing rules.
+- \`AGENTS.md\` — implementation rules and project configuration.
+- \`.claude/skills/plan-quality/SKILL.md\` — PASS/WARNING/BLOCK review for Medium/Large.
+- \`.claude/skills/codex-delegate/SKILL.md\` — approved handoff and safe Codex invocation.
+- \`.claude/skills/learn-from-task/SKILL.md\` — evidence-based lessons.
+- \`.claude/lessons/INDEX.md\` — project-local lesson index.
+- \`docs/workflow/\` — project setup, handoff, evaluation templates.
+- \`scripts/\` — wrapper and offline regression tests.
+- \`.github/workflows/validate-template.yml\` — CI checks, no model invocation.
 
-See `docs/workflow/project-setup.md` for details.
+Existing repositories created from a GitHub template do not automatically receive changes from this source repository. See \`docs/workflow/project-setup.md\`.

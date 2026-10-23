@@ -1,48 +1,44 @@
 # Initialize a Project from This Template
 
-## 1. Check tools installed on your computer
+## 1. Check local tools
 
-```bash
+\`\`\`bash
 git --version
 claude --version
 codex --version
-```
+\`\`\`
 
-This template does not install/authenticate Claude CLI, Codex CLI, Spec Kit, or Superpowers.
+Install and authenticate Claude and Codex separately. This template does not install models, Spec Kit or Superpowers. If using Spec Kit, initialize carefully and inspect generated artifacts; do not force-overwrite project config. Verify Superpowers is installed before referring to its skills.
 
-## 2. Configure new project
+## 2. Configure each project
 
-- Fill `AGENTS.md > Project Configuration`: stack, build/test/lint commands, protected paths and constraints.
-- Review `CLAUDE.md` to ensure project-specific approval rules are compatible.
-- Use existing environment authentication; do not copy credentials to the repo or task handoffs.
-- Check `command -v codex` and that Codex has been authenticated on the workstation.
-- If the project uses Spec Kit, initialize and verify it deliberately. Review the generated `.specify/` and commands before committing; do not automatically force-merge generated files.
-- Check Superpowers installation and discover relevant skills instead of assuming it came with this template.
+Fill \`AGENTS.md > Project Configuration\`: actual stack, build/test/lint commands and protected paths. Protected paths are **literal repository-relative paths**, comma-separated, e.g. \`src/config/, infrastructure/\`. Directories end in \`/\`. The wrapper also protects \`CLAUDE.md\`, \`AGENTS.md\`, \`scripts/codex-delegate.sh\`, \`.claude/skills/\` and \`.github/workflows/\` by default. This is a **post-run detector**, not a file-system access control boundary.
 
-## 3. Test the Claude → Codex handoff (without model cost)
+## 3. Verify workflow without a model
 
-Run the offline validations:
-
-```bash
+\`\`\`bash
 bash scripts/validate-workflow.sh
+bash scripts/test-secret-scan.sh
 bash scripts/test-codex-delegate.sh
-```
+\`\`\`
 
-Ask Claude to classify one hypothetical Medium task, run its Planning Quality Gate, then save an approved practice handoff named `.claude/handoffs/TASK-PRACTICE-001.md`.
+The simulated \`codex\` tests do not use tokens or modify application code. They check approval, dry-run, dirty tree, early stdin close (SIGPIPE regression), exit codes, timeout, protected paths and concurrency.
 
-```bash
-bash scripts/codex-delegate.sh --dry-run TASK-PRACTICE-001
-```
+## 4. Run an approved task
 
-The dry-run prints the intended action and does **not** execute Codex. A real `bash scripts/codex-delegate.sh TASK-PRACTICE-001` invocation calls a model and can modify workspace files; do it only after approving an actual task.
+Create \`.claude/handoffs/TASK-DEMO-001.md\` with \`## Approval status\` followed by \`Status: APPROVED\` **only after approval**. The wrapper rejects pending/non-approved tasks. This line is a process reminder, not proof of human authorization.
 
-## 4. Operational notes
+\`\`\`bash
+bash scripts/codex-delegate.sh --dry-run TASK-DEMO-001
+bash scripts/codex-delegate.sh TASK-DEMO-001
+\`\`\`
 
-- Logs and completions live under uniquely named `.claude/handoffs/TASK-ID-run.XXXXXX/` folders; they are gitignored.
-- The wrapper captures Codex's final message, exit code and log; this does not certify implementation correctness. Claude still inspects diff and verification evidence.
-- The wrapper uses `workspace-write` sandbox. It must not be changed to a sandbox bypass for convenience.
-- Keep lessons project-specific unless validated for reuse in the shared template.
+The second command calls a real model and can modify repo files. It refuses to run if Git status is dirty or a lock already exists. Use \`CODEX_TIMEOUT_SECONDS=1800\` to adjust the default 30-minute timeout. A stale lock from an interrupted process must be inspected and removed manually. Each run captures an ignored prompt, completion, log, git baseline and changed paths. A zero exit code is not acceptance.
 
-## 5. Upgrading projects
+## 5. Network and dependencies
 
-New repositories get the current template snapshot via **Use this template**. Existing projects do not auto-update; port common changes through review.
+Codex \`workspace-write\` sandbox usually restricts outbound network depending on CLI version/configuration. Verify on the target Mac before tasks requiring package installation. Do not disable sandbox or enable unrestricted network just to make a build work.
+
+## 6. GitHub Template
+
+For this source repository, open **Settings → General → Template repository** to enable template use. For each new app choose **Use this template → Create a new repository**. New projects are independent snapshots and do not automatically receive future template updates.

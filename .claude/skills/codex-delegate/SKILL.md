@@ -1,42 +1,20 @@
 ---
 name: codex-delegate
-description: Delegate an approved implementation task to the local Codex CLI using a repository-local, ignored handoff file and a sandboxed execution wrapper. Use after planning/quality gate, not for reviews or unapproved work.
+description: Delegate an approved task to Codex CLI using a unique ignored handoff and repository-local sandboxed wrapper; verify exit evidence, scope, clean tree and protected paths.
 ---
 
 # Codex Delegation
 
-The **CLI bridge** is a local Bash wrapper, not an agent service, MCP server or model API. It does not install or authenticate Codex.
+1. Verify \`codex\` is installed and authenticated, and this Git repository has a clean worktree.
+2. Confirm scope is approved. Material architecture, security, costs and irreversible operations still require explicit user approval.
+3. For Medium/Large tasks use \`plan-quality\` and \`docs/workflow/handoff-template.md\`. Write \`.claude/handoffs/TASK-ID.md\` with **## Approval status** and exact **Status: APPROVED**, only after appropriate approval. This text is not cryptographic authorization.
+4. Verify \`AGENTS.md > Protected paths\` is configured for this project, if applicable.
+5. Dry run: \`bash scripts/codex-delegate.sh --dry-run TASK-ID\` (no model invocation).
+6. Execute only when permitted: \`bash scripts/codex-delegate.sh TASK-ID\`.
+7. Inspect the ignored run directory: \`prompt.md\`, \`completion.md\`, \`codex.log\`, \`status.txt\`, Git baseline and changed-paths report. Review \`git diff\` independently.
 
-## Preconditions
+The wrapper uses \`codex exec --sandbox workspace-write --output-last-message ... -\`. Handoffs and logs are gitignored, saved separately for every run. The wrapper blocks dirty worktrees and overlapping invocations, uses a portable time limit (default 1800 seconds; configure \`CODEX_TIMEOUT_SECONDS\`), and post-checks protected paths. Do not bypass the sandbox.
 
-1. Confirm a repository root and an approved task within the current Small/Medium/Large workflow.
-2. Verify Codex CLI availability using `command -v codex`, and ensure the owner has authenticated Codex.
-3. Check material approval boundaries, relevant AGENTS.md rules, and the plan-quality result for Medium/Large tasks.
-4. Never execute tasks that require an unapproved architecture, security, cost, destructive or deployment change.
+**Important:** A protected-path postcheck detects changes **after** they happen and cannot prevent their creation; it never auto-reverts user files. The text approval marker can be edited and is not an independently verified user authorization. The secret scanner is heuristic. A timed-out Codex child may require manual inspection. If Codex cannot run, return the handoff and mark execution UNVERIFIED.
 
-## Handoff
-
-- For Medium/Large use `docs/workflow/handoff-template.md`; Small tasks may use a compact version.
-- Create `.claude/handoffs/TASK-<unique>.md` inside the current repository. The directory is gitignored.
-- Use a **unique task ID**, e.g. `TASK-LOGIN-001`; don't overwrite an in-progress handoff.
-- Include exact scope, observable acceptance criteria and verified commands.
-- Never place credentials in handoffs or logs.
-
-## Invocation
-
-```bash
-bash scripts/codex-delegate.sh --dry-run TASK-LOGIN-001
-bash scripts/codex-delegate.sh TASK-LOGIN-001
-```
-
-The wrapper uses `codex exec --sandbox workspace-write --output-last-message ... -`. It supplies the handoff on stdin, captures the last message and full log into a unique ignored `TASK-...-run.XXXXXX/` directory, and returns Codex's exit code. Every invocation has a separate run directory; do not reuse `latest.md`.
-
-**Never use** `--dangerously-bypass-approvals-and-sandbox`, unrestricted `danger-full-access`, or automatic auth workarounds. Respect Claude's tool approval system. If local CLI access is unavailable, provide the handoff and report that execution is UNVERIFIED.
-
-## Post-run review
-
-- Read the wrapper's exit code and ignored completion report, not only the final chat text.
-- Inspect `git diff` and executed build/test evidence independently.
-- Mark acceptance criteria PASS / FAIL / UNVERIFIED.
-- For fixes, update the scoped handoff or create a new task ID; previous run logs are retained.
-- Do not automatically commit, push, merge or deploy.
+Never auto-commit, push, merge or deploy. Never claim unrun tests passed.

@@ -1,22 +1,24 @@
 # Claude → Codex Task Handoff Template
 
-For Medium/Large tasks; Small tasks can use a concise version. Save an approved instance at `.claude/handoffs/TASK-<id>.md`, which is gitignored. Use unique IDs rather than `latest.md`. Link to Spec Kit artifacts rather than duplicating their content.
+Use Medium/Large plan details here; Small tasks may use a compact version. Save a unique approved handoff at \`.claude/handoffs/TASK-<id>.md\` (gitignored). Do not reuse \`latest.md\`.
 
 ## Task ID
 TASK-<unique>
 
 ## Objective
-[Single observable outcome]
+[One observable result]
 
 ## Approval status
-[Approved scope / pending decision; do not invoke Codex for a blocked task]
+Status: PENDING
+
+Replace \`PENDING\` with the exact value \`APPROVED\` only after the relevant user/scope approval. The wrapper rejects anything other than \`Status: APPROVED\` in this section. This field is a process guard, **not authentication** or proof of a user's identity. Do not approve your own material decisions.
 
 ## Verified context
-[Actual paths/symbols, relevant project docs, and explicitly labeled assumptions]
+[Actual paths/symbols, relevant project docs and explicitly labeled assumptions]
 
 ## Scope
 - In scope: [modules/outcomes]
-- Out of scope: [exclusions if applicable]
+- Out of scope: [exclusions]
 - Constraints: [architecture/security/backward compatibility]
 
 ## Acceptance criteria and verification
@@ -28,12 +30,12 @@ TASK-<unique>
 1. [Actionable step]
 
 ## Verification commands
-```bash
-# Verified commands from actual project; otherwise mark UNVERIFIED
-```
+\`\`\`bash
+# Verified against the project or marked UNVERIFIED
+\`\`\`
 
 ## Escalation triggers
-[Missing requirements, material scope expansion, architecture/security changes, data loss risk]
+[Missing requirements, unexpected scope, architectural/security changes, data loss]
 
-## Codex completion contract
-Return changed files, implementation summary, status of each AC (PASS/FAIL/UNVERIFIED), commands and exit codes, failure excerpts, skipped checks and risks. Never claim unrun checks passed.
+## Completion contract
+Codex reports changed files, each acceptance criterion PASS/FAIL/UNVERIFIED, actual commands and exit codes, failure excerpts and remaining risk. A zero CLI exit code does not prove the task passed.

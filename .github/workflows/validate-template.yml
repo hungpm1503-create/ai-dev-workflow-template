@@ -2,6 +2,7 @@ name: Validate workflow template
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 permissions:
@@ -12,9 +13,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check shell syntax
-        run: bash -n scripts/*.sh
-      - name: Validate required files and skill frontmatter
+      - name: Validate configuration and scan common secret patterns
         run: bash scripts/validate-workflow.sh
-      - name: Test delegation wrapper with fake Codex (no API calls)
+      - name: Regression test secret detection (synthetic tokens only)
+        run: bash scripts/test-secret-scan.sh
+      - name: Regression test delegation (fake Codex, no API calls)
         run: bash scripts/test-codex-delegate.sh
