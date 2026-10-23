@@ -19,6 +19,14 @@ Never assume Spec Kit, Superpowers, Codex or an invocation bridge is configured:
 4. Review Medium/Large plans; resolve critical blockers before delegation.
 5. Reuse `docs/workflow/handoff-template.md`, referencing Spec Kit artifacts instead of copying them.
 
+## Codex invocation
+
+- Follow `.claude/skills/codex-delegate/SKILL.md` for approved implementation tasks.
+- Write a unique `.claude/handoffs/TASK-<id>.md` (gitignored); never reuse a shared `latest.md`.
+- Run `bash scripts/codex-delegate.sh --dry-run TASK-<id>` first, then run without `--dry-run` only when tool access and approvals permit.
+- The wrapper executes sandboxed `codex exec`, captures report/exit code and keeps separate logs per run.
+- If Codex is unavailable, output the handoff and state execution is UNVERIFIED. Do not pretend a CLI task ran.
+
 ## After delegation
 
 1. Inspect the diff and actual command/test evidence; do not trust unsupported completion claims.
@@ -35,4 +43,3 @@ Never assume Spec Kit, Superpowers, Codex or an invocation bridge is configured:
 - Never automatically append lessons to `CLAUDE.md` or `AGENTS.md`.
 - Read `.claude/lessons/INDEX.md` only when relevant, and load only matching domain files.
 - Prefer existing skills and repo tooling over a new agent, service, database or dependency.
-- If Codex cannot be invoked from the current environment, report the missing connection and produce a handoff; do not claim execution.

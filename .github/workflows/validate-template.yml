@@ -1,13 +1,20 @@
 name: Validate workflow template
+
 on:
   push:
   pull_request:
+
+permissions:
+  contents: read
+
 jobs:
   validate:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
       - uses: actions/checkout@v4
+      - name: Check shell syntax
+        run: bash -n scripts/*.sh
       - name: Validate required files and skill frontmatter
         run: bash scripts/validate-workflow.sh
+      - name: Test delegation wrapper with fake Codex (no API calls)
+        run: bash scripts/test-codex-delegate.sh

@@ -1,66 +1,62 @@
 # AI Dev Workflow Template
 
-**Version:** 0.1.0 (pilot)  
-**Purpose:** reusable, stack-agnostic GitHub template for **Claude Lead → Codex Engineer**, with conditional Spec Kit/Superpowers, Planning Quality Gate and a lightweight learning loop.
+**Version:** 0.2.0 (pilot)  
+A small, stack-independent GitHub template for **Claude Lead → Codex CLI** with Planning Quality Gate, selective Learning Loop and optional Spec Kit/Superpowers.
 
-> This repository stores **instructions and templates**, not the Claude CLI, Codex CLI, Spec Kit, Superpowers, or any model/API credentials. It does not silently install them.
+> These are project-level instructions and scripts, not a packaged Claude/Codex installation. Authenticate both CLIs separately. A real Codex run consumes your available model usage and can edit files.
 
 ## Workflow
 
 | Task | Flow |
 | --- | --- |
-| Small | Claude → Codex → concise review |
-| Medium | Claude plan → plan-quality → Codex + relevant Superpowers skills → review |
-| Large | Claude → Spec Kit (if installed) → architecture/plan → plan-quality → Codex + relevant Superpowers skills → review |
+| Small | Claude → Codex → lightweight review |
+| Medium | Claude plan → plan-quality → codex-delegate → review |
+| Large | Claude → Spec Kit (if installed) → plan-quality → codex-delegate → review |
 
-**Approval:** business decisions, security/permission changes, destructive actions, major architecture or infrastructure changes go to the user. No automatic commit, push or merge.
+Superpowers skills can assist Codex implementation where installed and appropriate. Important architecture, business, security and destructive decisions still require user approval. No automatic commits, pushes, deployments or merges.
 
-## Included files
+## Project files
 
-- `CLAUDE.md` — lead responsibilities and routing rules.
-- `AGENTS.md` — implementation and verification rules for Codex.
-- `.claude/skills/plan-quality/SKILL.md` — evidence-based plan gate.
-- `.claude/skills/learn-from-task/SKILL.md` — selective post-task learning.
-- `.claude/lessons/INDEX.md` — index for domain-specific lessons.
-- `docs/workflow/handoff-template.md` — concise Claude → Codex contract.
-- `docs/workflow/evaluation-template.md` — actual verification/quality signals.
-- `docs/workflow/project-setup.md` — initialize a project from this template.
-- `scripts/validate-workflow.sh` — non-destructive static checks.
-- `scripts/publish-to-github.sh` — optional GitHub CLI publish helper.
+- `CLAUDE.md` — Claude Lead routing, approval and delegation rules.
+- `AGENTS.md` — Codex implementation rules and project-specific placeholders.
+- `.claude/skills/plan-quality/SKILL.md` — plan checklist, blocks only critical issues.
+- `.claude/skills/codex-delegate/SKILL.md` — Codex invocation procedure, sandbox constraints and output review.
+- `.claude/skills/learn-from-task/SKILL.md` — evidence-based lessons (selective).
+- `.claude/lessons/INDEX.md` — project-local lesson index.
+- `docs/workflow/handoff-template.md` — per-task handoff contract.
+- `docs/workflow/project-setup.md` — tool checks and project bootstrap.
+- `docs/workflow/evaluation-template.md` — observable workflow metrics.
+- `scripts/codex-delegate.sh` — Codex CLI execution with ignored, isolated per-run logs.
+- `scripts/validate-workflow.sh` and `scripts/test-codex-delegate.sh` — offline structure and fake-Codex smoke tests.
+- `.github/workflows/validate-template.yml` — CI validation for push and pull requests.
 
-## Bootstrap this template on GitHub
+## New project
 
-1. Create an **empty private GitHub repository** named `ai-dev-workflow-template` (do not initialize with README/license).
-2. From the extracted folder, run:
+1. Choose **Use this template → Create a new repository** on GitHub.
+2. Clone the new repo and run `bash scripts/validate-workflow.sh` and `bash scripts/test-codex-delegate.sh`.
+3. Fill **Project Configuration** in `AGENTS.md` with real build/test/lint commands and protected paths.
+4. Verify Claude Code, Codex CLI, and any Spec Kit/Superpowers integrations on your machine.
+5. Run the first task; use `/plan-quality` for Medium/Large tasks when appropriate.
 
-   ```bash
-   bash scripts/validate-workflow.sh
-   git init -b main
-   git add .
-   git commit -m "chore: initial AI development workflow template"
-   git remote add origin https://github.com/YOUR_USERNAME/ai-dev-workflow-template.git
-   git push -u origin main
-   ```
+## Claude → Codex (approved task example)
 
-   Use an authenticated `gh` CLI / Git credential manager. Never paste tokens into the repository.
-3. Open **Settings → General → Template repository** and enable it. Alternatively, use the optional `scripts/publish-to-github.sh` helper if `gh` is authenticated and the repository does **not** already exist.
-4. For a new project, click **Use this template → Create a new repository**. Each project has its own Git history.
+After Claude prepares a handoff at `.claude/handoffs/TASK-LOGIN-001.md`:
 
-See official [GitHub template instructions](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-template-repository).
+```bash
+bash scripts/codex-delegate.sh --dry-run TASK-LOGIN-001
+bash scripts/codex-delegate.sh TASK-LOGIN-001
+```
 
-## Start a new project
+The second command **runs the model** using `codex exec --sandbox workspace-write`, reads the handoff from stdin, and stores `completion.md`, `codex.log` and `status.txt` in a unique ignored task run folder. Claude must verify the implementation diff and acceptance criteria; an exit code of zero alone is not acceptance.
 
-1. Click **Use this template** to create a new repository.
-2. Clone it and review `docs/workflow/project-setup.md`.
-3. Check Claude Code and Codex CLI are installed/authenticated locally. For Large tasks, install/init Spec Kit **in the project** as needed. Verify Superpowers separately.
-4. Customize project-specific technology, test commands, coding rules in existing instruction files **without erasing the shared workflow**.
-5. Run `bash scripts/validate-workflow.sh`, then exercise one Small and one Medium task.
+Never use full-access sandbox bypasses. Do not pass API tokens in handoffs. The wrapper does not grant additional permission beyond your tool approval policy.
 
-> Copying this template does not automatically update older projects after future template releases. Port adopted changes through reviewed PRs.
+## Limitations
 
-## Safety and limitations
+- This template does not automatically install or authenticate third-party skills, agents or CLIs.
+- Codex execution needs a local Codex CLI and working model credentials; GitHub Actions uses a **fake** Codex only.
+- Tests validate wrapper behavior and project files, not actual model quality.
+- Commit reusable lessons back to the template only after evidence and review.
+- Existing projects made from earlier versions do not update automatically.
 
-- This is a **workflow baseline**, not a working Claude↔Codex automation bridge. Actual Codex invocation must be configured for the local environment, and agent handoffs must honor the user's approvals.
-- Skills do not prove outcomes. Tests, builds, repository diffs and human review remain the source of verification.
-- Do not store tokens, secrets, personal data or private business artifacts in the shared template.
-- Lessons are project-local; promote a reusable rule to the template only after validation and review.
+See `docs/workflow/project-setup.md` for details.

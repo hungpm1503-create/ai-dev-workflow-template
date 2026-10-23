@@ -26,3 +26,14 @@ Report:
 5. Remaining risks and material deviations.
 
 Never claim unrun checks passed. Never commit, push, merge or deploy without authorization.
+
+## Project Configuration — fill once for each new project
+
+- Stack: [NOT CONFIGURED]
+- Build command: [NOT CONFIGURED]
+- Test command: [NOT CONFIGURED]
+- Lint / typecheck command: [NOT CONFIGURED]
+- Protected paths: [NOT CONFIGURED]
+- Project-specific constraints: [NOT CONFIGURED]
+
+Do not invent executable commands from these placeholders. Verify against the actual project and update them during bootstrap.
