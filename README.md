@@ -1,6 +1,6 @@
 # AI Dev Workflow Template
 
-**Version:** 0.2.1 (pilot)  
+**Version:** 0.3.0 (pilot)  
 Reusable, stack-independent workflow for **Claude Lead → Codex CLI** with selective Quality Gates and Learning Loop. Spec Kit and Superpowers are optional integrations when installed.
 
 ## Start a new project
@@ -51,3 +51,27 @@ A zero exit code is **not** acceptance: Claude must inspect Git diff, verificati
 - \`.github/workflows/validate-template.yml\` — CI checks, no model invocation.
 
 Existing repositories created from a GitHub template do not automatically receive changes from this source repository. See \`docs/workflow/project-setup.md\`.
+
+
+## Evidence-based Experience Library
+
+After meaningful failures, rework, or a critical workflow gap, Claude can use the existing `learn-from-task` skill to capture evidence and propose a reusable improvement. No task-by-task auto-learning or model retraining is implied.
+
+For a completed delegated run:
+
+```bash
+# Replace XXXXXX with the exact suffix printed by codex-delegate
+bash scripts/capture-experience.sh TASK-LOGIN-001 TASK-LOGIN-001-run.XXXXXX
+```
+
+This creates a **private, ignored** draft in `.claude/experience-drafts/`. It references `status.txt`, `changed-paths.txt`, the baseline Git SHA, and local logs **without copying full logs or prompts**. Record actual before/after tests and the precise workflow change (Git commit/PR) in the draft.
+
+Once reviewed and approved, use `.claude/lessons/EXPERIENCE_TEMPLATE.md` for a concise, redacted permanent lesson and link it from `.claude/lessons/INDEX.md`. Store the changed harness as **Git commit + file paths**, not a duplicate configuration tree. Only validated and adopted lessons should direct future tasks. The index is read selectively to minimize context.
+
+Offline checks:
+
+```bash
+bash scripts/test-capture-experience.sh
+```
+
+This is inspired by evidence-backed harness improvement; it is **not** the full Harness² recursive probing or automatic harness optimizer.
