@@ -1,34 +1,52 @@
 ---
 name: learn-from-task
-description: After meaningful rework, failure or Medium/Large task completion, analyze evidence and propose small, testable workflow improvements without automatically changing global instructions.
+description: Selectively identify recurring development failures or critical blind spots, capture real execution evidence, validate small workflow improvements and propose human-approved experience records.
 ---
 
-# Selective Learning Loop
+# Evidence-Based Experience Learning
 
-Use **Observe → Analyze → Propose → Validate → Adopt** only when the task contains a meaningful learning signal. Do not run after trivial Small tasks.
+This is a lightweight **Observe → Analyze → Propose → Validate → Adopt** process, not a Harness² recursive search or automatic self-modifying agent.
 
-## Evidence to inspect
+## Trigger
 
-Original request, plan/handoff, implementation diff, acceptance criteria, executed tests and exit codes, user corrections and rework.
+Use after meaningful Medium/Large tasks or significant rework, user correction, failed verification or a critical issue. Skip routine Small tasks and cases with no reusable lesson.
 
-## Root-cause categories
+## Observe / evidence
 
-Requirements ambiguity; planning/handoff defect; implementation defect; verification gap; tool/environment failure; external dependency; unknown/insufficient evidence. Multiple causes are allowed. Do not assign personal blame.
+1. Compare requirements, existing plan and handoff against observed implementation.
+2. Inspect **real** results: Codex `status.txt`, `completion.md`, `changed-paths.txt`, `head-before.txt`, `git diff`, executed tests and reviewer findings.
+3. If available, prepare a **private draft**, without copying raw model output:
 
-## Record a proposed lesson
+   ```bash
+   bash scripts/capture-experience.sh TASK-EXAMPLE-001 TASK-EXAMPLE-001-run.XXXXXX
+   ```
 
-Store only when there is a repeated pattern or critical blind spot. Use the relevant domain file under `.claude/lessons/` and add one index line to `.claude/lessons/INDEX.md` *if the user approves persisting the entry*. For an unapproved proposal, output in chat only.
+   Replace `XXXXXX` with the run folder's actual suffix. The output stays in `.claude/experience-drafts/` (ignored) and must be reviewed before sharing.
+4. A wrapper exit code 0 is **not** an acceptance criterion PASS; missing results remain UNVERIFIED.
 
-Required fields: date, task/reference, observation, evidence, suspected cause, proposed rule, validation method, status (PROPOSED / VALIDATED / REJECTED).
+## Analyze / propose
 
-## Promotion rule
+- Root-cause categories: requirements, planning/handoff, implementation, verification, environment/tooling, external dependency, unknown.
+- Identify a repeated pattern or critical blind spot; single minor incidents do not create permanent rules.
+- Describe the **cue**, observed failure, hypothesis, **before behavior**, minimal proposed workflow change, expected improvement and possible cost.
+- Prefer reuse of existing skills and documentation; avoid new agent/database/automatic probe loops.
 
-- One-off mistakes are not permanent global rules.
-- Validation should use relevant previous tasks, tests or objectively observable results where possible.
-- Do not change `CLAUDE.md`, `AGENTS.md`, shared skills or template rules without approval.
-- Read only relevant lessons; avoid loading the full history.
-- No unbounded self-reflection or parallel probe loops.
+## Validate
+
+- Run relevant regression or comparable tasks only when safe and approved.
+- Record **before/after** results, commands, exit codes and durable references (Git SHA/PR/CI), or explicitly UNVERIFIED.
+- Track which specific `CLAUDE.md`, `AGENTS.md`, skill, template or script change caused the improvement **as a hypothesis unless validated**.
+- Reconstruct harness configuration from Git SHA + changed file paths rather than storing another full copy.
+- Separate task success from workflow improvement and do not infer causality from one pass.
+
+## Adopt (requires user approval)
+
+- Use `.claude/lessons/EXPERIENCE_TEMPLATE.md` for a concise, **redacted** persistent record after review.
+- States: DRAFT (ignored) → PROPOSED → VALIDATED → ADOPTED, or REJECTED/RETIRED.
+- Only ADOPTED records provide reusable guidance in `.claude/lessons/INDEX.md`.
+- Never auto-update `CLAUDE.md`, `AGENTS.md` or skills. Approval and validation are required before permanent instruction changes.
+- Do not commit ignored raw handoffs, prompts, logs, passwords or personal data. Cite immutable code/CI references when available.
 
 ## Output
 
-Concise lessons (or "No reusable lesson"), supporting evidence, proposed next action, expected benefit, and approval required.
+Cue, concrete evidence, hypothesis, proposed change, before/after validation, limits, current state and a clear approval request. If no reusable learning signal exists, say so and stop.

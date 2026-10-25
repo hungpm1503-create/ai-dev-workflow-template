@@ -7,8 +7,9 @@
 *.p12
 *.pfx
 
-# Local agent/runtime scratch (handoffs, completions, logs)
+# Local agent/runtime scratch (handoffs, completions, logs and draft experiences)
 .claude/handoffs/
+.claude/experience-drafts/
 runs/
 .tmp/
 .cache/

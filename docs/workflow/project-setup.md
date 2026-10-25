@@ -29,6 +29,7 @@ Fill \`AGENTS.md > Project Configuration\`: actual stack, build/test/lint comman
 bash scripts/validate-workflow.sh
 bash scripts/test-secret-scan.sh
 bash scripts/test-codex-delegate.sh
+bash scripts/test-capture-experience.sh
 \`\`\`
 
 The simulated \`codex\` tests do not use tokens or modify application code. They check approval, dry-run, dirty tree, early stdin close (SIGPIPE regression), exit codes, timeout, protected paths and concurrency.
@@ -51,3 +52,18 @@ Codex \`workspace-write\` sandbox usually restricts outbound network depending o
 ## 6. GitHub Template
 
 For this source repository, open **Settings → General → Template repository** to enable template use. For each new app choose **Use this template → Create a new repository**. New projects are independent snapshots and do not automatically receive future template updates.
+
+
+## 7. Capture and reuse verified workflow experience
+
+For a meaningful failed/reworked task, inspect the run folder printed by `codex-delegate.sh` and generate a **private draft**:
+
+```bash
+bash scripts/capture-experience.sh TASK-LOGIN-001 TASK-LOGIN-001-run.XXXXXX
+```
+
+Use the run folder's actual six-character suffix, never the literal `XXXXXX`. The draft stays under ignored `.claude/experience-drafts/` and contains metadata/references, not copied private logs. Inspect and redact the evidence before moving an approved, useful record into `.claude/lessons/` using `.claude/lessons/EXPERIENCE_TEMPLATE.md`.
+
+Document **cue → observed failure → workflow change → before/after verification → adoption decision**. A baseline SHA and an adopted-change SHA let you reconstruct the relevant prompt/skill/scripts from Git without storing full harness duplicates.
+
+An unverified hypothesis must not become a global rule. Only index lessons that have both evidence and appropriate approval. Do not commit credentials, raw handoffs, or private model logs.

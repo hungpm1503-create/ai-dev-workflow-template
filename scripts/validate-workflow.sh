@@ -16,6 +16,9 @@ files=(
   scripts/codex-delegate.sh
   scripts/test-codex-delegate.sh
   scripts/test-secret-scan.sh
+  scripts/capture-experience.sh
+  scripts/test-capture-experience.sh
+  .claude/lessons/EXPERIENCE_TEMPLATE.md
 )
 failed=0
 for file in "${files[@]}"; do

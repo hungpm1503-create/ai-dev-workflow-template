@@ -19,3 +19,5 @@ jobs:
         run: bash scripts/test-secret-scan.sh
       - name: Regression test delegation (fake Codex, no API calls)
         run: bash scripts/test-codex-delegate.sh
+      - name: Regression test experience capture (offline synthetic fixture)
+        run: bash scripts/test-capture-experience.sh
