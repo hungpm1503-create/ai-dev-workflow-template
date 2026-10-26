@@ -25,6 +25,8 @@ No tests above call real Codex or bill tokens.
 
 Do not produce two competing feature specifications or plans. For Large tasks, reference existing Spec Kit artifacts in the Codex handoff instead of copying or rewriting them. If integrations are missing, verify and report what is unavailable rather than simulating tool use.
 
+The concise coding principles in `AGENTS.md` adapt [Karpathy-style guidance](https://github.com/multica-ai/andrej-karpathy-skills): think before coding, keep changes simple and surgical, and verify observable goals. `CLAUDE.md` applies them during handoff and review; task routing stays the same.
+
 ## Delegation
 
 Create \`.claude/handoffs/TASK-LOGIN-001.md\` from \`docs/workflow/handoff-template.md\`. After genuine scope approval, put the exact \`Status: APPROVED\` under \`## Approval status\`. The marker is not proof of who approved the task.

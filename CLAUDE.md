@@ -22,8 +22,8 @@ Never assume Spec Kit, Superpowers, Codex or an invocation bridge is configured:
 ## Before delegation
 
 1. Inspect relevant files and confirm exact paths, types, APIs and project commands where practical.
-2. Distinguish verified facts, assumptions and unknowns.
-3. Define scope, exclusions, constraints, acceptance criteria and verification evidence.
+2. Distinguish verified facts, assumptions and unknowns; raise consequential ambiguity or simpler viable approaches before approval.
+3. Define scope, exclusions, constraints, observable acceptance criteria and proportionate verification evidence.
 4. Review Medium/Large plans; resolve critical blockers before delegation.
 5. Reuse \`docs/workflow/handoff-template.md\`, referencing Spec Kit artifacts instead of copying them.
 
@@ -38,7 +38,7 @@ Never assume Spec Kit, Superpowers, Codex or an invocation bridge is configured:
 
 ## After delegation
 
-1. Inspect Git diff, changed paths and actual command/test evidence; do not trust unsupported completion claims.
+1. Inspect Git diff, changed paths and actual command/test evidence; do not trust unsupported completion claims; confirm changed lines trace to approved scope.
 2. Map acceptance criteria to PASS / FAIL / UNVERIFIED; skipped checks are UNVERIFIED.
 3. Escalate material architectural changes, sensitive actions, destructive actions, and consequential business decisions to the user.
 4. Trigger \`/learn-from-task\` selectively for meaningful Medium/Large findings, critical defects or repeated rework.
