@@ -2,13 +2,13 @@
 
 Only log meaningful tasks or periodic samples. Do not invent metrics. Use `N/A` when unavailable.
 
-| Date | Task | Size | Risk | Route | Plan gate | First-pass ACs | Rework cycles | Tests | User interventions | Duration | Token/cost | Notes |
+| Date | Task | Size | Risk | Traceability | Planning path | Governance | Plan gate | First-pass ACs | Rework | Tests | Approvals | Time | Token/cost | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| YYYY-MM-DD | [reference] | S/M/L | LOW/HIGH | Small/Medium/Spec Lite/Full | PASS/BLOCKED/N/A | X/Y or N/A | 0 | PASS/FAIL/UNVERIFIED | 0 | N/A | N/A | [evidence] |
+| YYYY-MM-DD | [reference] | S/M/L | LOW/HIGH | LOW/HIGH | NONE/CLAUDE/SUPERPOWERS/SPEC KIT | STANDARD/FULL | PASS/BLOCKED/N/A | X/Y or N/A | 0 | PASS/FAIL/UNVERIFIED | N/A | N/A | N/A | [evidence] |
 
 ## Evaluation discipline
 
-- Classify complexity separately from governance risk; use `docs/workflow/task-routing.md` and respect stricter downstream routes.
+- Classify complexity, governance risk and traceability separately; record the single planning source and applicable project-specific approval controls using `docs/workflow/task-routing.md`.
 - Compare comparable tasks; do not attribute all improvement to instruction changes.
 - Always distinguish `UNVERIFIED` from `PASS`.
 - Ask whether fewer rework cycles and clearer ACs offset review latency/token usage.

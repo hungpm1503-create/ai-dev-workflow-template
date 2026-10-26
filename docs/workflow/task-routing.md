@@ -1,64 +1,61 @@
-# Adaptive Spec Kit Routing — complexity × governance risk
+# Adaptive AI Development Workflow — complexity × risk × traceability
 
-Goal: **minimum effective process**, not the maximum number of generated documents.
-Classify **complexity and governance risk independently** before choosing tools. Project-specific rules override this template.
+**Aim:** the smallest effective process. Claude Lead owns task classification, planning, handoff and independent review; Codex owns implementation. No automatic extra agent or planning ceremony.
 
-## Decision matrix
+## Classification
 
-| Complexity | Risk | Route | Required planning and approval |
+For each task, assess these **three independent dimensions**:
+
+- **Complexity:** SMALL (localized), MEDIUM (multi-step, established architecture), LARGE (new design or coordinated slices).
+- **Governance risk:** LOW or HIGH. HIGH may apply to even a one-line change. Examples: financial methodology, point-in-time rules, sensitive data and access controls, destructive migration, irreversible infrastructure or autonomous execution. Downstream project-specific HIGH-risk definitions and mandatory gates override this template.
+- **Traceability:** LOW or HIGH. HIGH is appropriate when requirements, accepted decisions/ADRs, interfaces, versioned behavior and acceptance tests must remain linked across many changes. Large size alone does not imply HIGH traceability.
+
+## Planning decision matrix
+
+| Complexity | Risk | Traceability | Selected planning path | Required execution |
+| --- | --- | --- | --- | --- |
+| SMALL | LOW | LOW | **NONE** | Concise handoff → Codex → tests → brief Claude review |
+| MEDIUM | LOW | LOW | **CLAUDE**, optionally **SUPERPOWERS** for meaningful ambiguity | One short plan → Codex → proportionate review |
+| LARGE | LOW | LOW | **SUPERPOWERS preferred** (or one Claude plan when unavailable/not useful) | One canonical design/plan → Codex slices → independent review |
+| ANY | LOW | HIGH | **SPEC KIT preferred** for durable traceable artifacts | One canonical spec/plan/decision trail → Codex → review |
+| ANY | HIGH | ANY | **FULL GOVERNANCE + one project-allowed planning path** | Required independent reviews, explicit human gates, evidence-based tests/review and human acceptance when required |
+
+**Risk determines mandatory safeguards; complexity and traceability determine planning.** High-risk does **not** universally mandate Spec Kit: choose Spec Kit for significant traceability, Superpowers/Claude planning otherwise **only when the project's already-approved rules allow**. If a downstream project requires formal Spec Kit for HIGH risk (e.g., InvestmentAgent), continue to follow it. Never silently replace a required gate with a lighter process.
+
+## Claude chooses exactly one planning source
+
+- **NONE:** no planning framework for a clear Small/Low task.
+- **CLAUDE / SUPERPOWERS:** Claude produces one plan. If the relevant skills exist and add value, it may use `superpowers:brainstorming` and/or `superpowers:writing-plans` for Medium or Large work, then treats the output as the **one canonical artifact**. No compulsory multi-skill chain.
+- **SPEC KIT:** use relevant specification/plan/tasks/consistency stages when a persistent requirements-to-decisions-to-tests chain is needed. No automatic full Spec Kit sequence just because a feature is LARGE.
+- **FULL GOVERNANCE:** an **overlay, not a planning framework**. It still requires independent requirements/security/architecture review where applicable, real approvals, risk and rollback/verification evidence, and required acceptance regardless of planning tool.
+
+**Never run Spec Kit planning and Superpowers brainstorming/writing-plans for the same task.** Only Claude Lead selects the planning framework. Codex consumes the approved handoff and approved single plan; it must not repeat planning. Do not run Superpowers subagent-driven development or `executing-plans` as a second implementation engine. Do not invoke `/speckit-implement` or `/speckit.implement`: Codex is the implementation owner. Superpowers TDD, systematic debugging and verification skills may assist Codex regardless of planning source.
+
+For Medium/Low, one focused `plan-quality` review is generally enough. For Large/Low, review the one canonical design/spec proportionately. In a HIGH-risk project route, fulfill independent project gates but don't add another equivalent planning review without a specific uncovered risk.
+
+## Mandatory FULL GOVERNANCE for HIGH-risk work
+
+1. Identify the governing constitution/policies, accepted ADRs, approved specs/decisions and affected invariants. Never change an authority through a lower-priority handoff.
+2. Record consequential requirements, exclusions, impacted data/contracts, risks, acceptance criteria, rollback/migration steps if relevant, and traceability needed for independent assessment.
+3. **Obtain genuine human authorization** at the project's defined gates **before** protected execution, security/policy changes, migration, irreversible actions and acceptance. Editable `Status: APPROVED` text alone is not authentication.
+4. Obtain required **independent requirements, security and architecture review** (a separate reviewer/context where project rules require it). An author cannot self-certify an independent review.
+5. Delegate only the approved scope to Codex. Independently inspect diff and actual test/build evidence, with targeted and expanded checks appropriate to the impact. Report each criterion PASS, FAIL or UNVERIFIED.
+6. Preserve explicit human acceptance where required. No automatic push, merge or deploy outside approval.
+7. If a required review, skill or tool is unavailable, **stop that protected action and escalate**, seeking an explicitly approved equivalent if project rules permit. Never fake tool usage or silently downgrade.
+
+## Examples
+
+| Scenario | Classification | Planning | Governance |
 | --- | --- | --- | --- |
-| SMALL | LOW | **Small** | Concise approved Codex handoff with acceptance checks; no formal spec/plan; proportionate review |
-| MEDIUM | LOW | **Medium** | **One** concise Claude-owned plan (inline in handoff unless persistent notes genuinely help); one `plan-quality` pass; Codex + review |
-| LARGE | LOW | **Spec Lite** | **One canonical lightweight requirements/design artifact** (existing spec/plan or a short new file), acceptance criteria and actionable slices; use only relevant Spec Kit commands **if they add value**; one proportionate planning review, Codex + independent review |
-| ANY | HIGH | **Full Spec Kit / project's mandatory high-risk route** | Formal requirements and risk assessment, independent requirements review, human approval of consequential decisions before implementation, architecture/plan/tasks and consistency checks, Codex, independent verification and required human acceptance |
+| Small formatter bug | SMALL / LOW / LOW | NONE | Focused regression tests |
+| Ordinary settings feature | MEDIUM / LOW / LOW | Claude plan, optional Superpowers | Normal review |
+| New read-only dashboard across modules | LARGE / LOW / LOW | Superpowers design/planning preferred | One canonical plan and independent code review |
+| Versioned shared API and many linked requirement decisions | LARGE / LOW / HIGH | Spec Kit preferred | Durable requirements ↔ ADRs ↔ tests |
+| Point-in-time financial rule change | Any / HIGH / HIGH | Existing project-required Spec Kit | Existing independent/human HIGH-risk gates mandatory |
+| Privacy access boundary or destructive migration | Any / HIGH / risk-assessed traceability | Spec Kit **or** Superpowers/Claude only if allowed by project | FULL GOVERNANCE always |
 
-**HIGH risk always overrides complexity** (even a two-line change). A LARGE task is **not automatically HIGH**. When a project defines stricter high-risk gates, follow them unchanged.
+## Shared harness rules
 
-Examples of potential HIGH risk: financial calculation/point-in-time policy, canonical data migration that could lose or reinterpret records, authentication/security or personal-data boundary changes, irreversible infrastructure operations, or autonomous actions. **These are prompts to inspect the project's definitions**, not authority to silently reclassify a protected operation as LOW. Ordinary UI styling, documentation and reversible refactors may remain LOW even when the task spans many files. If a classification is ambiguous, verify the affected boundaries and escalate until the risk is resolved; do not silently downgrade.
+Claude → one approved plan source → Codex → independent Claude Review → Human approval when needed. Keep v0.4 Working Memory, risk-based Verification and adopted Experience Library; checkpoints and instinct candidates are never approval or authoritative specs. Skip duplicate docs and unnecessary model calls. No new benchmark or background agent.
 
-## Workflow details
-
-### SMALL / LOW
-
-Read only task-relevant context → concise handoff and acceptance checks → Codex implementation → targeted tests and brief review. **No Spec Kit, `plan-quality` artifact or mandatory Superpowers plan.** Apply `verify-change` proportionately when the diff has meaningful risk.
-
-### MEDIUM / LOW
-
-Claude writes a single short plan (objective, scope, constraints, steps, tests) in the handoff or in one existing planning file. Run `plan-quality` **once**, unless a real blocker needs revision. Delegate to Codex and independently review evidence. Do not create a separate Spec Kit spec, checklist and tasks document by default.
-
-### LARGE / LOW — Spec Lite
-
-Prefer an **existing canonical artifact**. If none exists, one short plan/spec suffices; it should cover problem, scope/exclusions, contracts and known decisions, key risks, testable acceptance criteria, implementation slices, and relevant verification. Add `tasks.md` only when many dependent handoffs require coordination. Do not reflexively run **specify → clarify → checklist → plan → tasks → analyze → converge**, independent requirements re-review or repeated approval ceremonies.
-
-Spec Kit, if installed, is **optional here**: invoke only the specific stages that fill a genuine gap. A built-in `plan-quality` review or existing independently reviewed spec can satisfy the *single* planning quality gate; **do not repeat an equivalent check**. Codex remains the implementation owner.
-
-### ANY / HIGH — Full Spec Kit / strict project route
-
-Use the project's required formal sequence and human gates. Where a full route is defined, it typically includes specification → clarification as needed → independent requirements review/checklist → **human requirements approval before implementation planning or execution as required by the project** → architecture/plan/tasks → consistency analysis → Codex → independent verification → **human acceptance** before consequential changes/merge. Do not weaken existing HIGH-risk requirements in a downstream project merely because this template is lighter.
-
-If Spec Kit is unavailable, **do not silently substitute Spec Lite or claim Spec Kit ran**. Stop the protected change and ask for an approved project-equivalent high-risk process and required human decisions. Avoid duplicate `plan-quality` if independent requirements/consistency gates already cover it; a separate review is useful only for a documented uncovered risk.
-
-## Ownership and universal guardrails
-
-- **Claude Lead:** classify, preserve a single approved source of truth, plan when appropriate, identify approval gates, delegate and independently review.
-- **Codex:** implement **only** the approved handoff, run actual tests, report PASS/FAIL/UNVERIFIED. Do not invoke Spec Kit implementation commands.
-- **Spec Kit:** optional planning/requirements tooling for Spec Lite, mandatory only when a project's selected HIGH-risk route requires it.
-- **Superpowers:** optional relevant TDD/debugging/verification helpers, **not** a parallel planning system.
-- **Working Memory:** ignored local task checkpoints, **never** approval or a competing spec; Experience Library candidates likewise remain untrusted until evidence and human adoption.
-- **Approvals:** task handoff's `Status: APPROVED` is a process marker, **not proof of human authorization**. Consequential decisions and high-risk gates require real explicit human sign-off.
-- **Quality:** actual diff, scope, acceptance criteria and risk-matched tests trump artifact count. Preserve project-specific financial, privacy, data, security and deployment boundaries.
-- **Adaptation:** each downstream project defines its own HIGH-risk set and stricter gates. Template updates are not automatic syncs.
-
-## Routing examples
-
-| Task | Complexity | Risk | Route and why |
-| --- | --- | --- | --- |
-| Fix a local formatter with tests | SMALL | LOW | Small; no spec |
-| Add a reversible settings page with several components | MEDIUM | LOW | Medium; concise plan |
-| Build a new read-only dashboard using existing stable contracts | LARGE | LOW | Spec Lite; one canonical requirements/design artifact |
-| Change a portfolio point-in-time selector | SMALL or MEDIUM | HIGH | Full project high-risk route despite size |
-| Change credential authorization or migrate private transaction storage | Any | HIGH | Full project high-risk route; obtain necessary approvals |
-
-## Lightweight evaluation
-
-Record complexity **and** risk classification, chosen route, completed reviews, number of artifacts, actual test results, rework and time/tokens **only when data exists**. If a task uses more workflow stages than the matrix requires, document the uncovered risk justifying each extra stage. No new benchmark or background agent is required.
+**Scope:** this template cannot override downstream project governance; sync to applications only through a separately reviewed project-specific change.

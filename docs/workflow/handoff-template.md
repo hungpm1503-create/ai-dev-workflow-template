@@ -1,8 +1,8 @@
 # Claude → Codex Task Handoff Template
 
-Use only the selected route's minimum plan details; SMALL/LOW tasks may use a compact version. Save a unique approved handoff at \`.claude/handoffs/TASK-<id>.md\` (gitignored). Do not reuse \`latest.md\`.
+Use only the selected route's minimum plan details; SMALL/LOW/low-traceability tasks may use a compact version. Save a unique approved handoff at \`.claude/handoffs/TASK-<id>.md\` (gitignored). Do not reuse \`latest.md\`.
 
-**Single source of truth:** MEDIUM/LOW references one concise Claude plan; LARGE/LOW references a single Spec Lite artifact (or existing useful Spec Kit artifacts); ANY/HIGH references the project's formally approved requirements and plan. Codex implements the approved handoff directly; do not invoke `/speckit-implement` or `/speckit.implement`. Superpowers may assist only with TDD, debugging and verification when installed, not `brainstorming` or `writing-plans`.
+**Single source of truth:** reference only the one selected Claude plan, Superpowers design/plan, or Spec Kit artifact. HIGH risk additionally requires the project's FULL GOVERNANCE evidence and approvals. Claude may use Superpowers `brainstorming`/`writing-plans` for planning, but Codex never re-plans; Codex implements, potentially using Superpowers TDD/debugging/verification, not competing subagents or Spec Kit implementation.
 
 ## Task ID
 TASK-<unique>
@@ -10,8 +10,11 @@ TASK-<unique>
 ## Route (keep concise)
 - Complexity: SMALL / MEDIUM / LARGE
 - Governance risk: LOW / HIGH (project-specific overrides take precedence)
-- Selected route: Small / Medium / Spec Lite / Full High-Risk
-- Canonical source and decision references: [path/identifier; cite verified human approvals where required]
+- Traceability: LOW / HIGH
+- Selected planning path: NONE / CLAUDE / SUPERPOWERS / SPEC KIT
+- Governance: STANDARD / FULL GOVERNANCE (HIGH risk overrides size)
+- Single canonical source: [approved path or concise in-handoff plan]
+- Required independent reviews and human approval evidence: [actual records or PENDING; never infer authorization]
 
 ## Objective
 [One observable result]

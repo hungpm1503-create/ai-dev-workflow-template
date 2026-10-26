@@ -8,12 +8,12 @@ description: Delegate an approved task to Codex CLI using a unique ignored hando
 ## Tool ownership
 
 - Codex is the implementation executor, including for Large features planned through Spec Kit. Never delegate implementation to `/speckit-implement` or `/speckit.implement`.
-- Reference the one approved source for the selected route: concise Claude plan (MEDIUM/LOW), Spec Lite artifact (LARGE/LOW), or formally approved high-risk spec/plan (ANY/HIGH). Do not generate duplicate Superpowers plans.
-- Relevant Superpowers skills may support **TDD, systematic debugging, or verification** only when installed and actually accessible to the executing agent. Do not use `superpowers:brainstorming` or `superpowers:writing-plans`.
+- Reference the **one approved planning source** chosen by Claude: concise Claude plan, Superpowers plan or canonical Spec Kit specification/plan. For HIGH risk also follow required independently approved governance artifacts. Do not create duplicate plans.
+- Codex may use Superpowers for **TDD, systematic debugging and verification** when available. Claude may have used its brainstorming/writing-plans for planning; Codex does not repeat them or run competing subagent implementation/`executing-plans`.
 
 1. Verify \`codex\` is installed and authenticated, and this Git repository has a clean worktree.
 2. Confirm scope is approved. Material architecture, security, costs and irreversible operations still require explicit user approval.
-3. For MEDIUM/LOW and LARGE/LOW, use proportional \`plan-quality\` on the canonical artifact; for ANY/HIGH, honor required independent project review and approval gates without duplicated reviews. Use \`docs/workflow/handoff-template.md\`. Write \`.claude/handoffs/TASK-ID.md\` with **## Approval status** and exact **Status: APPROVED**, only after appropriate approval. This text is not cryptographic authorization.
+3. Review the one canonical plan proportionately when needed; for ANY/HIGH, ensure required independent project review and human approval gates without duplicated reviews. Use \`docs/workflow/handoff-template.md\`. Write \`.claude/handoffs/TASK-ID.md\` with **## Approval status** and exact **Status: APPROVED**, only after appropriate approval. This text is not cryptographic authorization.
 4. Verify \`AGENTS.md > Protected paths\` is configured for this project, if applicable.
 5. Dry run: \`bash scripts/codex-delegate.sh --dry-run TASK-ID\` (no model invocation).
 6. Execute only when permitted: \`bash scripts/codex-delegate.sh TASK-ID\`.

@@ -15,20 +15,23 @@ bash scripts/test-codex-delegate.sh
 
 No tests above call real Codex or bill tokens.
 
-## Adaptive routing: Spec Kit only where it earns its cost
+## Adaptive workflow: Claude chooses NONE / Superpowers / Spec Kit
 
-| Complexity | Risk | Route |
+**Claude Lead → one planning path → Codex implementation → independent Claude review → human approval when needed.**
+
+| Classification | Planning choice | Non-negotiable controls |
 | --- | --- | --- |
-| Small | Low | Claude → Codex → lightweight review; no spec |
-| Medium | Low | One concise Claude plan → proportional `plan-quality` → Codex → review |
-| Large | Low | **Spec Lite:** one canonical short requirements/design artifact, optional focused Spec Kit stages → Codex → independent review |
-| Any | High | **Full project-defined high-risk route:** independent requirements review, required human approvals, formal plan/consistency checks, Codex and independent verification |
+| Small / Low-risk / low traceability | **NONE** | Concise handoff, tests, review |
+| Medium / Low-risk / low traceability | Claude short plan, optionally Superpowers | One plan, proportionate review |
+| Large / Low-risk / low traceability | **Superpowers preferred** for brainstorming/writing-plans (or one Claude plan) | Codex implements; Claude reviews |
+| Any size / High traceability | **Spec Kit preferred** for requirements/decisions/tests links | One canonical spec/plan |
+| **Any HIGH-risk task** | **FULL GOVERNANCE + selected tool** (only if allowed by project rules) | Real human gates, independent checks, verification and acceptance as required |
 
-**HIGH risk overrides task size.** A Large task is not automatically high risk. Projects define their own protected operations and can require stricter governance (financial, security, private data, migration or irreversible changes); this template never relaxes those rules.
+**Risk determines safeguards; complexity and traceability select the planning tool.** Superpowers may replace Spec Kit *planning* when the task does not need persistent requirements traceability. Do not run both for the same plan, and do not activate Superpowers subagent implementation or Spec Kit implementation alongside Codex. Superpowers TDD/debugging/verification can still assist Codex.
 
-Avoid duplicate specs, checklists and review loops. Superpowers remains scoped to TDD, debugging and verification, not parallel planning. Codex always implements; never invoke `/speckit-implement` or `/speckit.implement` for implementation. If a protected HIGH-risk task lacks an available Spec Kit setup, escalate for an explicitly approved equivalent; do not silently downgrade to Spec Lite.
+**HIGH-risk does not universally imply Spec Kit**, but downstream policies may require it. Existing InvestmentAgent financial HIGH-risk Spec Kit gates remain mandatory until separately approved changes; this template does not modify those rules.
 
-**Decision table and examples:** `docs/workflow/task-routing.md`. This changes routing guidance only; v0.4 Working Memory, Experience Library, verification and Codex delegation remain intact.
+See `docs/workflow/task-routing.md` for the full matrix and examples. Working Memory, verification and evidence-based learning v0.4 remain unchanged.
 
 ## Delegation
 

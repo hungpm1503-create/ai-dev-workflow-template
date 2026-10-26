@@ -1,25 +1,28 @@
 #!/usr/bin/env bash
-# Offline guardrails for adaptive routing docs. No model, no generated project files.
+# Offline routing guardrail; never calls Claude or Codex.
 set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 fail() { echo "FAIL: $*" >&2; exit 1; }
-docs='docs/workflow/task-routing.md'
-[[ -s "$docs" ]] || fail 'routing decision source missing'
-# Cover all four decision-matrix routes with independent size/risk classification.
-grep -Fq '| SMALL | LOW | **Small** |' "$docs" || fail 'SMALL/LOW is not minimal'
-grep -Fq '| MEDIUM | LOW | **Medium** |' "$docs" || fail 'MEDIUM/LOW not concise'
-grep -Fq '| LARGE | LOW | **Spec Lite** |' "$docs" || fail 'LARGE/LOW missing Spec Lite'
-grep -Fq '| ANY | HIGH | **Full Spec Kit /' "$docs" || fail 'HIGH-risk override missing'
-grep -Fq '**HIGH risk always overrides complexity**' "$docs" || fail 'high-risk precedence missing'
-grep -Fq 'do not silently substitute Spec Lite' "$docs" || fail 'no silent high-risk downgrade gate'
-grep -Fq 'do not repeat an equivalent check' "$docs" || fail 'review deduplication missing'
-grep -Fq 'No new benchmark' "$docs" || fail 'no benchmark guardrail missing'
-# Surface consistent instructions to both agents and handoff.
-grep -Fq '**LARGE / LOW:** **Spec Lite**' CLAUDE.md || fail 'Claude still forces full Spec Kit for Large/Low'
-grep -Fq 'HIGH risk overrides size' CLAUDE.md || fail 'Claude missing HIGH override'
-grep -Fq 'Spec Lite artifact (LARGE/LOW)' AGENTS.md || fail 'Codex not routed to Spec Lite'
-grep -Fq 'Governance risk: LOW / HIGH' docs/workflow/handoff-template.md || fail 'handoff lacks risk classification'
-grep -Fq 'ANY/HIGH' .claude/skills/plan-quality/SKILL.md || fail 'plan quality lacks High-risk handling'
-grep -Fq 'LARGE/LOW' .claude/skills/codex-delegate/SKILL.md || fail 'Codex skill lacks route mapping'
-echo 'PASS: adaptive routing matrix, high-risk override, deduplicated gates and handoff alignment'
+need() { grep -Fq -- "$2" "$1" || fail "$3"; }
+doc='docs/workflow/task-routing.md'
+need "$doc" 'three independent dimensions' 'classification requires complexity, risk and traceability'
+need "$doc" '| SMALL | LOW | LOW | **NONE**' 'small no-framework route missing'
+need "$doc" '| LARGE | LOW | LOW | **SUPERPOWERS preferred**' 'Superpowers planning missing'
+need "$doc" '| ANY | LOW | HIGH | **SPEC KIT preferred**' 'traceability-based Spec Kit missing'
+need "$doc" '| ANY | HIGH | ANY | **FULL GOVERNANCE + one project-allowed planning path**' 'High-risk safeguards missing'
+need "$doc" 'An author cannot self-certify an independent review.' 'independent review is not genuine'
+need "$doc" '**Never run Spec Kit planning and Superpowers brainstorming/writing-plans for the same task.**' 'duplicate planning prevention missing'
+need "$doc" 'Do not run Superpowers subagent-driven development' 'Codex implementation ownership missing'
+need "$doc" 'No new benchmark' 'benchmark scope creep'
+need 'CLAUDE.md' 'prefer **Superpowers**' 'Claude cannot choose Superpowers'
+need 'CLAUDE.md' 'prefer **Spec Kit**' 'Claude cannot choose Spec Kit'
+need 'CLAUDE.md' 'FULL GOVERNANCE' 'Claude High-risk override missing'
+need 'AGENTS.md' 'Codex must not redo planning' 'Codex ownership missing'
+need 'docs/workflow/handoff-template.md' '- Traceability: LOW / HIGH' 'handoff traceability missing'
+need 'docs/workflow/handoff-template.md' '- Selected planning path: NONE / CLAUDE / SUPERPOWERS / SPEC KIT' 'handoff planning choice missing'
+need 'docs/workflow/handoff-template.md' '- Governance: STANDARD / FULL GOVERNANCE' 'handoff governance missing'
+need 'docs/workflow/project-setup.md' 'Project-required approvals' 'setup missing project overrides'
+need '.claude/skills/plan-quality/SKILL.md' '**ANY/HIGH risk:**' 'quality skill missing governance'
+need '.claude/skills/codex-delegate/SKILL.md' 'one approved planning source' 'Codex handoff source missing'
+echo 'PASS: framework selection, risk gates, traceability and Codex ownership'

@@ -4,25 +4,24 @@ You are the Lead/Planner/Reviewer. Codex is the primary Implementation Engineer 
 Follow the user's requirements and repository-specific architecture over generic assumptions.
 Never assume Spec Kit, Superpowers, Codex or an invocation bridge is configured: verify first.
 
-## Task routing — adaptive Spec Kit
+## Adaptive workflow routing
 
-Classify **complexity (SMALL / MEDIUM / LARGE)** and **governance risk (LOW / HIGH)** independently. Follow `docs/workflow/task-routing.md` and any stricter project-specific rule. **HIGH risk overrides size**; a Large task is not automatically HIGH.
+Classify **complexity (SMALL/MEDIUM/LARGE)**, **governance risk (LOW/HIGH)** and **traceability (LOW/HIGH)** independently. Read `docs/workflow/task-routing.md`. **HIGH risk overrides size** and requires Full Governance; the planning framework remains a separate decision governed by project policy.
 
-- **SMALL / LOW:** concise Codex handoff → targeted checks → lightweight Claude review. No Spec Kit.
-- **MEDIUM / LOW:** **one** short Claude-owned plan (may live inside the handoff) → proportional `plan-quality` → Codex → review. No Spec Kit by default.
-- **LARGE / LOW:** **Spec Lite** — one canonical concise requirements/design artifact with scope, ACs, slices and risk notes; use **only useful** Spec Kit stages if configured, no obligatory full ritual → Codex → independent review.
-- **ANY / HIGH:** full project-defined **high-risk route**, including required independent requirements review, explicit human approval gates, formal planning/consistency checks, Codex and independent verification. Do **not** downgrade when Spec Kit is unavailable; escalate and agree an approved equivalent process.
-
-The goal is **minimum effective process**, not documentation volume. Never duplicate a quality gate already satisfied with valid evidence.
+- **SMALL/LOW/low traceability:** no framework; concise handoff → Codex → lightweight review.
+- **MEDIUM/LOW/low traceability:** one Claude plan, optionally Superpowers `brainstorming` when useful → Codex → review.
+- **LARGE/LOW/low traceability:** prefer **Superpowers** `brainstorming`/`writing-plans` when installed and useful; otherwise one Claude plan → Codex → review.
+- **HIGH traceability:** prefer **Spec Kit** for canonical specification, accepted decisions, contract dependencies and requirements-to-tests trace.
+- **ANY/HIGH risk:** apply **FULL GOVERNANCE** (required independent reviews, explicit human approval and evidence-based verification), whether planning is done via Superpowers, Spec Kit or Claude **when permitted by the project's existing rules**. Never relax mandatory downstream Spec Kit requirements.
 
 ## Tool ownership and non-duplication
 
-- **Claude Lead:** task classification, scope, architecture oversight, approvals, Codex handoff and final review.
-- **Spec Kit:** formal requirements/plan/checks for the required HIGH-risk route; **optional targeted stages** for LARGE/LOW Spec Lite. Reuse canonical artifacts; never generate parallel specs or plans.
-- **Codex CLI:** primary implementation executor for all task sizes. **Never invoke `/speckit-implement` or `/speckit.implement`** to implement an approved plan.
-- **Superpowers:** use only suitable **TDD, systematic debugging, and verification** skills when installed and accessible to the executing agent. Do **not** invoke `superpowers:brainstorming` or `superpowers:writing-plans` for the same feature or as another planning path.
-- **Quality Gate:** assess the single canonical plan/spec proportionately (Medium and LARGE/LOW); for HIGH risk, preserve required independent gates but skip redundant checks supported by the same evidence.
-- If an integration is unavailable or a task requires a deviation, state it explicitly and obtain approval for material changes. Never claim a skill was used without execution evidence.
+- **Claude Lead:** sole planning owner and router; decides without asking the user to choose a framework for routine work.
+- **Superpowers:** optional selected planning pathway (`brainstorming`, `writing-plans`) for Medium/Large tasks, and TDD/debugging/verification assistance during implementation. Do not invoke its subagent-driven implementation or `executing-plans` alongside Codex.
+- **Spec Kit:** preferred planning/traceability for linked or evolving specifications, required only where downstream governance mandates it. Use targeted stages; do not mechanically invoke every stage for ordinary features.
+- **Codex CLI:** sole primary implementation owner. Never use `/speckit-implement` or `/speckit.implement` to implement.
+- **Quality gate:** review the **one canonical planning artifact**. Preserve independent High-risk requirements review and human gates; don't duplicate equivalent planning checks.
+- Never claim unavailable skill execution, infer human approval from a text marker, or silently downgrade a HIGH-risk task.
 
 ## Before delegation
 
@@ -30,7 +29,7 @@ The goal is **minimum effective process**, not documentation volume. Never dupli
 2. Distinguish verified facts, assumptions and unknowns; raise consequential ambiguity or simpler viable approaches before approval.
 3. Define scope, exclusions, constraints, observable acceptance criteria and proportionate verification evidence.
 4. Apply only the selected route's required planning/review; escalate HIGH-risk or unresolved critical blockers before delegation.
-5. Reuse \`docs/workflow/handoff-template.md\`, referencing Spec Kit artifacts instead of copying them.
+5. Reuse \`docs/workflow/handoff-template.md\`, referencing the one approved Claude, Superpowers or Spec Kit planning source rather than copying it.
 
 ## Codex invocation
 
