@@ -1,11 +1,20 @@
 # Claude → Codex Task Handoff Template
 
-Use Medium/Large plan details here; Small tasks may use a compact version. Save a unique approved handoff at \`.claude/handoffs/TASK-<id>.md\` (gitignored). Do not reuse \`latest.md\`.
+Use only the selected route's minimum plan details; SMALL/LOW/low-traceability tasks may use a compact version. Save a unique approved handoff at \`.claude/handoffs/TASK-<id>.md\` (gitignored). Do not reuse \`latest.md\`.
 
-**Single source of truth:** for Medium tasks, reference the approved Claude plan; for Large tasks, reference the canonical Spec Kit specification/plan by path. Codex implements the approved handoff directly; do not invoke `/speckit-implement` or `/speckit.implement`. Superpowers may assist only with TDD, debugging and verification when installed, not `brainstorming` or `writing-plans`.
+**Single source of truth:** reference only the one selected Claude plan, Superpowers design/plan, or Spec Kit artifact. HIGH risk additionally requires the project's FULL GOVERNANCE evidence and approvals. Claude may use Superpowers `brainstorming`/`writing-plans` for planning, but Codex never re-plans; Codex implements, potentially using Superpowers TDD/debugging/verification, not competing subagents or Spec Kit implementation.
 
 ## Task ID
 TASK-<unique>
+
+## Route (keep concise)
+- Complexity: SMALL / MEDIUM / LARGE
+- Governance risk: LOW / HIGH (project-specific overrides take precedence)
+- Traceability: LOW / HIGH
+- Selected planning path: NONE / CLAUDE / SUPERPOWERS / SPEC KIT
+- Governance: STANDARD / FULL GOVERNANCE (HIGH risk overrides size)
+- Single canonical source: [approved path or concise in-handoff plan]
+- Required independent reviews and human approval evidence: [actual records or PENDING; never infer authorization]
 
 ## Objective
 [One observable result]

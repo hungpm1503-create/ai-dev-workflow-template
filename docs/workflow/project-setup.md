@@ -10,14 +10,17 @@ codex --version
 
 Install and authenticate Claude and Codex separately. This template does not install models, Spec Kit or Superpowers. If using Spec Kit, initialize carefully and inspect generated artifacts; do not force-overwrite project config. Verify Superpowers is installed before referring to its skills.
 
-## Tool ownership — avoid duplicate plans
+## Tool ownership — one planner, one implementer
 
-- **Small:** Claude prepares a compact handoff; Codex implements; Claude reviews.
-- **Medium:** Claude owns the only implementation plan; `plan-quality` verifies it; Codex implements.
-- **Large:** use Spec Kit for feature specification and architecture/implementation planning if installed; its artifacts are authoritative. `plan-quality` reviews those artifacts; Codex implements.
-- Superpowers is **only** for TDD, systematic debugging and verification where installed. Do not use its `brainstorming` or `writing-plans` skills in parallel with Claude/Spec Kit planning.
-- Do **not** run `/speckit-implement` or `/speckit.implement` under this workflow. Codex CLI is the implementation engine.
-- When a tool is unavailable, report it; do not pretend the associated skill or command ran. Reference a single canonical set of planning artifacts.
+Follow `docs/workflow/task-routing.md`. Assess **complexity, governance risk and traceability independently**.
+
+- **SMALL/LOW/low traceability:** no framework, short handoff → Codex → review.
+- **MEDIUM/LOW/low traceability:** one Claude plan; optional Superpowers brainstorming if it adds clarity.
+- **LARGE/LOW/low traceability:** prefer Superpowers brainstorming/writing-plans if installed and useful; otherwise one Claude plan.
+- **HIGH traceability:** prefer Spec Kit and its canonical requirements, design and decision trail; only relevant stages for low-risk tasks.
+- **ANY/HIGH risk:** mandatory FULL GOVERNANCE, including Project-required approvals, independent requirements/security checks and appropriate rollback/verification. A project-specific Full Spec Kit requirement remains in force.
+- Never use Superpowers and Spec Kit to produce competing plans. Codex always implements; Superpowers TDD/debugging/verification can support Codex but its subagent implementation/`executing-plans` and Spec Kit implementation are not extra coders.
+- If a required tool or reviewer is unavailable, stop the protected operation, report the gap and seek permission for any compliant alternate process; never silently downgrade HIGH risk.
 
 ## 2. Configure each project
 

@@ -15,17 +15,23 @@ bash scripts/test-codex-delegate.sh
 
 No tests above call real Codex or bill tokens.
 
-## Routing and tool ownership
+## Adaptive workflow: Claude chooses NONE / Superpowers / Spec Kit
 
-- **Small:** Claude → Codex → lightweight Claude review. No formal planning documents.
-- **Medium:** Claude creates one concise plan → `plan-quality` → Codex implements → Claude reviews evidence.
-- **Large:** Spec Kit (when configured) owns the single canonical specification and plan → Claude runs `plan-quality` → Codex implements → Claude reviews evidence.
-- **Superpowers:** restricted to relevant **TDD, debugging, and verification** skills; do not use `superpowers:brainstorming` or `superpowers:writing-plans` as a parallel planning workflow.
-- **Never call `/speckit-implement` or `/speckit.implement`:** implementation belongs to Codex CLI.
+**Claude Lead → one planning path → Codex implementation → independent Claude review → human approval when needed.**
 
-Do not produce two competing feature specifications or plans. For Large tasks, reference existing Spec Kit artifacts in the Codex handoff instead of copying or rewriting them. If integrations are missing, verify and report what is unavailable rather than simulating tool use.
+| Classification | Planning choice | Non-negotiable controls |
+| --- | --- | --- |
+| Small / Low-risk / low traceability | **NONE** | Concise handoff, tests, review |
+| Medium / Low-risk / low traceability | Claude short plan, optionally Superpowers | One plan, proportionate review |
+| Large / Low-risk / low traceability | **Superpowers preferred** for brainstorming/writing-plans (or one Claude plan) | Codex implements; Claude reviews |
+| Any size / High traceability | **Spec Kit preferred** for requirements/decisions/tests links | One canonical spec/plan |
+| **Any HIGH-risk task** | **FULL GOVERNANCE + selected tool** (only if allowed by project rules) | Real human gates, independent checks, verification and acceptance as required |
 
-The concise coding principles in `AGENTS.md` adapt [Karpathy-style guidance](https://github.com/multica-ai/andrej-karpathy-skills): think before coding, keep changes simple and surgical, and verify observable goals. `CLAUDE.md` applies them during handoff and review; task routing stays the same.
+**Risk determines safeguards; complexity and traceability select the planning tool.** Superpowers may replace Spec Kit *planning* when the task does not need persistent requirements traceability. Do not run both for the same plan, and do not activate Superpowers subagent implementation or Spec Kit implementation alongside Codex. Superpowers TDD/debugging/verification can still assist Codex.
+
+**HIGH-risk does not universally imply Spec Kit**, but downstream policies may require it. Existing InvestmentAgent financial HIGH-risk Spec Kit gates remain mandatory until separately approved changes; this template does not modify those rules.
+
+See `docs/workflow/task-routing.md` for the full matrix and examples. Working Memory, verification and evidence-based learning v0.4 remain unchanged.
 
 ## Delegation
 

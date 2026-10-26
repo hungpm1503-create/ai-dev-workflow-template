@@ -13,6 +13,7 @@ files=(
   docs/workflow/handoff-template.md
   docs/workflow/evaluation-template.md
   docs/workflow/project-setup.md
+  docs/workflow/task-routing.md
   scripts/codex-delegate.sh
   scripts/test-codex-delegate.sh
   scripts/test-secret-scan.sh
@@ -20,6 +21,7 @@ files=(
   scripts/test-capture-experience.sh
   scripts/workflow-memory.sh
   scripts/test-workflow-memory.sh
+  scripts/test-task-routing.sh
   .claude/skills/workflow-memory/SKILL.md
   .claude/skills/verify-change/SKILL.md
   .claude/lessons/INSTINCT_CANDIDATE_TEMPLATE.md
