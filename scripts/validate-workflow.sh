@@ -24,6 +24,8 @@ files=(
   .claude/skills/verify-change/SKILL.md
   .claude/lessons/INSTINCT_CANDIDATE_TEMPLATE.md
   docs/workflow/ecc-selective-integration.md
+  docs/workflow/benchmark-workflow-resume.md
+  scripts/benchmark-workflow-resume.sh
   .claude/lessons/EXPERIENCE_TEMPLATE.md
 )
 failed=0

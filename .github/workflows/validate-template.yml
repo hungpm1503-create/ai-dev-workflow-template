@@ -23,3 +23,5 @@ jobs:
         run: bash scripts/test-capture-experience.sh
       - name: Test working-memory checkpoints (offline, no API/model)
         run: bash scripts/test-workflow-memory.sh
+      - name: Benchmark small coding task and resume-context size (offline)
+        run: bash scripts/benchmark-workflow-resume.sh
