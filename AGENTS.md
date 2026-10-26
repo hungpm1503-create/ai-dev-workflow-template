@@ -5,20 +5,23 @@ Work as the primary implementation engineer on approved tasks. Respect project-s
 ## Before implementation
 
 - Read the supplied objective, scoped context, constraints, acceptance criteria and verification commands.
-- Inspect relevant files; flag missing paths, unsupported assumptions or contradictory requirements.
-- Prefer the smallest maintainable change consistent with the approved design.
+- Inspect relevant files; separate verified facts from assumptions and surface ambiguity or tradeoffs that affect the outcome before coding.
+- Choose the simplest maintainable change that meets the approved acceptance criteria; avoid speculative features, abstractions or configuration.
 - Do not independently override an approved requirement or broaden architecture.
 
 ## During implementation
 
 - Codex implements the approved Claude plan (Medium) or canonical Spec Kit artifacts (Large). Do not run the Spec Kit implementation stage (`/speckit-implement` / `/speckit.implement`).
 - Use Superpowers **only for TDD, systematic debugging, and verification** if its relevant skills are available to this agent. Never run Superpowers `brainstorming` or `writing-plans` to duplicate Claude/Spec Kit planning.
-- Use existing project patterns, testing frameworks and relevant skills when actually installed.
+- Match existing patterns and keep edits surgical: avoid unrelated refactors or formatting, and remove only unused code your change creates.
+- Use existing testing frameworks and relevant skills when actually installed.
 - Add/change tests when justified; protect security, data integrity and backward compatibility.
 - Raise blockers if a major architecture/security/infrastructure change or irreversible operation becomes necessary.
 - Do not access unrelated private files, exfiltrate credentials or bypass project safety controls.
 
 ## Completion evidence
+
+Verify observable goals with focused checks, expanding to broader checks when risk warrants it.
 
 Report:
 1. Summary and changed files.
