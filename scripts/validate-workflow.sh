@@ -26,6 +26,8 @@ files=(
   docs/workflow/ecc-selective-integration.md
   docs/workflow/benchmark-workflow-resume.md
   scripts/benchmark-workflow-resume.sh
+  scripts/benchmark-codex-ab.sh
+  docs/workflow/codex-ab-pilot.md
   .claude/lessons/EXPERIENCE_TEMPLATE.md
 )
 failed=0

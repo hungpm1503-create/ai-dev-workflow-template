@@ -12,6 +12,7 @@
 .claude/experience-drafts/
 .claude/work-memory/
 .claude/instinct-candidates/
+.claude/benchmark-runs/
 runs/
 .tmp/
 .cache/
