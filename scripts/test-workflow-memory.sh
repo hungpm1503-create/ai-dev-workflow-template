@@ -20,7 +20,8 @@ bash scripts/workflow-memory.sh init "$task" > "$tmp"
 printf '\nFixtureKeywordXYZ\n' >> "$dir/STATE.md"
 bash scripts/workflow-memory.sh init "$task" >/dev/null
 grep -q 'FixtureKeywordXYZ' "$dir/STATE.md" || { echo 'FAIL: state overwritten' >&2; exit 1; }
-bash scripts/workflow-memory.sh search FixtureKeywordXYZ | grep -F -q "$dir/STATE.md"
+bash scripts/workflow-memory.sh search FixtureKeywordXYZ > "$tmp"
+grep -F -q "$dir/STATE.md" "$tmp"
 printf '%040d\n' 0 > "$run_dir/head-before.txt"
 printf 'CODEX_EXIT_CODE=9\nFINAL_EXIT_CODE=9\n' > "$run_dir/status.txt"
 printf 'src/example.cs\n' > "$run_dir/changed-paths.txt"
@@ -31,7 +32,8 @@ grep -F -q 'Review: UNVERIFIED' "$dir/LATEST.md"
 if grep -F -q 'PRIVATE_FAKE_LOG_DO_NOT_COPY' "$dir/RUN-$run_name.md"; then
   echo 'FAIL: raw log copied into checkpoint' >&2; exit 1
 fi
-bash scripts/workflow-memory.sh show "$task" | grep -q FixtureKeywordXYZ
+bash scripts/workflow-memory.sh show "$task" > "$tmp"
+grep -q FixtureKeywordXYZ "$tmp"
 if bash scripts/workflow-memory.sh record-run "$task" "$run_name" >/dev/null 2>&1; then
   echo 'FAIL: run event overwritten' >&2; exit 1
 fi
