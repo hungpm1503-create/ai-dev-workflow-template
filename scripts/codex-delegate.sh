@@ -145,6 +145,13 @@ if [[ -s "$run_dir/protected-violations.txt" ]]; then
   exit_code=4
 fi
 printf 'CODEX_EXIT_CODE=%s\nFINAL_EXIT_CODE=%s\nHEAD_BEFORE=%s\n' "$codex_exit_code" "$exit_code" "$head_sha" > "$status"
+
+# Deterministic, local-only memory checkpoint (best effort); never change the Codex verdict.
+if [[ -f "$root/scripts/workflow-memory.sh" ]]; then
+  if ! bash "$root/scripts/workflow-memory.sh" record-run "$task_id" "$(basename "$run_dir")" >> "$log" 2>&1; then
+    echo "WARNING: working-memory checkpoint failed; Codex result remains $exit_code." >&2
+  fi
+fi
 printf 'Task: %s\nFinal exit code: %s\n' "$task_id" "$exit_code"
 printf 'Run folder: %s\n' "${run_dir#"$root/"}"
 if (( exit_code != 0 )); then echo 'Review ignored logs and diff; do not mark the task PASS.' >&2; fi

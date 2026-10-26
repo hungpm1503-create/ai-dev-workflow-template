@@ -51,4 +51,8 @@ Never assume Spec Kit, Superpowers, Codex or an invocation bridge is configured:
 - Do not generate extra documents for Small tasks or duplicate existing Spec Kit/Superpowers artifacts.
 - Never automatically append lessons to \`CLAUDE.md\` or \`AGENTS.md\`.
 - Read \`.claude/lessons/INDEX.md\` only when relevant, and load only matching domain files.
+- For a task spanning agents/sessions, use `.claude/skills/workflow-memory/SKILL.md` to keep short **local-only** state (objective, progress, blockers, next action); only read relevant checkpoints and verify against Git.
+- For meaningful changes, use `.claude/skills/verify-change/SKILL.md` as an evidence-based review checklist, not as a second planner.
+- Before deliberate context compaction or moving to another session, write the task's verified state and next action to ignored working memory. Do not enable background memory observers.
+- If repeated errors suggest an instinct, treat it as an unverified candidate; only user-approved, validated experiences become indexed lessons.
 - Prefer existing skills and repo tooling over a new agent, service, database or dependency.

@@ -1,6 +1,6 @@
 # AI Dev Workflow Template
 
-**Version:** 0.3.0 (pilot)  
+**Version:** 0.4.0 (pilot)  
 Reusable, stack-independent workflow for **Claude Lead → Codex CLI** with selective Quality Gates and Learning Loop. Spec Kit and Superpowers are optional integrations when installed.
 
 ## Start a new project
@@ -75,3 +75,23 @@ bash scripts/test-capture-experience.sh
 ```
 
 This is inspired by evidence-backed harness improvement; it is **not** the full Harness² recursive probing or automatic harness optimizer.
+
+## ECC-inspired additions (v0.4.0, no new model)
+
+The template now includes **low-cost patterns inspired by ECC** without installing ECC or the ECC runtime:
+
+- **Working Memory:** `scripts/workflow-memory.sh` shares compact task state and per-run metadata between Claude and Codex in the **same local working copy**.
+- **Verification:** `.claude/skills/verify-change/` adds a risk-based code review, linking actual tests and diff to acceptance criteria; it does not invoke a second planning process.
+- **Learning:** `learn-from-task` may create unverified, ignored **instinct candidates** from meaningful failures. Only validated + user-approved experiences become adopted lessons.
+- **Context:** save short task state before `/compact` or session transitions; reopen from `STATE.md` and Git evidence instead of rereading whole transcripts.
+
+```bash
+bash scripts/workflow-memory.sh init TASK-EXAMPLE-001
+# Edit .claude/work-memory/TASK-EXAMPLE-001/STATE.md with verified state/next action.
+bash scripts/workflow-memory.sh show TASK-EXAMPLE-001
+bash scripts/test-workflow-memory.sh
+```
+
+Run metadata is captured from `scripts/codex-delegate.sh` on a best-effort basis, without copying raw logs. `.claude/work-memory/` and `.claude/instinct-candidates/` are gitignored. **They do not sync between devices/clones automatically.** No hooks, observers, cron jobs or new API calls are enabled.
+
+See `docs/workflow/ecc-selective-integration.md` for design, authority boundaries, limitations and acceptance scenarios. These additions do **not** make the harness an ECC Memory Vault installation.

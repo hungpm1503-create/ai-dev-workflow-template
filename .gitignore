@@ -10,6 +10,8 @@
 # Local agent/runtime scratch (handoffs, completions, logs and draft experiences)
 .claude/handoffs/
 .claude/experience-drafts/
+.claude/work-memory/
+.claude/instinct-candidates/
 runs/
 .tmp/
 .cache/

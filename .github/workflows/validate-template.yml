@@ -21,3 +21,5 @@ jobs:
         run: bash scripts/test-codex-delegate.sh
       - name: Regression test experience capture (offline synthetic fixture)
         run: bash scripts/test-capture-experience.sh
+      - name: Test working-memory checkpoints (offline, no API/model)
+        run: bash scripts/test-workflow-memory.sh
