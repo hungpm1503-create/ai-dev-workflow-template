@@ -30,6 +30,7 @@ bash scripts/validate-workflow.sh
 bash scripts/test-secret-scan.sh
 bash scripts/test-codex-delegate.sh
 bash scripts/test-capture-experience.sh
+bash scripts/test-workflow-memory.sh
 \`\`\`
 
 The simulated \`codex\` tests do not use tokens or modify application code. They check approval, dry-run, dirty tree, early stdin close (SIGPIPE regression), exit codes, timeout, protected paths and concurrency.
@@ -67,3 +68,18 @@ Use the run folder's actual six-character suffix, never the literal `XXXXXX`. Th
 Document **cue → observed failure → workflow change → before/after verification → adoption decision**. A baseline SHA and an adopted-change SHA let you reconstruct the relevant prompt/skill/scripts from Git without storing full harness duplicates.
 
 An unverified hypothesis must not become a global rule. Only index lessons that have both evidence and appropriate approval. Do not commit credentials, raw handoffs, or private model logs.
+
+## 8. ECC-inspired, no-observer workflow (v0.4.0)
+
+A task expected to cross an agent/session boundary can start with:
+
+```bash
+bash scripts/workflow-memory.sh init TASK-EXAMPLE-001
+bash scripts/workflow-memory.sh show TASK-EXAMPLE-001
+```
+
+Write only a concise objective, verified decisions, actual blockers and next action in ignored `.claude/work-memory/TASK-EXAMPLE-001/STATE.md`. The Codex wrapper records an additional run checkpoint automatically **when possible**. Claude still checks Git diff and real test evidence; a completed run is not an accepted feature.
+
+Use the `verify-change` skill on meaningful changes and the existing `learn-from-task` skill only for serious or repeated issues. Draft optional instincts from `.claude/lessons/INSTINCT_CANDIDATE_TEMPLATE.md`, under ignored `.claude/instinct-candidates/`, and never auto-apply candidates. Keep model-based reasoning on-demand inside the current Claude/Codex interaction.
+
+Before `/compact` or opening a new session, refresh the short task state. Work memory is local to this worktree, not shared across machines unless the operator deliberately exports a reviewed, redacted artifact. See `docs/workflow/ecc-selective-integration.md`.

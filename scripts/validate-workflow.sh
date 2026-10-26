@@ -18,6 +18,16 @@ files=(
   scripts/test-secret-scan.sh
   scripts/capture-experience.sh
   scripts/test-capture-experience.sh
+  scripts/workflow-memory.sh
+  scripts/test-workflow-memory.sh
+  .claude/skills/workflow-memory/SKILL.md
+  .claude/skills/verify-change/SKILL.md
+  .claude/lessons/INSTINCT_CANDIDATE_TEMPLATE.md
+  docs/workflow/ecc-selective-integration.md
+  docs/workflow/benchmark-workflow-resume.md
+  scripts/benchmark-workflow-resume.sh
+  scripts/benchmark-codex-ab.sh
+  docs/workflow/codex-ab-pilot.md
   .claude/lessons/EXPERIENCE_TEMPLATE.md
 )
 failed=0

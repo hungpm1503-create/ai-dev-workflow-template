@@ -11,6 +11,7 @@ probe="$root/.github/workflows/.protected-probe-$$"
 mkdir -p "$handoffs"
 cleanup() {
   rm -f "$handoff" "$probe"
+  rm -rf "$root/.claude/work-memory/$id"
   find "$handoffs" -maxdepth 1 -type d -name "$id-run.*" -exec rm -rf {} +
   rmdir "$handoffs/.codex-delegate.lock" 2>/dev/null || :
   rm -rf "$tmp"
