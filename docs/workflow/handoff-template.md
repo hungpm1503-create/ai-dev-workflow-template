@@ -1,11 +1,17 @@
 # Claude → Codex Task Handoff Template
 
-Use Medium/Large plan details here; Small tasks may use a compact version. Save a unique approved handoff at \`.claude/handoffs/TASK-<id>.md\` (gitignored). Do not reuse \`latest.md\`.
+Use only the selected route's minimum plan details; SMALL/LOW tasks may use a compact version. Save a unique approved handoff at \`.claude/handoffs/TASK-<id>.md\` (gitignored). Do not reuse \`latest.md\`.
 
-**Single source of truth:** for Medium tasks, reference the approved Claude plan; for Large tasks, reference the canonical Spec Kit specification/plan by path. Codex implements the approved handoff directly; do not invoke `/speckit-implement` or `/speckit.implement`. Superpowers may assist only with TDD, debugging and verification when installed, not `brainstorming` or `writing-plans`.
+**Single source of truth:** MEDIUM/LOW references one concise Claude plan; LARGE/LOW references a single Spec Lite artifact (or existing useful Spec Kit artifacts); ANY/HIGH references the project's formally approved requirements and plan. Codex implements the approved handoff directly; do not invoke `/speckit-implement` or `/speckit.implement`. Superpowers may assist only with TDD, debugging and verification when installed, not `brainstorming` or `writing-plans`.
 
 ## Task ID
 TASK-<unique>
+
+## Route (keep concise)
+- Complexity: SMALL / MEDIUM / LARGE
+- Governance risk: LOW / HIGH (project-specific overrides take precedence)
+- Selected route: Small / Medium / Spec Lite / Full High-Risk
+- Canonical source and decision references: [path/identifier; cite verified human approvals where required]
 
 ## Objective
 [One observable result]

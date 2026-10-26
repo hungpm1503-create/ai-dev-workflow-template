@@ -15,17 +15,20 @@ bash scripts/test-codex-delegate.sh
 
 No tests above call real Codex or bill tokens.
 
-## Routing and tool ownership
+## Adaptive routing: Spec Kit only where it earns its cost
 
-- **Small:** Claude → Codex → lightweight Claude review. No formal planning documents.
-- **Medium:** Claude creates one concise plan → `plan-quality` → Codex implements → Claude reviews evidence.
-- **Large:** Spec Kit (when configured) owns the single canonical specification and plan → Claude runs `plan-quality` → Codex implements → Claude reviews evidence.
-- **Superpowers:** restricted to relevant **TDD, debugging, and verification** skills; do not use `superpowers:brainstorming` or `superpowers:writing-plans` as a parallel planning workflow.
-- **Never call `/speckit-implement` or `/speckit.implement`:** implementation belongs to Codex CLI.
+| Complexity | Risk | Route |
+| --- | --- | --- |
+| Small | Low | Claude → Codex → lightweight review; no spec |
+| Medium | Low | One concise Claude plan → proportional `plan-quality` → Codex → review |
+| Large | Low | **Spec Lite:** one canonical short requirements/design artifact, optional focused Spec Kit stages → Codex → independent review |
+| Any | High | **Full project-defined high-risk route:** independent requirements review, required human approvals, formal plan/consistency checks, Codex and independent verification |
 
-Do not produce two competing feature specifications or plans. For Large tasks, reference existing Spec Kit artifacts in the Codex handoff instead of copying or rewriting them. If integrations are missing, verify and report what is unavailable rather than simulating tool use.
+**HIGH risk overrides task size.** A Large task is not automatically high risk. Projects define their own protected operations and can require stricter governance (financial, security, private data, migration or irreversible changes); this template never relaxes those rules.
 
-The concise coding principles in `AGENTS.md` adapt [Karpathy-style guidance](https://github.com/multica-ai/andrej-karpathy-skills): think before coding, keep changes simple and surgical, and verify observable goals. `CLAUDE.md` applies them during handoff and review; task routing stays the same.
+Avoid duplicate specs, checklists and review loops. Superpowers remains scoped to TDD, debugging and verification, not parallel planning. Codex always implements; never invoke `/speckit-implement` or `/speckit.implement` for implementation. If a protected HIGH-risk task lacks an available Spec Kit setup, escalate for an explicitly approved equivalent; do not silently downgrade to Spec Lite.
+
+**Decision table and examples:** `docs/workflow/task-routing.md`. This changes routing guidance only; v0.4 Working Memory, Experience Library, verification and Codex delegation remain intact.
 
 ## Delegation
 

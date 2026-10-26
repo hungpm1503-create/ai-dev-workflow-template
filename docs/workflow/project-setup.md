@@ -10,14 +10,18 @@ codex --version
 
 Install and authenticate Claude and Codex separately. This template does not install models, Spec Kit or Superpowers. If using Spec Kit, initialize carefully and inspect generated artifacts; do not force-overwrite project config. Verify Superpowers is installed before referring to its skills.
 
-## Tool ownership — avoid duplicate plans
+## Tool ownership — adaptive routing, not duplicate plans
 
-- **Small:** Claude prepares a compact handoff; Codex implements; Claude reviews.
-- **Medium:** Claude owns the only implementation plan; `plan-quality` verifies it; Codex implements.
-- **Large:** use Spec Kit for feature specification and architecture/implementation planning if installed; its artifacts are authoritative. `plan-quality` reviews those artifacts; Codex implements.
-- Superpowers is **only** for TDD, systematic debugging and verification where installed. Do not use its `brainstorming` or `writing-plans` skills in parallel with Claude/Spec Kit planning.
-- Do **not** run `/speckit-implement` or `/speckit.implement` under this workflow. Codex CLI is the implementation engine.
-- When a tool is unavailable, report it; do not pretend the associated skill or command ran. Reference a single canonical set of planning artifacts.
+See `docs/workflow/task-routing.md` for decision examples and escalation.
+
+- Classify task **size and governance risk separately**; downstream project-specific HIGH-risk rules take priority.
+- **SMALL/LOW:** short handoff, Codex and lightweight review; no Spec Kit.
+- **MEDIUM/LOW:** one short Claude plan → proportionate `plan-quality` → Codex → review.
+- **LARGE/LOW:** Spec Lite → one canonical short spec/design with ACs and slices → Codex → independent review. Invoke only useful Spec Kit stages if configured; avoid mandatory full chain and duplicate artifacts.
+- **ANY/HIGH:** required full high-risk process and explicit human gates; never downgrade to Spec Lite just because formal tooling is missing.
+- Superpowers is **only** for targeted TDD, systematic debugging and verification when installed. Never run separate brainstorming/writing-plans workflows on top of Claude or Spec Kit.
+- Codex CLI remains implementation owner; **do not** use `/speckit-implement` or `/speckit.implement`.
+- If a needed tool is unavailable, report that accurately. HIGH-risk work requires an approved equivalent process before proceeding, not a fictional Spec Kit run.
 
 ## 2. Configure each project
 

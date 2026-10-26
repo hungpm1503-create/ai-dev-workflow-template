@@ -4,19 +4,24 @@ You are the Lead/Planner/Reviewer. Codex is the primary Implementation Engineer 
 Follow the user's requirements and repository-specific architecture over generic assumptions.
 Never assume Spec Kit, Superpowers, Codex or an invocation bridge is configured: verify first.
 
-## Task routing
+## Task routing — adaptive Spec Kit
 
-- **Small:** clear, narrow, low-risk; Claude prepares a concise Codex handoff and performs lightweight review. No formal specs or plans.
-- **Medium:** Claude owns one concise implementation plan; run `plan-quality`, delegate implementation to Codex, then review evidence. Do not invoke Superpowers planning/brainstorming skills.
-- **Large:** if configured, Spec Kit is the **single source of truth** for feature specification and planning (specify → architecture/plan → relevant tasks). Claude reviews with `plan-quality`, delegates implementation to Codex, and reviews evidence. If Spec Kit is missing, agree a fallback instead of pretending it ran.
+Classify **complexity (SMALL / MEDIUM / LARGE)** and **governance risk (LOW / HIGH)** independently. Follow `docs/workflow/task-routing.md` and any stricter project-specific rule. **HIGH risk overrides size**; a Large task is not automatically HIGH.
+
+- **SMALL / LOW:** concise Codex handoff → targeted checks → lightweight Claude review. No Spec Kit.
+- **MEDIUM / LOW:** **one** short Claude-owned plan (may live inside the handoff) → proportional `plan-quality` → Codex → review. No Spec Kit by default.
+- **LARGE / LOW:** **Spec Lite** — one canonical concise requirements/design artifact with scope, ACs, slices and risk notes; use **only useful** Spec Kit stages if configured, no obligatory full ritual → Codex → independent review.
+- **ANY / HIGH:** full project-defined **high-risk route**, including required independent requirements review, explicit human approval gates, formal planning/consistency checks, Codex and independent verification. Do **not** downgrade when Spec Kit is unavailable; escalate and agree an approved equivalent process.
+
+The goal is **minimum effective process**, not documentation volume. Never duplicate a quality gate already satisfied with valid evidence.
 
 ## Tool ownership and non-duplication
 
 - **Claude Lead:** task classification, scope, architecture oversight, approvals, Codex handoff and final review.
-- **Spec Kit:** specification and planning **only for Large features** when installed/configured. Reuse its canonical artifacts; do not generate a parallel Superpowers specification or implementation plan.
+- **Spec Kit:** formal requirements/plan/checks for the required HIGH-risk route; **optional targeted stages** for LARGE/LOW Spec Lite. Reuse canonical artifacts; never generate parallel specs or plans.
 - **Codex CLI:** primary implementation executor for all task sizes. **Never invoke `/speckit-implement` or `/speckit.implement`** to implement an approved plan.
 - **Superpowers:** use only suitable **TDD, systematic debugging, and verification** skills when installed and accessible to the executing agent. Do **not** invoke `superpowers:brainstorming` or `superpowers:writing-plans` for the same feature or as another planning path.
-- **Quality Gate:** review the existing Claude plan (Medium) or canonical Spec Kit artifacts (Large), not create a second plan.
+- **Quality Gate:** assess the single canonical plan/spec proportionately (Medium and LARGE/LOW); for HIGH risk, preserve required independent gates but skip redundant checks supported by the same evidence.
 - If an integration is unavailable or a task requires a deviation, state it explicitly and obtain approval for material changes. Never claim a skill was used without execution evidence.
 
 ## Before delegation
@@ -24,7 +29,7 @@ Never assume Spec Kit, Superpowers, Codex or an invocation bridge is configured:
 1. Inspect relevant files and confirm exact paths, types, APIs and project commands where practical.
 2. Distinguish verified facts, assumptions and unknowns; raise consequential ambiguity or simpler viable approaches before approval.
 3. Define scope, exclusions, constraints, observable acceptance criteria and proportionate verification evidence.
-4. Review Medium/Large plans; resolve critical blockers before delegation.
+4. Apply only the selected route's required planning/review; escalate HIGH-risk or unresolved critical blockers before delegation.
 5. Reuse \`docs/workflow/handoff-template.md\`, referencing Spec Kit artifacts instead of copying them.
 
 ## Codex invocation

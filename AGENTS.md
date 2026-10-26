@@ -11,7 +11,7 @@ Work as the primary implementation engineer on approved tasks. Respect project-s
 
 ## During implementation
 
-- Codex implements the approved Claude plan (Medium) or canonical Spec Kit artifacts (Large). Do not run the Spec Kit implementation stage (`/speckit-implement` / `/speckit.implement`).
+- Codex implements the approved handoff and its canonical source: concise plan (MEDIUM/LOW), Spec Lite artifact (LARGE/LOW), or full approved requirements/plan for ANY/HIGH. Do not run the Spec Kit implementation stage (`/speckit-implement` / `/speckit.implement`).
 - Use Superpowers **only for TDD, systematic debugging, and verification** if its relevant skills are available to this agent. Never run Superpowers `brainstorming` or `writing-plans` to duplicate Claude/Spec Kit planning.
 - Match existing patterns and keep edits surgical: avoid unrelated refactors or formatting, and remove only unused code your change creates.
 - Use existing testing frameworks and relevant skills when actually installed.

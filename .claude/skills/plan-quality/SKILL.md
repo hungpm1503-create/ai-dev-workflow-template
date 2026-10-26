@@ -1,11 +1,11 @@
 ---
 name: plan-quality
-description: Check Medium and Large task plans before delegation to Codex; find blockers, verify acceptance criteria, and avoid duplicate Spec Kit documents.
+description: Proportionately review the single canonical Medium/Low or Spec Lite plan and fill only uncovered quality gaps in a required High-risk route.
 ---
 
 # Planning Quality Gate
 
-Review a concrete Medium/Large task using relevant repository files and existing Spec Kit artifacts (when present). Do not modify production code.
+Review the **single canonical** plan/spec for MEDIUM/LOW or LARGE/LOW; for ANY/HIGH, honor the project's independent high-risk review gates and avoid re-running equivalent checks. See `docs/workflow/task-routing.md`. Do not modify production code.
 
 ## Checks
 
@@ -25,11 +25,12 @@ For each applicable item, return **PASS**, **WARNING**, **BLOCK**, or **N/A**, p
 - Do not block for superficial documentation or irrelevant items.
 - A checklist is an LLM review aid, not a deterministic proof of correctness.
 
-## Behavior
+## Behavior by route
 
-- Small task: only a concise inline sanity check, no formal artifact.
-- Medium task: review the single concise **Claude-owned plan**, then prepare a Codex handoff; do not add a Superpowers plan.
-- Large task: review the **canonical Spec Kit specification and plan** when installed; link to them rather than copying or generating alternatives.
+- **SMALL/LOW:** brief inline sanity check only; no formal `plan-quality` execution or extra artifact.
+- **MEDIUM/LOW:** review **one** concise Claude-owned plan, which may be part of the handoff. Do not create a second plan or a full Spec Kit chain.
+- **LARGE/LOW (Spec Lite):** review **one canonical requirements/design artifact**, whether a short project document or an existing Spec Kit artifact. Use only missing and genuinely useful Spec Kit stages, not every stage by default.
+- **ANY/HIGH:** comply with the project's formal requirements review, approvals and consistency checks; this skill can check a **specific uncovered issue**, not act as an additional mandatory ceremony.
 - Do not invoke `superpowers:brainstorming`, `superpowers:writing-plans`, `/speckit-implement`, or `/speckit.implement` in this workflow.
 - Revise a blocked plan at most **two times**, then escalate unresolved decisions with clear options.
 - Do not call another model/reviewer or install packages unless there is an explicit need and approval.
