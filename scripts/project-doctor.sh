@@ -56,6 +56,9 @@ check_field 'Test command' command
 check_field 'Lint / typecheck command' command
 check_field 'Quick check command' command
 check_field 'Protected paths' paths
+if ! command -v jq >/dev/null 2>&1 && ! command -v python3 >/dev/null 2>&1 && ! command -v node >/dev/null 2>&1; then
+  warn 'No jq, python3 or node found: protected-path hook will ask on every tool edit.'
+fi
 if [[ -f .claude/settings.json ]]; then
   if command -v python3 >/dev/null 2>&1; then
     python3 -c 'import json;json.load(open(".claude/settings.json"))' >/dev/null 2>&1 || fail 'Invalid JSON in .claude/settings.json.'

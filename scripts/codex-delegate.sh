@@ -67,34 +67,60 @@ if ! mkdir "$lock_dir" 2>/dev/null; then
 fi
 printf '%s\n' "$$" > "$lock_dir/pid"
 codex_pid=''
-interrupted=0
+watchdog_pid=''
+# A process group exists as long as it has non-zombie members. A zombie may keep
+# kill -0 successful briefly after SIGKILL but can no longer execute code.
+group_active() {
+  local listing
+  listing="$(ps -eo pgid=,stat= 2>/dev/null)" || {
+    echo 'WARNING: cannot inspect process groups; conservatively retaining the lock.' >&2
+    return 0
+  }
+  printf '%s\n' "$listing" | awk -v pgid="$1" '
+    $1 == pgid && $2 !~ /^Z/ { found=1; exit }
+    END { exit found ? 0 : 1 }
+  '
+}
+# Allow kernel/process supervisor up to 5 seconds to reap after a forced stop.
+wait_group_quiet() {
+  local attempt
+  for attempt in 1 2 3 4 5 6 7 8 9 10; do
+    if ! group_active "$1"; then return 0; fi
+    sleep 0.5
+  done
+  ! group_active "$1"
+}
+stop_group() {
+  local pgid="$1"
+  if ! group_active "$pgid"; then return 0; fi
+  kill -TERM -- "-$pgid" 2>/dev/null || :
+  sleep 2
+  if group_active "$pgid"; then kill -KILL -- "-$pgid" 2>/dev/null || :; fi
+  wait_group_quiet "$pgid"
+}
 cleanup() {
-  # Do not remove the lock while any process in the delegated group might still be running.
-  if [[ -n "$codex_pid" ]] && kill -0 -- "-$codex_pid" 2>/dev/null; then
-    printf 'WARNING: Codex process group %s may still be running; lock retained for manual inspection.\n' "$codex_pid" >&2
+  # Keep the lock only if a non-zombie descendant may still be executing.
+  if [[ -n "$codex_pid" ]] && group_active "$codex_pid"; then
+    printf 'WARNING: live Codex group %s remains; inspect it before removing the lock.\n' "$codex_pid" >&2
     return
   fi
   rm -f "$lock_dir/pid"
   rmdir "$lock_dir" >/dev/null 2>&1 || :
 }
-stop_group() {
-  local pgid="$1"
-  kill -TERM -- "-$pgid" 2>/dev/null || :
-  sleep 2
-  kill -KILL -- "-$pgid" 2>/dev/null || :
-}
 on_interrupt() {
-  interrupted=1
   trap '' INT TERM
+  if [[ -n "$watchdog_pid" ]]; then
+    kill "$watchdog_pid" 2>/dev/null || :
+    wait "$watchdog_pid" 2>/dev/null || :
+  fi
   if [[ -n "$codex_pid" ]]; then
-    stop_group "$codex_pid"
+    stop_group "$codex_pid" || :
     wait "$codex_pid" 2>/dev/null || :
   fi
   exit 130
 }
 trap cleanup EXIT
 trap on_interrupt INT TERM
-
 run_dir="$(mktemp -d "$handoff_dir/$task_id-run.XXXXXX")"
 result="$run_dir/completion.md"
 log="$run_dir/codex.log"
@@ -147,24 +173,24 @@ set +m
   trap 'kill "$sleep_pid" 2>/dev/null || :; exit 0' TERM INT
   wait "$sleep_pid" || exit 0
   # Timeout is checked against the whole group, including surviving child processes.
-  if kill -0 -- "-$codex_pid" 2>/dev/null; then
+  if group_active "$codex_pid"; then
     printf '%s\n' 'TIMEOUT' > "$run_dir/timed-out.txt"
     kill -TERM -- "-$codex_pid" 2>/dev/null || :
     sleep 3
-    kill -KILL -- "-$codex_pid" 2>/dev/null || :
+    if group_active "$codex_pid"; then kill -KILL -- "-$codex_pid" 2>/dev/null || :; fi
   fi
 ) >/dev/null 2>&1 </dev/null &
 watchdog_pid=$!
 if wait "$codex_pid"; then exit_code=0; else exit_code=$?; fi
 # The process group can outlive its leader; stop descendants before releasing the lock.
-if kill -0 -- "-$codex_pid" 2>/dev/null; then
-  stop_group "$codex_pid"
+if group_active "$codex_pid"; then
+  stop_group "$codex_pid" || :
 fi
 kill "$watchdog_pid" 2>/dev/null || :
 wait "$watchdog_pid" 2>/dev/null || :
 codex_exit_code="$exit_code"
 if [[ -f "$run_dir/timed-out.txt" ]]; then exit_code=124; fi
-if kill -0 -- "-$codex_pid" 2>/dev/null; then
+if group_active "$codex_pid"; then
   printf '%s\n' 'WARNING: Codex descendants survived forced shutdown. Inspect process group and lock.' >&2
   exit_code=125
 fi

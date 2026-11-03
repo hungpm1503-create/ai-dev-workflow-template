@@ -42,6 +42,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Smoke-test Bash 3.2 scripts and safety hooks (no model)
         run: |
+          set -e
+          bash_shim="$(mktemp -d)"
+          trap 'rm -rf "$bash_shim"' EXIT
+          ln -s /bin/bash "$bash_shim/bash"
+          export PATH="$bash_shim:$PATH"
+          hash -r
+          bash --version | head -n 1
+          [[ "$(bash --version | head -n 1)" == *"version 3.2."* ]] || { echo "FAIL: nested bash is not 3.2" >&2; exit 1; }
           /bin/bash scripts/validate-workflow.sh
           /bin/bash scripts/test-project-doctor.sh
           /bin/bash scripts/test-guard-hook.sh
