@@ -7,7 +7,15 @@ Reusable, stack-independent workflow for **Claude Lead → Codex CLI** with sele
 
 1. **Use this template → Create a new repository**, then clone it. (On the source repo, enable **Settings → General → Template repository** first.)
 2. Fill `AGENTS.md > Project Configuration` with your real stack, test/lint/build commands, protected paths and a fast **Quick check command** (lint + affected tests, under ~60s).
-3. Check the workflow offline (no model calls, no tokens):
+3. Check the configured project's bootstrap (no commands/models executed):
+
+   ```bash
+   bash scripts/validate-workflow.sh --project
+   ```
+
+   On this unconfigured source template the doctor intentionally fails; configure project fields first. Use `N/A` for genuinely inapplicable build/test/lint commands and `Protected paths: NONE` when no additional project paths need protecting.
+
+4. Check the workflow offline (no model calls, no tokens):
 
    ```bash
    bash scripts/validate-workflow.sh
@@ -16,7 +24,7 @@ Reusable, stack-independent workflow for **Claude Lead → Codex CLI** with sele
    bash scripts/test-codex-delegate.sh
    ```
 
-4. Open Claude Code in the repo and just describe what you want. Claude first classifies complexity, risk and traceability; small, low-risk tasks then use **`/vibe`** automatically: change → run real tests → short PASS/FAIL report. Codex is optional for this mode.
+5. Open Claude Code in the repo and just describe what you want. Claude first classifies complexity, risk and traceability; small, low-risk tasks then use **`/vibe`** automatically: change → run real tests → short PASS/FAIL report. Codex is optional for this mode.
 
 ## What runs when
 
