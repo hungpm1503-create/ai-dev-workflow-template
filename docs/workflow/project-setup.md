@@ -22,6 +22,14 @@ Set **Quick check command** to something fast (lint + affected tests, ideally un
 
 After configuring, run the live checks in `docs/workflow/pilot-checklist.md` once.
 
+After configuring a new project, run **Project Doctor** (checks syntax and hooks; does not execute your build/test commands):
+
+```bash
+bash scripts/validate-workflow.sh --project
+```
+
+Unset fields cause a failure, including the Quick check command (otherwise the Stop hook silently skips). Use `N/A` for inapplicable build/test/lint commands, and `Protected paths: NONE` when no *additional* paths need protection. A PASS is not evidence that application tests or live Claude/Codex sessions succeed.
+
 ## 3. Verify workflow without a model
 
 ```bash
