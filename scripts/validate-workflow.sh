@@ -31,6 +31,11 @@ files=(
   scripts/benchmark-codex-ab.sh
   docs/workflow/codex-ab-pilot.md
   .claude/lessons/EXPERIENCE_TEMPLATE.md
+  .claude/skills/vibe/SKILL.md
+  .claude/settings.json
+  scripts/hooks/guard-protected-paths.sh
+  scripts/test-guard-hook.sh
+  docs/workflow/examples/TASK-EXAMPLE-001.md
 )
 failed=0
 for file in "${files[@]}"; do
@@ -49,9 +54,14 @@ for skill in .claude/skills/*/SKILL.md; do
     echo "FAIL: invalid skill frontmatter in $skill"; failed=1
   fi
 done
-for script in scripts/*.sh; do
+for script in scripts/*.sh scripts/hooks/*.sh; do
   if ! bash -n "$script"; then echo "FAIL: shell syntax $script"; failed=1; fi
 done
+
+# Escaped backticks break Markdown rendering on GitHub.
+while IFS= read -r -d '' md; do
+  if grep -q '\\`' "$md"; then echo "FAIL: escaped backtick (\\\`) in $md"; failed=1; fi
+done < <(git ls-files -z --cached --others --exclude-standard -- '*.md' 2>/dev/null)
 
 # Scan all tracked and untracked nonignored repo files; includes src/, .github/, etc.
 # This is an intentionally limited common-token heuristic, NOT a replacement for gitleaks.

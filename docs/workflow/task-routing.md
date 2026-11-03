@@ -14,13 +14,19 @@ For each task, assess these **three independent dimensions**:
 
 | Complexity | Risk | Traceability | Selected planning path | Required execution |
 | --- | --- | --- | --- | --- |
-| SMALL | LOW | LOW | **NONE** | Concise handoff → Codex → tests → brief Claude review |
-| MEDIUM | LOW | LOW | **CLAUDE**, optionally **SUPERPOWERS** for meaningful ambiguity | One short plan → Codex → proportionate review |
+| SMALL | LOW | LOW | **NONE** | **VIBE mode** (default): direct change or minimal Codex handoff → real tests → brief report |
+| MEDIUM | LOW | LOW | **CLAUDE**, optionally **SUPERPOWERS** for meaningful ambiguity | **VIBE mode** when the path is clear; otherwise one short plan → Codex → proportionate review |
 | LARGE | LOW | LOW | **SUPERPOWERS preferred** (or one Claude plan when unavailable/not useful) | One canonical design/plan → Codex slices → independent review |
 | ANY | LOW | HIGH | **SPEC KIT preferred** for durable traceable artifacts | One canonical spec/plan/decision trail → Codex → review |
 | ANY | HIGH | ANY | **FULL GOVERNANCE + one project-allowed planning path** | Required independent reviews, explicit human gates, evidence-based tests/review and human acceptance when required |
 
-**Risk determines mandatory safeguards; complexity and traceability determine planning.** High-risk does **not** universally mandate Spec Kit: choose Spec Kit for significant traceability, Superpowers/Claude planning otherwise **only when the project's already-approved rules allow**. If a downstream project requires formal Spec Kit for HIGH risk (e.g., InvestmentAgent), continue to follow it. Never silently replace a required gate with a lighter process.
+**Risk determines mandatory safeguards; complexity and traceability determine planning.** High-risk does **not** universally mandate Spec Kit: choose Spec Kit for significant traceability, Superpowers/Claude planning otherwise **only when the project's already-approved rules allow**. If a downstream project requires formal Spec Kit for HIGH risk, continue to follow it. Never silently replace a required gate with a lighter process.
+
+## VIBE mode (default for everyday LOW-risk work)
+
+VIBE is an **execution mode, not a planning framework**: SMALL, or MEDIUM with an obvious path, with LOW risk and LOW traceability. No handoff file, approval marker or plan artifact is required; the user's chat request is the scope. Real verification (tests/lint/build with exit codes, PASS/FAIL/UNVERIFIED) is still mandatory. See `.claude/skills/vibe/SKILL.md`.
+
+**Exit triggers** (switch to the matrix above and say why): auth/permissions, payments/money, personal or sensitive data, destructive migration or deletion, infrastructure/deploy/CI, secrets, LARGE scope or HIGH traceability, or the same failure surviving three fix attempts. VIBE never applies to HIGH risk.
 
 ## Claude chooses exactly one planning source
 
@@ -51,7 +57,7 @@ For Medium/Low, one focused `plan-quality` review is generally enough. For Large
 | Ordinary settings feature | MEDIUM / LOW / LOW | Claude plan, optional Superpowers | Normal review |
 | New read-only dashboard across modules | LARGE / LOW / LOW | Superpowers design/planning preferred | One canonical plan and independent code review |
 | Versioned shared API and many linked requirement decisions | LARGE / LOW / HIGH | Spec Kit preferred | Durable requirements ↔ ADRs ↔ tests |
-| Point-in-time financial rule change | Any / HIGH / HIGH | Existing project-required Spec Kit | Existing independent/human HIGH-risk gates mandatory |
+| Point-in-time financial rule change | Any / HIGH / HIGH | Project-required Spec Kit | Existing independent/human HIGH-risk gates mandatory |
 | Privacy access boundary or destructive migration | Any / HIGH / risk-assessed traceability | Spec Kit **or** Superpowers/Claude only if allowed by project | FULL GOVERNANCE always |
 
 ## Shared harness rules

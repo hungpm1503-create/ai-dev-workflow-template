@@ -1,6 +1,6 @@
 # Claude → Codex Task Handoff Template
 
-Use only the selected route's minimum plan details; SMALL/LOW/low-traceability tasks may use a compact version. Save a unique approved handoff at \`.claude/handoffs/TASK-<id>.md\` (gitignored). Do not reuse \`latest.md\`.
+Use only the selected route's minimum plan details; SMALL/LOW/low-traceability tasks may use a compact version. Save a unique approved handoff at `.claude/handoffs/TASK-<id>.md` (gitignored). Do not reuse `latest.md`.
 
 **Single source of truth:** reference only the one selected Claude plan, Superpowers design/plan, or Spec Kit artifact. HIGH risk additionally requires the project's FULL GOVERNANCE evidence and approvals. Claude may use Superpowers `brainstorming`/`writing-plans` for planning, but Codex never re-plans; Codex implements, potentially using Superpowers TDD/debugging/verification, not competing subagents or Spec Kit implementation.
 
@@ -22,7 +22,7 @@ TASK-<unique>
 ## Approval status
 Status: PENDING
 
-Replace \`PENDING\` with the exact value \`APPROVED\` only after the relevant user/scope approval. The wrapper rejects anything other than \`Status: APPROVED\` in this section. This field is a process guard, **not authentication** or proof of a user's identity. Do not approve your own material decisions.
+Replace `PENDING` with the exact value `APPROVED` only after the relevant user/scope approval. The wrapper rejects anything other than `Status: APPROVED` in this section. This field is a process guard, **not authentication** or proof of a user's identity. Do not approve your own material decisions.
 
 ## Verified context
 [Actual paths/symbols, relevant project docs and explicitly labeled assumptions]
@@ -41,9 +41,9 @@ Replace \`PENDING\` with the exact value \`APPROVED\` only after the relevant us
 1. [Actionable step]
 
 ## Verification commands
-\`\`\`bash
+```bash
 # Verified against the project or marked UNVERIFIED
-\`\`\`
+```
 
 ## Escalation triggers
 [Missing requirements, unexpected scope, architectural/security changes, data loss]

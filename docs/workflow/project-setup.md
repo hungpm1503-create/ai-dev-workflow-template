@@ -2,56 +2,49 @@
 
 ## 1. Check local tools
 
-\`\`\`bash
+```bash
 git --version
 claude --version
 codex --version
-\`\`\`
+```
 
 Install and authenticate Claude and Codex separately. This template does not install models, Spec Kit or Superpowers. If using Spec Kit, initialize carefully and inspect generated artifacts; do not force-overwrite project config. Verify Superpowers is installed before referring to its skills.
 
 ## Tool ownership — one planner, one implementer
 
-Follow `docs/workflow/task-routing.md`. Assess **complexity, governance risk and traceability independently**.
-
-- **SMALL/LOW/low traceability:** no framework, short handoff → Codex → review.
-- **MEDIUM/LOW/low traceability:** one Claude plan; optional Superpowers brainstorming if it adds clarity.
-- **LARGE/LOW/low traceability:** prefer Superpowers brainstorming/writing-plans if installed and useful; otherwise one Claude plan.
-- **HIGH traceability:** prefer Spec Kit and its canonical requirements, design and decision trail; only relevant stages for low-risk tasks.
-- **ANY/HIGH risk:** mandatory FULL GOVERNANCE, including Project-required approvals, independent requirements/security checks and appropriate rollback/verification. A project-specific Full Spec Kit requirement remains in force.
-- Never use Superpowers and Spec Kit to produce competing plans. Codex always implements; Superpowers TDD/debugging/verification can support Codex but its subagent implementation/`executing-plans` and Spec Kit implementation are not extra coders.
-- If a required tool or reviewer is unavailable, stop the protected operation, report the gap and seek permission for any compliant alternate process; never silently downgrade HIGH risk.
+Routing rules live in `docs/workflow/task-routing.md`; don't duplicate them here. In short: everyday LOW-risk work uses **VIBE mode**; Medium/Large use one Claude/Superpowers/Spec Kit plan with Codex implementing; **ANY/HIGH risk** keeps mandatory FULL GOVERNANCE, including Project-required approvals and independent checks. Never silently downgrade HIGH risk.
 
 ## 2. Configure each project
 
-Fill \`AGENTS.md > Project Configuration\`: actual stack, build/test/lint commands and protected paths. Protected paths are **literal repository-relative paths**, comma-separated, e.g. \`src/config/, infrastructure/\`. Directories end in \`/\`. The wrapper also protects \`CLAUDE.md\`, \`AGENTS.md\`, \`scripts/codex-delegate.sh\`, \`.claude/skills/\` and \`.github/workflows/\` by default. This is a **post-run detector**, not a file-system access control boundary.
+Fill `AGENTS.md > Project Configuration`: actual stack, build/test/lint commands and protected paths. Protected paths are **literal repository-relative paths**, comma-separated, e.g. `src/config/, infrastructure/`. Directories end in `/`. The wrapper also protects `CLAUDE.md`, `AGENTS.md`, `scripts/codex-delegate.sh`, `scripts/hooks/`, `.claude/settings.json`, `.claude/skills/` and `.github/workflows/` by default. For Codex this is a **post-run detector**; for Claude Code the hook in `.claude/settings.json` asks *before* the edit. Neither is a file-system access control boundary.
 
 ## 3. Verify workflow without a model
 
-\`\`\`bash
+```bash
 bash scripts/validate-workflow.sh
 bash scripts/test-secret-scan.sh
 bash scripts/test-codex-delegate.sh
+bash scripts/test-guard-hook.sh
 bash scripts/test-capture-experience.sh
 bash scripts/test-workflow-memory.sh
-\`\`\`
+```
 
-The simulated \`codex\` tests do not use tokens or modify application code. They check approval, dry-run, dirty tree, early stdin close (SIGPIPE regression), exit codes, timeout, protected paths and concurrency.
+The simulated `codex` tests do not use tokens or modify application code. They check approval, dry-run, dirty tree, early stdin close (SIGPIPE regression), exit codes, timeout, protected paths and concurrency.
 
 ## 4. Run an approved task
 
-Create \`.claude/handoffs/TASK-DEMO-001.md\` with \`## Approval status\` followed by \`Status: APPROVED\` **only after approval**. The wrapper rejects pending/non-approved tasks. This line is a process reminder, not proof of human authorization.
+Create `.claude/handoffs/TASK-DEMO-001.md` with `## Approval status` followed by `Status: APPROVED` **only after approval**. The wrapper rejects pending/non-approved tasks. This line is a process reminder, not proof of human authorization.
 
-\`\`\`bash
+```bash
 bash scripts/codex-delegate.sh --dry-run TASK-DEMO-001
 bash scripts/codex-delegate.sh TASK-DEMO-001
-\`\`\`
+```
 
-The second command calls a real model and can modify repo files. It refuses to run if Git status is dirty or a lock already exists. Use \`CODEX_TIMEOUT_SECONDS=1800\` to adjust the default 30-minute timeout. A stale lock from an interrupted process must be inspected and removed manually. Each run captures an ignored prompt, completion, log, git baseline and changed paths. A zero exit code is not acceptance.
+The second command calls a real model and can modify repo files. It refuses to run if Git status is dirty or a lock already exists. Use `CODEX_TIMEOUT_SECONDS=1800` to adjust the default 30-minute timeout. A stale lock from an interrupted process must be inspected and removed manually. Each run captures an ignored prompt, completion, log, git baseline and changed paths. A zero exit code is not acceptance.
 
 ## 5. Network and dependencies
 
-Codex \`workspace-write\` sandbox usually restricts outbound network depending on CLI version/configuration. Verify on the target Mac before tasks requiring package installation. Do not disable sandbox or enable unrestricted network just to make a build work.
+Codex `workspace-write` sandbox usually restricts outbound network depending on CLI version/configuration. Verify on the target Mac before tasks requiring package installation. When a task genuinely needs it, run the wrapper with `CODEX_NETWORK=1` (adds `-c sandbox_workspace_write.network_access=true`, sandbox stays `workspace-write`). Never disable the sandbox.
 
 ## 6. GitHub Template
 

@@ -29,6 +29,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --sandbox) sandbox="$2"; shift 2;;
     --output-last-message) out="$2"; shift 2;;
+    -c) printf '%s\n' "$2" >> "${FAKE_CONFIG_FILE:-/dev/null}"; shift 2;;
     -) stdin_flag='-'; shift;;
     *) exit 42;;
   esac
@@ -82,6 +83,12 @@ grep -q 'BEGIN APPROVED HANDOFF' "$FAKE_PROMPT_FILE"
 grep -q 'Final exit code: 0' "$tmp/success.txt"
 grep -q 'AC-01: PASS' "$handoffs"/"$id"-run.*/completion.md
 
+# Network stays off by default; CODEX_NETWORK=1 passes only the sandbox network flag.
+FAKE_CONFIG_FILE="$tmp/config-default.txt" bash scripts/codex-delegate.sh "$id" > /dev/null
+[[ ! -s "$tmp/config-default.txt" ]] || { echo 'FAIL: network enabled by default' >&2; exit 1; }
+CODEX_NETWORK=1 FAKE_CONFIG_FILE="$tmp/config-net.txt" bash scripts/codex-delegate.sh "$id" > /dev/null
+grep -qx 'sandbox_workspace_write.network_access=true' "$tmp/config-net.txt" || { echo 'FAIL: CODEX_NETWORK=1 not passed' >&2; exit 1; }
+
 if FAKE_CODEX_EXIT=9 bash scripts/codex-delegate.sh "$id" > "$tmp/failure.txt" 2>&1; then
   echo 'FAIL: lost Codex failure exit code' >&2; exit 1
 else [[ $? == 9 ]] || { echo 'FAIL: wrong Codex exit code' >&2; exit 1; }; fi
@@ -116,4 +123,4 @@ if CODEX_TIMEOUT_SECONDS=1 FAKE_SLEEP=6 bash scripts/codex-delegate.sh "$id" > "
   echo 'FAIL: time limit not enforced' >&2; exit 1
 else [[ $? == 124 ]] || { echo 'FAIL: timeout exit code not 124' >&2; exit 1; }; fi
 
-echo 'PASS: fake-Codex approval, dry-run, traversal, clean tree, early exit, protected paths, locking, timeout and exit-code tests'
+echo 'PASS: fake-Codex approval, dry-run, traversal, clean tree, early exit, protected paths, locking, timeout, network opt-in and exit-code tests'
