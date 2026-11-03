@@ -4,6 +4,13 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 
+if [[ "${1:-}" == '--project' ]]; then
+  shift
+  if (( $# != 0 )); then echo 'Usage: bash scripts/validate-workflow.sh [--project]' >&2; exit 2; fi
+  exec bash "$root/scripts/project-doctor.sh"
+fi
+if (( $# != 0 )); then echo 'Usage: bash scripts/validate-workflow.sh [--project]' >&2; exit 2; fi
+
 files=(
   README.md CLAUDE.md AGENTS.md .gitignore
   .claude/skills/plan-quality/SKILL.md
