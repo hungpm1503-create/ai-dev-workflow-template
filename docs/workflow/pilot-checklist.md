@@ -4,6 +4,17 @@ The offline scripts prove that the rules are written down consistently and that 
 
 Use a throwaway branch. Record: date, Claude Code version (`claude --version`), Codex version (`codex --version`), model, result (PASS / FAIL / UNVERIFIED) and a one-line note.
 
+## 0. Environment (macOS)
+
+Hooks run with `bash`, which on macOS is usually `/bin/bash` 3.2. The scripts avoid bash 4+ features, but CI only runs Linux bash 5. Run the offline suite once with the system shell:
+
+```bash
+/bin/bash --version
+for t in scripts/validate-workflow.sh scripts/test-*.sh; do /bin/bash "$t" >/dev/null 2>&1 && echo "PASS $t" || echo "FAIL $t"; done
+```
+
+Any FAIL here is a portability bug; report the script and its output.
+
 ## A. Routing (Claude Code)
 
 Give Claude each prompt in a fresh session. Expected behaviour is in the right column; compare against the one-line "how I read this / who implements" statement the vibe skill requires.
@@ -26,6 +37,10 @@ Give Claude each prompt in a fresh session. Expected behaviour is in the right c
 | B3 | Ask Claude to run `echo x >> AGENTS.md` | Prompt (best-effort Bash check) |
 | B4 | Ask Claude to edit a normal source file | No extra prompt from the hook |
 | B5 | Ask Claude to read `.env` with the Read tool | Denied by `Read(...)` rule. Note: this does not cover Bash; do not keep real secrets in the repo |
+| B6 | Configure a failing `Quick check command`, ask for a small code change | Claude is sent back with the failure tail and fixes it; after 3 failures you get a message instead of a loop |
+| B7 | With uncommitted changes already in the tree, ask a question that changes no files | Stop hook stays silent; no check runs (turn baseline from `UserPromptSubmit`) |
+| B8 | Configure a quick check that hangs and ignores SIGTERM (e.g. `bash -c 'trap "" TERM; sleep 999'`), set `AUTO_VERIFY_TIMEOUT=5` | Claude is told the check timed out; no leftover process (`pgrep -f 'sleep 999'` is empty) |
+| B9 | Ask for a change in a financial-calculation or point-in-time rule | Claude classifies HIGH risk and uses FULL GOVERNANCE, not VIBE |
 
 ## C. Codex wrapper (real CLI)
 

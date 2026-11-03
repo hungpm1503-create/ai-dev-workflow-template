@@ -91,14 +91,14 @@ lower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
 lexical() {
   local IFS=/ part out=()
   read -ra parts <<<"$1"
-  for part in "${parts[@]}"; do
+  for part in ${parts[@]+"${parts[@]}"}; do
     case "$part" in
       ''|.) ;;
       ..) ((${#out[@]})) && unset 'out[${#out[@]}-1]' ;;
       *) out+=("$part") ;;
     esac
   done
-  printf '/%s' "${out[@]}"
+  if ((${#out[@]})); then printf '/%s' "${out[@]}"; else printf '/'; fi   # bash 3.2-safe
 }
 
 # Physical path: resolve the longest existing ancestor with cd -P, then follow file symlinks.
