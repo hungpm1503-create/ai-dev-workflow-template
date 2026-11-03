@@ -1,11 +1,11 @@
 ---
 name: plan-quality
-description: Check Medium and Large task plans before delegation to Codex; find blockers, verify acceptance criteria, and avoid duplicate Spec Kit documents.
+description: Review one canonical Claude, Superpowers or Spec Kit plan with risk-proportionate checks; never duplicate required independent high-risk gates.
 ---
 
 # Planning Quality Gate
 
-Review a concrete Medium/Large task using relevant repository files and existing Spec Kit artifacts (when present). Do not modify production code.
+Review the **one canonical** plan (Claude, Superpowers or Spec Kit). For ANY/HIGH, honor independent FULL GOVERNANCE gates without pretending this skill is an independent reviewer. See `docs/workflow/task-routing.md`. Do not modify production code.
 
 ## Checks
 
@@ -25,14 +25,16 @@ For each applicable item, return **PASS**, **WARNING**, **BLOCK**, or **N/A**, p
 - Do not block for superficial documentation or irrelevant items.
 - A checklist is an LLM review aid, not a deterministic proof of correctness.
 
-## Behavior
+## Behavior by route
 
-- Small task: only a concise inline sanity check, no formal artifact.
-- Medium task: review the single concise **Claude-owned plan**, then prepare a Codex handoff; do not add a Superpowers plan.
-- Large task: review the **canonical Spec Kit specification and plan** when installed; link to them rather than copying or generating alternatives.
-- Do not invoke `superpowers:brainstorming`, `superpowers:writing-plans`, `/speckit-implement`, or `/speckit.implement` in this workflow.
-- Revise a blocked plan at most **two times**, then escalate unresolved decisions with clear options.
-- Do not call another model/reviewer or install packages unless there is an explicit need and approval.
+- **SMALL/LOW/low traceability:** inline sanity check only; no formal plan-quality artifact.
+- **MEDIUM/LOW/low traceability:** review one concise Claude plan, optionally clarified using Superpowers.
+- **LARGE/LOW/low traceability:** review one canonical Superpowers design/plan or Claude plan; do not generate a competing plan.
+- **HIGH traceability:** assess the existing canonical Spec Kit artifacts; no Superpowers planning duplicate.
+- **ANY/HIGH risk:** required independent requirements/security checks and human approvals are mandatory under project FULL GOVERNANCE. This skill is only for an uncovered planning issue, never an additional ceremonial gate or a substitute for independent review.
+- Do not invoke Superpowers subagent-driven implementation/`executing-plans` or `/speckit-implement`/`/speckit.implement` as implementation engines; Codex owns implementation.
+- Revise a blocked plan only for a concrete blocker; at most two focused passes before escalating material decisions.
+- Do not add another agent/model or package merely to satisfy an unnecessary gate.
 
 ## Output
 
