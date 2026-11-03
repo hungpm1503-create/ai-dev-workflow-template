@@ -10,17 +10,18 @@ Use after Codex finishes meaningful code changes or before accepting a PR. For t
 ## Evidence-driven gate
 
 1. Confirm task ID, Git baseline, scope and relevant acceptance criteria.
-2. Read only changed files and adjacent impacted code. Validate against authoritative project configuration and established invariants.
+2. Read only changed files and adjacent impacted code, including affected callers, tests, fixtures, configuration and exports. Validate against authoritative project configuration and established invariants.
 3. Select actual project build/test/typecheck/lint commands from `AGENTS.md > Project Configuration`; do not run placeholder commands. Run checks that match the change and document their **actual exit codes**. Do not run the same expensive checks again when verified fresh evidence is sufficient.
-4. Check relevant security and correctness issues (secrets, input validation, auth, privacy, data loss, regressions). Respect risk and project-specific protected directories.
+4. Check relevant security and correctness issues (secrets, input validation, auth, privacy, data loss, regressions) and missing focused checks for new non-trivial logic. Respect risk and project-specific protected directories.
 5. Compare the result with acceptance criteria and classify each one **PASS / FAIL / UNVERIFIED**, citing observed tests, diffs or manual checks. No "PASS" for unrun or unavailable checks.
-6. Record relevant failures/rework as *possible* instincts through `learn-from-task`; do not auto-promote.
+6. Review for a smaller solution only when existing code, standard library/native features or an installed dependency demonstrably meets the same criteria; do not trade away required safeguards for fewer lines.
+7. Record relevant failures/rework as *possible* instincts through `learn-from-task`; do not auto-promote.
 
 ## Result contract
 
 - Changed files and intended scope; deviations.
 - Executed verification commands, exit codes and decisive excerpts.
-- Security/logic findings ranked BLOCKER/MAJOR/MINOR.
+- Security/logic findings ranked BLOCKER/MAJOR/MINOR. For each finding, cite the observed code or check, concrete failure scenario, smallest actionable fix and consequence if left as is; omit speculative or style-only findings.
 - Acceptance criteria by PASS/FAIL/UNVERIFIED.
 - Remediation owner or next action.
 

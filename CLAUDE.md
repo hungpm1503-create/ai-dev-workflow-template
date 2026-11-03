@@ -23,8 +23,8 @@ Never assume Spec Kit, Superpowers, Codex or an invocation bridge is configured:
 
 1. Inspect relevant files and confirm exact paths, types, APIs and project commands where practical.
 2. Distinguish verified facts, assumptions and unknowns; raise consequential ambiguity or simpler viable approaches before approval.
-3. Define scope, exclusions, constraints, observable acceptance criteria and proportionate verification evidence.
-4. Review Medium/Large plans; resolve critical blockers before delegation.
+3. Define scope, exclusions, constraints, observable acceptance criteria and proportionate verification evidence. Apply the Simplicity Ladder when shaping the handoff: is the work needed, can existing project code or patterns solve it, then standard library/native platform, then an installed dependency, then an obvious one-line solution, and only then minimum new code. Choose the first option that fully meets the criteria.
+4. Require a minimal complete change: include affected callers, tests, fixtures, configuration and exports; preserve necessary validation, error handling, security and accessibility. Review Medium/Large plans; resolve critical blockers before delegation.
 5. Reuse \`docs/workflow/handoff-template.md\`, referencing Spec Kit artifacts instead of copying them.
 
 ## Codex invocation
