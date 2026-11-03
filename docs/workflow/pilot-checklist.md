@@ -4,6 +4,8 @@ The offline scripts prove that the rules are written down consistently and that 
 
 Use a throwaway branch. Record: date, Claude Code version (`claude --version`), Codex version (`codex --version`), model, result (PASS / FAIL / UNVERIFIED) and a one-line note.
 
+Before live testing, run `bash scripts/validate-workflow.sh --project` on the configured project. Linux CI and macOS Bash 3.2 smoke tests only verify scripts; they do not prove actual interactive Claude approval prompts or real Codex sandbox behavior.
+
 ## 0. Environment (macOS)
 
 Hooks run with `bash`, which on macOS is usually `/bin/bash` 3.2. The scripts avoid bash 4+ features, but CI only runs Linux bash 5. Run the offline suite once with the system shell:
