@@ -83,9 +83,11 @@ grep -q 'BEGIN APPROVED HANDOFF' "$FAKE_PROMPT_FILE"
 grep -q 'Final exit code: 0' "$tmp/success.txt"
 grep -q 'AC-01: PASS' "$handoffs"/"$id"-run.*/completion.md
 
-# Network stays off by default; CODEX_NETWORK=1 passes only the sandbox network flag.
+# Network is explicitly false by default (overrides ~/.codex/config.toml); CODEX_NETWORK=1 opts in.
 FAKE_CONFIG_FILE="$tmp/config-default.txt" bash scripts/codex-delegate.sh "$id" > /dev/null
-[[ ! -s "$tmp/config-default.txt" ]] || { echo 'FAIL: network enabled by default' >&2; exit 1; }
+[[ "$(cat "$tmp/config-default.txt")" == 'sandbox_workspace_write.network_access=false' ]] || { echo 'FAIL: network not explicitly disabled by default' >&2; exit 1; }
+CODEX_NETWORK=yes FAKE_CONFIG_FILE="$tmp/config-typo.txt" bash scripts/codex-delegate.sh "$id" > /dev/null
+grep -qx 'sandbox_workspace_write.network_access=false' "$tmp/config-typo.txt" || { echo 'FAIL: only CODEX_NETWORK=1 may enable network' >&2; exit 1; }
 CODEX_NETWORK=1 FAKE_CONFIG_FILE="$tmp/config-net.txt" bash scripts/codex-delegate.sh "$id" > /dev/null
 grep -qx 'sandbox_workspace_write.network_access=true' "$tmp/config-net.txt" || { echo 'FAIL: CODEX_NETWORK=1 not passed' >&2; exit 1; }
 

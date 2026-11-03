@@ -42,11 +42,8 @@ fi
 
 if (( dry_run )); then
   echo "DRY RUN: approved handoff .claude/handoffs/$task_id.md"
-  if [[ "${CODEX_NETWORK:-0}" == 1 ]]; then
-    echo 'Would invoke: codex exec --sandbox workspace-write -c sandbox_workspace_write.network_access=true --output-last-message <run>/completion.md -'
-  else
-    echo 'Would invoke: codex exec --sandbox workspace-write --output-last-message <run>/completion.md -'
-  fi
+  dry_network=false; if [[ "${CODEX_NETWORK:-0}" == 1 ]]; then dry_network=true; fi
+  echo "Would invoke: codex exec --sandbox workspace-write -c sandbox_workspace_write.network_access=$dry_network --output-last-message <run>/completion.md -"
   echo 'No Codex invocation or file modification performed.'
   exit 0
 fi
@@ -106,12 +103,12 @@ fi
   printf '\n%s\n' '--- END APPROVED HANDOFF ---'
 } > "$prompt"
 
-# Opt-in network for package installs inside the sandbox (still workspace-write).
-codex_args=(exec --sandbox workspace-write)
-if [[ "${CODEX_NETWORK:-0}" == 1 ]]; then
-  codex_args+=(-c sandbox_workspace_write.network_access=true)
-  printf 'CODEX_NETWORK=1\n' > "$run_dir/network-enabled.txt"
-fi
+# Network is always set explicitly so ~/.codex/config.toml cannot silently enable it.
+# Opt in per run with CODEX_NETWORK=1 (e.g. dependency installs); sandbox stays workspace-write.
+network_access=false
+if [[ "${CODEX_NETWORK:-0}" == 1 ]]; then network_access=true; fi
+codex_args=(exec --sandbox workspace-write -c "sandbox_workspace_write.network_access=$network_access")
+printf 'NETWORK_ACCESS=%s\n' "$network_access" > "$run_dir/network.txt"
 codex "${codex_args[@]}" --output-last-message "$result" - < "$prompt" > "$log" 2>&1 &
 codex_pid=$!
 (

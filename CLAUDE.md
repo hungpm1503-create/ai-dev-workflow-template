@@ -9,9 +9,9 @@ Never assume Spec Kit, Superpowers, Codex or an invocation bridge is configured:
 Most day-to-day work is a fast loop: user describes → change → run → look → adjust. For these tasks follow `.claude/skills/vibe/SKILL.md`:
 
 - **No handoff file, no `Status: APPROVED` marker, no plan artifact.** The user's request is the scope; state your one-line reading of it and start.
-- Implement directly in this session, or hand a small slice to Codex when the user prefers (the vibe skill writes a minimal handoff for them).
+- **Implementer rule:** (1) Claude edits directly only for trivial changes — text/copy, styles, config values or an obviously local fix, at most 2 files and no new logic branch. (2) Codex implements anything with new logic (conditions, loops, parsing, state, data handling) or more than 2 files, when Codex is installed. (3) If Codex is unavailable, Claude implements and says so. (4) Claude always reviews the diff and runs verification. An explicit user choice overrides (1)–(2). The vibe skill writes the minimal Codex handoff.
 - **Verification is never skipped:** run the real test/lint/build commands from `AGENTS.md > Project Configuration` (or the obvious project command) and report PASS / FAIL / UNVERIFIED in a few lines.
-- Optional local WIP checkpoints: only after the user opts in once per session, commit verified steps locally as `wip: …`. Never push, merge or deploy.
+- No checkpoint questions by default. Offer a local commit only for long multi-step work, before handing a dirty tree to Codex, or before a session handoff. Never push, merge or deploy.
 - **Leave VIBE mode immediately** and use the routing below when the task touches auth/permissions, payments or money, personal data, destructive migrations or data deletion, infrastructure/deploy, secrets, or grows into LARGE / HIGH-traceability work. Say so in one line.
 
 ## Adaptive workflow routing
@@ -19,7 +19,7 @@ Most day-to-day work is a fast loop: user describes → change → run → look 
 Classify **complexity (SMALL/MEDIUM/LARGE)**, **governance risk (LOW/HIGH)** and **traceability (LOW/HIGH)** independently. Read `docs/workflow/task-routing.md`. **HIGH risk overrides size** and requires Full Governance; the planning framework remains a separate decision governed by project policy.
 
 - **SMALL/LOW/low traceability:** no framework; **VIBE mode** (above), or a concise handoff → Codex → lightweight review.
-- **MEDIUM/LOW/low traceability:** one Claude plan, optionally Superpowers `brainstorming` when useful → Codex → review.
+- **MEDIUM/LOW/low traceability:** **VIBE mode** when the path is clear (same implementer rule); otherwise one Claude plan, optionally Superpowers `brainstorming` when useful → Codex → review.
 - **LARGE/LOW/low traceability:** prefer **Superpowers** `brainstorming`/`writing-plans` when installed and useful; otherwise one Claude plan → Codex → review.
 - **HIGH traceability:** prefer **Spec Kit** for canonical specification, accepted decisions, contract dependencies and requirements-to-tests trace.
 - **ANY/HIGH risk:** apply **FULL GOVERNANCE** (required independent reviews, explicit human approval and evidence-based verification), whether planning is done via Superpowers, Spec Kit or Claude **when permitted by the project's existing rules**. Never relax mandatory downstream Spec Kit requirements.
@@ -60,8 +60,8 @@ Classify **complexity (SMALL/MEDIUM/LARGE)**, **governance risk (LOW/HIGH)** and
 
 ## Boundaries and efficiency
 
-- No automatic commit, push, merge, deployment, destructive operation or silent policy change. (Exception: VIBE-mode local `wip:` commits after the user opts in for the session.)
-- `.claude/settings.json` registers a PreToolUse hook (`scripts/hooks/guard-protected-paths.sh`) that asks the user before Claude edits protected paths. Don't work around it.
+- No automatic commit, push, merge, deployment, destructive operation or silent policy change. (Exception: a VIBE-mode local commit the user agreed to.)
+- `.claude/settings.json` registers a PreToolUse hook (`scripts/hooks/guard-protected-paths.sh`) that asks the user before Claude edits protected paths (best-effort for Bash). It confirms intent; it is not a sandbox. Don't work around it.
 - Keep routine engineering decisions with Codex within approved scope; ask approval only for material decisions.
 - Do not generate extra documents for Small tasks or duplicate existing Spec Kit/Superpowers artifacts.
 - Never automatically append lessons to `CLAUDE.md` or `AGENTS.md`.

@@ -26,6 +26,8 @@ For each task, assess these **three independent dimensions**:
 
 VIBE is an **execution mode, not a planning framework**: SMALL, or MEDIUM with an obvious path, with LOW risk and LOW traceability. No handoff file, approval marker or plan artifact is required; the user's chat request is the scope. Real verification (tests/lint/build with exit codes, PASS/FAIL/UNVERIFIED) is still mandatory. See `.claude/skills/vibe/SKILL.md`.
 
+**Implementer rule:** (1) Claude edits directly only for trivial changes — text/copy, styles, config values or an obviously local fix, at most 2 files and no new logic branch. (2) Codex implements anything with new logic (conditions, loops, parsing, state, data handling) or more than 2 files, when Codex is installed. (3) If Codex is unavailable, Claude implements and says so. (4) Claude always reviews the diff and runs verification. An explicit user choice overrides (1)–(2).
+
 **Exit triggers** (switch to the matrix above and say why): auth/permissions, payments/money, personal or sensitive data, destructive migration or deletion, infrastructure/deploy/CI, secrets, LARGE scope or HIGH traceability, or the same failure surviving three fix attempts. VIBE never applies to HIGH risk.
 
 ## Claude chooses exactly one planning source

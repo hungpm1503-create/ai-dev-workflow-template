@@ -21,7 +21,7 @@ Reusable, stack-independent workflow for **Claude Lead → Codex CLI** with sele
 
 | Task | Mode | What you get |
 | --- | --- | --- |
-| Small/medium, low risk, clear path (UI tweak, bug fix, small feature) | **VIBE** (`.claude/skills/vibe/`) | No handoff/approval paperwork; real tests every step; optional local `wip:` checkpoints |
+| Small/medium, low risk, clear path (UI tweak, bug fix, small feature) | **VIBE** (`.claude/skills/vibe/`) | No handoff/approval paperwork; Claude does trivial edits, Codex does logic/multi-file work; real tests every step |
 | Medium with ambiguity / Large, low risk | One Claude or Superpowers plan → Codex | Plan review, handoff, Codex run, independent review |
 | Needs durable requirement ↔ decision ↔ test links | Spec Kit preferred | One canonical spec |
 | **Any HIGH risk** (auth, money, personal data, destructive migration, infra, secrets) | **FULL GOVERNANCE** | Real human gates, independent checks, verified acceptance |
@@ -30,7 +30,11 @@ Reusable, stack-independent workflow for **Claude Lead → Codex CLI** with sele
 
 ## Guardrails built in
 
-- `.claude/settings.json`: a PreToolUse hook (`scripts/hooks/guard-protected-paths.sh`) **asks before** Claude edits protected paths (`CLAUDE.md`, `AGENTS.md`, `.claude/`, workflows, plus your `AGENTS.md` list); `.env`/key files are unreadable; `git push`, `git reset --hard` and `rm -rf` always ask.
+- `.claude/settings.json`:
+  - a PreToolUse hook (`scripts/hooks/guard-protected-paths.sh`) **asks before** Claude's Edit/Write tools touch protected paths (`CLAUDE.md`, `AGENTS.md`, `.claude/settings.json`, `.claude/skills/`, `scripts/hooks/`, workflows, plus your `AGENTS.md` list). Paths are JSON-parsed and normalised (`..`, symlinks, case); unparseable input fails closed with a prompt. Bash commands get a **best-effort** check only.
+  - `Read(...)` deny rules stop Claude's **Read tool** from opening `.env`/key files. They do not block other routes (Bash, scripts, other tools); keep real secrets out of the repo.
+  - `git push`, `git reset --hard` and `rm -rf` always ask.
+  - This is an intent-confirmation layer for Claude, **not a security sandbox**; writes by Codex, scripts or editors are not intercepted (Codex runs get the wrapper's post-run check instead).
 - `scripts/codex-delegate.sh`: clean-tree requirement, lock, timeout, per-run logs and a post-run protected-path check for Codex.
 - Verification contract everywhere: PASS / FAIL / UNVERIFIED with real commands and exit codes.
 
@@ -43,7 +47,7 @@ bash scripts/codex-delegate.sh --dry-run TASK-LOGIN-001
 bash scripts/codex-delegate.sh TASK-LOGIN-001
 ```
 
-The second command invokes actual Codex via `codex exec --sandbox workspace-write`. Add `CODEX_NETWORK=1` when the task needs package installs inside the sandbox (network stays off by default). It checks Git status and a worktree-wide lock, preserves the full prompt before invocation to avoid early-stdin SIGPIPE, records results/baselines under ignored `.claude/handoffs/`, and detects changes to protected paths. It imposes a portable timeout (default 1800 seconds). It never commits, pushes, merges or deploys.
+The second command invokes actual Codex via `codex exec --sandbox workspace-write`. The wrapper always passes `-c sandbox_workspace_write.network_access=false`, overriding `~/.codex/config.toml`; set `CODEX_NETWORK=1` only for a run that must install dependencies. It checks Git status and a worktree-wide lock, preserves the full prompt before invocation to avoid early-stdin SIGPIPE, records results/baselines under ignored `.claude/handoffs/`, and detects changes to protected paths. It imposes a portable timeout (default 1800 seconds). It never commits, pushes, merges or deploys.
 
 A zero exit code is **not** acceptance: Claude must inspect Git diff, verification commands, acceptance criteria and protected-path warnings. Postchecks cannot prevent modifications, and interrupted child processes require inspection. The secret pattern scan is only a heuristic, not a substitute for dedicated security scanners.
 
@@ -54,6 +58,7 @@ A zero exit code is **not** acceptance: Claude must inspect Git diff, verificati
 - `.claude/skills/vibe/SKILL.md` — default fast loop for low-risk work.
 - `.claude/settings.json` + `scripts/hooks/` — Claude Code permissions and protected-path hook.
 - `docs/workflow/examples/` — a filled-in handoff example.
+- `docs/workflow/pilot-checklist.md` — live Claude Code / Codex checks that offline tests cannot prove.
 - `.claude/skills/plan-quality/SKILL.md` — PASS/WARNING/BLOCK review for Medium/Large.
 - `.claude/skills/codex-delegate/SKILL.md` — approved handoff and safe Codex invocation.
 - `.claude/skills/learn-from-task/SKILL.md` — evidence-based lessons.

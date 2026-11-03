@@ -19,7 +19,7 @@ description: Delegate an approved task to Codex CLI using a unique ignored hando
 6. Execute only when permitted: `bash scripts/codex-delegate.sh TASK-ID`.
 7. Inspect the ignored run directory: `prompt.md`, `completion.md`, `codex.log`, `status.txt`, Git baseline and changed-paths report. Review `git diff` independently.
 
-The wrapper uses `codex exec --sandbox workspace-write --output-last-message ... -`. Handoffs and logs are gitignored, saved separately for every run. The wrapper blocks dirty worktrees and overlapping invocations, uses a portable time limit (default 1800 seconds; configure `CODEX_TIMEOUT_SECONDS`), keeps network off unless `CODEX_NETWORK=1`, and post-checks protected paths. Do not bypass the sandbox.
+The wrapper uses `codex exec --sandbox workspace-write --output-last-message ... -`. Handoffs and logs are gitignored, saved separately for every run. The wrapper blocks dirty worktrees and overlapping invocations, uses a portable time limit (default 1800 seconds; configure `CODEX_TIMEOUT_SECONDS`), passes `network_access=false` explicitly unless `CODEX_NETWORK=1`, and post-checks protected paths. Do not bypass the sandbox.
 
 **Important:** A protected-path postcheck detects changes **after** they happen and cannot prevent their creation; it never auto-reverts user files. The text approval marker can be edited and is not an independently verified user authorization. The secret scanner is heuristic. A timed-out Codex child may require manual inspection. If Codex cannot run, return the handoff and mark execution UNVERIFIED.
 

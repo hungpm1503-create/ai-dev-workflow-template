@@ -16,7 +16,9 @@ Routing rules live in `docs/workflow/task-routing.md`; don't duplicate them here
 
 ## 2. Configure each project
 
-Fill `AGENTS.md > Project Configuration`: actual stack, build/test/lint commands and protected paths. Protected paths are **literal repository-relative paths**, comma-separated, e.g. `src/config/, infrastructure/`. Directories end in `/`. The wrapper also protects `CLAUDE.md`, `AGENTS.md`, `scripts/codex-delegate.sh`, `scripts/hooks/`, `.claude/settings.json`, `.claude/skills/` and `.github/workflows/` by default. For Codex this is a **post-run detector**; for Claude Code the hook in `.claude/settings.json` asks *before* the edit. Neither is a file-system access control boundary.
+Fill `AGENTS.md > Project Configuration`: actual stack, build/test/lint commands and protected paths. Protected paths are **literal repository-relative paths**, comma-separated, e.g. `src/config/, infrastructure/`. Directories end in `/`. The wrapper also protects `CLAUDE.md`, `AGENTS.md`, `scripts/codex-delegate.sh`, `scripts/hooks/`, `.claude/settings.json`, `.claude/skills/` and `.github/workflows/` by default. For Codex this is a **post-run detector**; for Claude Code the hook in `.claude/settings.json` asks *before* Edit/Write tool calls (best-effort for Bash). Neither is a file-system access control boundary.
+
+After configuring, run the live checks in `docs/workflow/pilot-checklist.md` once.
 
 ## 3. Verify workflow without a model
 
@@ -44,7 +46,7 @@ The second command calls a real model and can modify repo files. It refuses to r
 
 ## 5. Network and dependencies
 
-Codex `workspace-write` sandbox usually restricts outbound network depending on CLI version/configuration. Verify on the target Mac before tasks requiring package installation. When a task genuinely needs it, run the wrapper with `CODEX_NETWORK=1` (adds `-c sandbox_workspace_write.network_access=true`, sandbox stays `workspace-write`). Never disable the sandbox.
+Codex `workspace-write` sandbox usually restricts outbound network depending on CLI version/configuration. Verify on the target Mac before tasks requiring package installation. The wrapper always passes `-c sandbox_workspace_write.network_access=false`, so a global `~/.codex/config.toml` cannot silently enable network. When a run genuinely needs it, set `CODEX_NETWORK=1` (passes `=true`, sandbox stays `workspace-write`). Never disable the sandbox.
 
 ## 6. GitHub Template
 

@@ -36,6 +36,7 @@ files=(
   scripts/hooks/guard-protected-paths.sh
   scripts/test-guard-hook.sh
   docs/workflow/examples/TASK-EXAMPLE-001.md
+  docs/workflow/pilot-checklist.md
 )
 failed=0
 for file in "${files[@]}"; do
