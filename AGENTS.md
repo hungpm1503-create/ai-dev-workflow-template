@@ -5,17 +5,17 @@ Work as the primary implementation engineer on approved tasks. Respect project-s
 ## Before implementation
 
 - Read the supplied objective, scoped context, constraints, acceptance criteria and verification commands.
-- Inspect relevant files; separate verified facts from assumptions and surface ambiguity or tradeoffs that affect the outcome before coding.
-- Choose the simplest maintainable change that meets the approved acceptance criteria; avoid speculative features, abstractions or configuration.
+- Inspect the real flow and affected callers, tests, fixtures, configuration and exports; separate verified facts from assumptions and surface consequential ambiguity before coding.
+- Use the Simplicity Ladder after understanding the task: (1) skip work the criteria do not need; (2) reuse project code or patterns; (3) use standard library or native platform features; (4) use an installed dependency; (5) use an obvious one-line solution; (6) otherwise write the minimum new code. Stop at the first rung that fully meets the approved criteria.
 - Do not independently override an approved requirement or broaden architecture.
 
 ## During implementation
 
 - Codex implements the **approved handoff and one canonical plan/source**, produced by Claude, Superpowers or Spec Kit as selected by Claude Lead. For HIGH risk, also honor independently approved governing artifacts and human gates. Never run `/speckit-implement` or `/speckit.implement`.
 - Codex can use Superpowers for **TDD, systematic debugging and verification** when available. Claude Lead may already have used Superpowers `brainstorming`/`writing-plans` for the plan; Codex must not redo planning, start competing Superpowers subagents or use `executing-plans` as another implementation owner.
-- Match existing patterns and keep edits surgical: avoid unrelated refactors or formatting, and remove only unused code your change creates.
+- Make the smallest complete change: update every affected caller, test, fixture, configuration or export; match existing patterns, avoid unrelated refactors or formatting, and remove only unused code your change creates.
 - Use existing testing frameworks and relevant skills when actually installed.
-- Add/change tests when justified; protect security, data integrity and backward compatibility.
+- Add a focused test or self-check for new non-trivial logic (such as a branch, loop, parser, money or security); preserve trust-boundary validation, data-loss error handling, security, accessibility and backward compatibility.
 - Raise blockers if a major architecture/security/infrastructure change or irreversible operation becomes necessary.
 - Do not access unrelated private files, exfiltrate credentials or bypass project safety controls.
 
