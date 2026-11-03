@@ -9,8 +9,7 @@ The default route for SMALL (and clear-path MEDIUM), LOW-risk, LOW-traceability 
 
 ## 0. Gate check (one line, every task)
 
-Leave vibe mode and follow the normal routing in `docs/workflow/task-routing.md` if the request touches any of:
-auth/permissions, payments/money, personal or sensitive data, destructive migration or data deletion, infrastructure/deploy/CI, secrets, or grows into LARGE / HIGH-traceability work.
+Classify complexity, governance risk and traceability independently, including the project's own rules; if unsure, read `docs/workflow/task-routing.md` first. Leave vibe mode and follow that routing if the request touches auth/permissions, payments or money, financial methodology or point-in-time rules, personal or sensitive data, destructive migrations or data deletion, infrastructure/deploy, secrets, autonomous execution, or anything the project's own rules (`AGENTS.md`, downstream governance) mark as HIGH risk, or grows into LARGE / HIGH-traceability work. Any HIGH risk → FULL GOVERNANCE.
 Say which trigger fired. Otherwise state in one line how you read the request and who implements it (see 2).
 
 ## 1. Understand just enough
@@ -65,7 +64,7 @@ The wrapper needs a clean tree so Codex's diff can be attributed. Never stash si
 - Run the real commands from `AGENTS.md > Project Configuration` that match the change (tests, typecheck/lint, build). If they are `[NOT CONFIGURED]`, detect the obvious project command (`package.json` scripts, `pytest`, `go test ./...`, etc.), run it, and suggest filling the configuration.
 - For UI changes, run the app or a screenshot/preview when possible.
 - Report in a few lines: what changed, commands + exit codes, each criterion PASS / FAIL / UNVERIFIED. A Codex exit code 0 is not PASS; read the diff.
-- The Stop hook re-runs `Quick check command` automatically when you finish with changed files; treat its block message as the test result and fix from that excerpt instead of re-running everything.
+- The Stop hook re-runs `Quick check command` automatically when you finish a turn that changed not-yet-passing files; treat its block message as the test result and fix from that excerpt instead of re-running everything.
 - On failure: fix and re-run, at most 3 attempts on the same error, then stop and explain.
 
 ## 4. Commits

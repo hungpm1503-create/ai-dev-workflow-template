@@ -28,7 +28,7 @@ VIBE is an **execution mode, not a planning framework**: SMALL, or MEDIUM with a
 
 **Implementer rule:** (1) Claude edits directly only for trivial changes — text/copy, styles, config values or an obviously local fix, at most 2 files and no new logic branch. (2) Codex implements anything with new logic (conditions, loops, parsing, state, data handling) or more than 2 files, when Codex is installed. (3) If Codex is unavailable, Claude implements and says so. (4) Claude always reviews the diff and runs verification. An explicit user choice overrides (1)–(2).
 
-**Exit triggers** (switch to the matrix above and say why): auth/permissions, payments/money, personal or sensitive data, destructive migration or deletion, infrastructure/deploy/CI, secrets, LARGE scope or HIGH traceability, or the same failure surviving three fix attempts. VIBE never applies to HIGH risk.
+**Exit triggers** (switch to the matrix above and say why): auth/permissions, payments or money, financial methodology or point-in-time rules, personal or sensitive data, destructive migrations or data deletion, infrastructure/deploy, secrets, autonomous execution, or anything the project's own rules (`AGENTS.md`, downstream governance) mark as HIGH risk; LARGE scope or HIGH traceability; or the same failure surviving three fix attempts. The trigger list is a reminder, not a substitute for classifying risk with the three dimensions above. VIBE never applies to HIGH risk.
 
 ## Claude chooses exactly one planning source
 

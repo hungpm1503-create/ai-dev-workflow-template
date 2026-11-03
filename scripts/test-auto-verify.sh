@@ -11,12 +11,14 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 
 grep -Fq 'auto-verify.sh' "$root/.claude/settings.json" || fail 'Stop hook not registered in settings.json'
 grep -Fq 'Quick check command:' "$root/AGENTS.md" || fail 'AGENTS.md lacks Quick check command'
+grep -Fq 'auto-verify.sh\" --mark-turn-start' "$root/.claude/settings.json" || fail 'UserPromptSubmit baseline hook not registered'
 
 mkdir -p "$repo" && cd "$repo"
 git init -q && git config user.email t@example.com && git config user.name t
 printf '.claude/work-memory/\n' > .gitignore
 set_cmd() { printf -- '- Quick check command: %s\n' "$1" > AGENTS.md; git add -A; git commit -qm cfg; }
 run() { printf '{"hook_event_name":"Stop","stop_hook_active":false}' | CLAUDE_PROJECT_DIR="$repo" bash "$hook"; }
+mark() { printf '{"hook_event_name":"UserPromptSubmit","prompt":"x"}' | CLAUDE_PROJECT_DIR="$repo" bash "$hook" --mark-turn-start; }
 runs() { [[ -f "$count" ]] && wc -l < "$count" | tr -d ' ' || echo 0; }
 valid_json() {
   python3 -c 'import json,sys; json.loads(sys.stdin.read())' 2>/dev/null \
@@ -37,6 +39,18 @@ echo b > b.txt
 [[ -z "$(run)" && "$(runs)" == 1 ]] || fail 'unchanged passing state was re-checked'
 echo c >> b.txt
 [[ -z "$(run)" && "$(runs)" == 2 ]] || fail 'new change was not re-checked'
+
+# 3b. Pre-existing dirty tree with no recorded PASS: a question-only turn must not run the check.
+echo pre > pre.txt; rm -f .claude/work-memory/.auto-verify-state
+before="$(runs)"; [[ -z "$(mark)" ]] || fail 'mark produced output'
+[[ -z "$(run)" && "$(runs)" == "$before" ]] || fail 'question-only turn on a dirty tree ran the check'
+# ...but a change made during the turn is checked.
+mark; echo during >> pre.txt
+[[ -z "$(run)" && "$(runs)" == $((before + 1)) ]] || fail 'change made during the turn was not checked'
+# Without a baseline (hook not installed) it falls back to unverified working-tree changes.
+rm -f .claude/work-memory/.auto-verify-turn .claude/work-memory/.auto-verify-state
+[[ -z "$(run)" && "$(runs)" == $((before + 2)) ]] || fail 'fallback without baseline did not check'
+rm pre.txt; rm -f .claude/work-memory/.auto-verify-turn
 
 # 4. Failing check → block with valid JSON, only the tail, ANSI and quotes handled.
 git add -A; git commit -qm b
@@ -72,7 +86,14 @@ grep -q 'timed out after 1s' <<<"$out" || fail "timeout not reported: $out"
 (( elapsed < 10 )) || fail "timeout took ${elapsed}s"
 sleep 1; pgrep -f "sleep $marker" >/dev/null && fail 'child process survived timeout'
 
+# 7b. A child that ignores SIGTERM must still be stopped (watchdog has to reach SIGKILL).
+mark="autoverify-ignore-term-$$"
+set_cmd "bash -c 'trap \"\" TERM; while :; do sleep 0.3; done; : $mark' & wait"; echo g2 > g2.txt
+out="$(AUTO_VERIFY_TIMEOUT=1 run)"
+grep -q 'timed out after 1s' <<<"$out" || fail "timeout (TERM-ignoring child) not reported: $out"
+sleep 1; pgrep -f "$mark" >/dev/null && { pkill -KILL -f "$mark"; fail 'TERM-ignoring child survived timeout'; }
+
 # 8. Kill switch.
 echo h > h.txt; [[ -z "$(AUTO_VERIFY_DISABLE=1 run)" ]] || fail 'AUTO_VERIFY_DISABLE ignored'
 
-echo 'PASS: auto-verify Stop hook: config gate, change detection, tail-only JSON, attempt limit, reset, timeout, kill switch'
+echo 'PASS: auto-verify hook: config gate, per-turn baseline (question-only turns on dirty trees skip), fallback, tail-only JSON, attempt limit, reset, timeout incl. TERM-ignoring children, kill switch'

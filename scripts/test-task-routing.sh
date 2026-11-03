@@ -20,6 +20,14 @@ need "$doc" 'No new benchmark' 'benchmark scope creep'
 need "$doc" 'VIBE never applies to HIGH risk.' 'VIBE mode must exclude HIGH risk'
 need "$doc" 'Real verification (tests/lint/build with exit codes, PASS/FAIL/UNVERIFIED) is still mandatory.' 'VIBE mode must keep verification'
 need 'CLAUDE.md' '**Leave VIBE mode immediately**' 'Claude VIBE exit triggers missing'
+need 'CLAUDE.md' '**Classify first:** assess complexity (SMALL/MEDIUM/LARGE), governance risk (LOW/HIGH) and traceability (LOW/HIGH) independently' 'Claude must classify three dimensions before VIBE'
+need 'CLAUDE.md' '**Any HIGH risk goes to FULL GOVERNANCE, never VIBE.**' 'HIGH risk must override VIBE'
+need 'CLAUDE.md' 'If the classification is uncertain, read `docs/workflow/task-routing.md`' 'uncertain classification must read routing'
+for f in CLAUDE.md .claude/skills/vibe/SKILL.md "$doc"; do
+  for t in 'financial methodology or point-in-time rules' 'autonomous execution' "project's own rules"; do
+    grep -Fq -- "$t" "$f" || fail "VIBE exit trigger '$t' missing in $f"
+  done
+done
 need '.claude/skills/vibe/SKILL.md' '## 3. Verify (never skipped)' 'vibe skill must verify'
 need '.claude/skills/vibe/SKILL.md' 'Never push, merge or deploy.' 'vibe skill must not push'
 # The implementer rule must be byte-identical wherever it appears, so the model gets one answer.

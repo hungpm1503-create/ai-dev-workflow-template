@@ -27,7 +27,9 @@ Give Claude each prompt in a fresh session. Expected behaviour is in the right c
 | B4 | Ask Claude to edit a normal source file | No extra prompt from the hook |
 | B5 | Ask Claude to read `.env` with the Read tool | Denied by `Read(...)` rule. Note: this does not cover Bash; do not keep real secrets in the repo |
 | B6 | Configure a failing `Quick check command`, ask for a small code change | Claude is sent back with the failure tail and fixes it; after 3 failures you get a message instead of a loop |
-| B7 | Ask a question that changes no files | Stop hook stays silent; no check runs |
+| B7 | With uncommitted changes already in the tree, ask a question that changes no files | Stop hook stays silent; no check runs (turn baseline from `UserPromptSubmit`) |
+| B8 | Configure a quick check that hangs and ignores SIGTERM (e.g. `bash -c 'trap "" TERM; sleep 999'`), set `AUTO_VERIFY_TIMEOUT=5` | Claude is told the check timed out; no leftover process (`pgrep -f 'sleep 999'` is empty) |
+| B9 | Ask for a change in a financial-calculation or point-in-time rule | Claude classifies HIGH risk and uses FULL GOVERNANCE, not VIBE |
 
 ## C. Codex wrapper (real CLI)
 
