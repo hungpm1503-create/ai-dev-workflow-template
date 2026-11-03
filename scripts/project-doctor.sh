@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Validate a configured project without running application commands or models.
 set -euo pipefail
-root="$(cd "$(dirname "$0")/.." && pwd)"
+root="$(cd -P "$(dirname "$0")/.." && pwd -P)"
 cd "$root"
 failures=0
 warnings=0
