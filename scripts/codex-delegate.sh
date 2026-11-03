@@ -42,7 +42,8 @@ fi
 
 if (( dry_run )); then
   echo "DRY RUN: approved handoff .claude/handoffs/$task_id.md"
-  echo 'Would invoke: codex exec --sandbox workspace-write --output-last-message <run>/completion.md -'
+  dry_network=false; if [[ "${CODEX_NETWORK:-0}" == 1 ]]; then dry_network=true; fi
+  echo "Would invoke: codex exec --sandbox workspace-write -c sandbox_workspace_write.network_access=$dry_network --output-last-message <run>/completion.md -"
   echo 'No Codex invocation or file modification performed.'
   exit 0
 fi
@@ -85,7 +86,7 @@ fi
 
 # Snapshot protected paths before Codex can change AGENTS.md.
 {
-  printf '%s\n' 'CLAUDE.md' 'AGENTS.md' 'scripts/codex-delegate.sh' '.claude/skills/' '.github/workflows/'
+  printf '%s\n' 'CLAUDE.md' 'AGENTS.md' 'scripts/codex-delegate.sh' 'scripts/hooks/' '.claude/settings.json' '.claude/skills/' '.github/workflows/'
   sed -n 's/^[[:space:]]*-[[:space:]]*Protected paths:[[:space:]]*//p' AGENTS.md | head -n 1 | tr ',' '\n'
 } | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | grep -v -E '^$|^\[NOT CONFIGURED\]$' > "$run_dir/protected-paths.txt" || :
 
@@ -102,7 +103,13 @@ fi
   printf '\n%s\n' '--- END APPROVED HANDOFF ---'
 } > "$prompt"
 
-codex exec --sandbox workspace-write --output-last-message "$result" - < "$prompt" > "$log" 2>&1 &
+# Network is always set explicitly so ~/.codex/config.toml cannot silently enable it.
+# Opt in per run with CODEX_NETWORK=1 (e.g. dependency installs); sandbox stays workspace-write.
+network_access=false
+if [[ "${CODEX_NETWORK:-0}" == 1 ]]; then network_access=true; fi
+codex_args=(exec --sandbox workspace-write -c "sandbox_workspace_write.network_access=$network_access")
+printf 'NETWORK_ACCESS=%s\n' "$network_access" > "$run_dir/network.txt"
+codex "${codex_args[@]}" --output-last-message "$result" - < "$prompt" > "$log" 2>&1 &
 codex_pid=$!
 (
   sleep "$((10#$timeout_seconds))" &

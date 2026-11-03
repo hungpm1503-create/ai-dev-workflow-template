@@ -1,64 +1,73 @@
 # AI Dev Workflow Template
 
-**Version:** 0.4.0 (pilot)  
-Reusable, stack-independent workflow for **Claude Lead → Codex CLI** with selective Quality Gates and Learning Loop. Spec Kit and Superpowers are optional integrations when installed.
+**Version:** 0.5.0 (pilot)  
+Reusable, stack-independent workflow for **Claude Lead → Codex CLI** with selective Quality Gates and Learning Loop. Everyday low-risk work runs in a fast **VIBE mode**; heavier governance applies only when risk or scope demands it. Spec Kit and Superpowers are optional integrations when installed.
 
-## Start a new project
+## Quick start (5 minutes)
 
-Enable **Settings → General → Template repository** on the source repository if not already enabled. Select **Use this template → Create a new repository**. Clone the independent project, fill \`AGENTS.md > Project Configuration\` and verify Claude/Codex locally.
+1. **Use this template → Create a new repository**, then clone it. (On the source repo, enable **Settings → General → Template repository** first.)
+2. Fill `AGENTS.md > Project Configuration` with your real stack, test/lint/build commands and protected paths.
+3. Check the workflow offline (no model calls, no tokens):
 
-\`\`\`bash
-bash scripts/validate-workflow.sh
-bash scripts/test-secret-scan.sh
-bash scripts/test-codex-delegate.sh
-\`\`\`
+   ```bash
+   bash scripts/validate-workflow.sh
+   bash scripts/test-guard-hook.sh
+   bash scripts/test-codex-delegate.sh
+   ```
 
-No tests above call real Codex or bill tokens.
+4. Open Claude Code in the repo and just describe what you want. Small, low-risk tasks use **`/vibe`** automatically: change → run real tests → short PASS/FAIL report. Codex is optional for this mode.
 
-## Adaptive workflow: Claude chooses NONE / Superpowers / Spec Kit
+## What runs when
 
-**Claude Lead → one planning path → Codex implementation → independent Claude review → human approval when needed.**
-
-| Classification | Planning choice | Non-negotiable controls |
+| Task | Mode | What you get |
 | --- | --- | --- |
-| Small / Low-risk / low traceability | **NONE** | Concise handoff, tests, review |
-| Medium / Low-risk / low traceability | Claude short plan, optionally Superpowers | One plan, proportionate review |
-| Large / Low-risk / low traceability | **Superpowers preferred** for brainstorming/writing-plans (or one Claude plan) | Codex implements; Claude reviews |
-| Any size / High traceability | **Spec Kit preferred** for requirements/decisions/tests links | One canonical spec/plan |
-| **Any HIGH-risk task** | **FULL GOVERNANCE + selected tool** (only if allowed by project rules) | Real human gates, independent checks, verification and acceptance as required |
+| Small/medium, low risk, clear path (UI tweak, bug fix, small feature) | **VIBE** (`.claude/skills/vibe/`) | No handoff/approval paperwork; Claude does trivial edits, Codex does logic/multi-file work; real tests every step |
+| Medium with ambiguity / Large, low risk | One Claude or Superpowers plan → Codex | Plan review, handoff, Codex run, independent review |
+| Needs durable requirement ↔ decision ↔ test links | Spec Kit preferred | One canonical spec |
+| **Any HIGH risk** (auth, money, personal data, destructive migration, infra, secrets) | **FULL GOVERNANCE** | Real human gates, independent checks, verified acceptance |
 
-**Risk determines safeguards; complexity and traceability select the planning tool.** Superpowers may replace Spec Kit *planning* when the task does not need persistent requirements traceability. Do not run both for the same plan, and do not activate Superpowers subagent implementation or Spec Kit implementation alongside Codex. Superpowers TDD/debugging/verification can still assist Codex.
+**Risk determines safeguards; complexity and traceability select the planning tool.** The full matrix, VIBE exit triggers and examples live in `docs/workflow/task-routing.md` (single source of truth). This template never relaxes a downstream project's mandatory gates.
 
-**HIGH-risk does not universally imply Spec Kit**, but downstream policies may require it. Existing InvestmentAgent financial HIGH-risk Spec Kit gates remain mandatory until separately approved changes; this template does not modify those rules.
+## Guardrails built in
 
-See `docs/workflow/task-routing.md` for the full matrix and examples. Working Memory, verification and evidence-based learning v0.4 remain unchanged.
+- `.claude/settings.json`:
+  - a PreToolUse hook (`scripts/hooks/guard-protected-paths.sh`) **asks before** Claude's Edit/Write tools touch protected paths (`CLAUDE.md`, `AGENTS.md`, `.claude/settings.json`, `.claude/skills/`, `scripts/hooks/`, workflows, plus your `AGENTS.md` list). Paths are JSON-parsed and normalised (`..`, symlinks, case); unparseable input fails closed with a prompt. Bash commands get a **best-effort** check only.
+  - `Read(...)` deny rules stop Claude's **Read tool** from opening `.env`/key files. They do not block other routes (Bash, scripts, other tools); keep real secrets out of the repo.
+  - `git push`, `git reset --hard` and `rm -rf` always ask.
+  - This is an intent-confirmation layer for Claude, **not a security sandbox**; writes by Codex, scripts or editors are not intercepted (Codex runs get the wrapper's post-run check instead).
+- `scripts/codex-delegate.sh`: clean-tree requirement, lock, timeout, per-run logs and a post-run protected-path check for Codex.
+- Verification contract everywhere: PASS / FAIL / UNVERIFIED with real commands and exit codes.
 
 ## Delegation
 
-Create \`.claude/handoffs/TASK-LOGIN-001.md\` from \`docs/workflow/handoff-template.md\`. After genuine scope approval, put the exact \`Status: APPROVED\` under \`## Approval status\`. The marker is not proof of who approved the task.
+Create `.claude/handoffs/TASK-LOGIN-001.md` from `docs/workflow/handoff-template.md`. After genuine scope approval, put the exact `Status: APPROVED` under `## Approval status`. The marker is not proof of who approved the task.
 
-\`\`\`bash
+```bash
 bash scripts/codex-delegate.sh --dry-run TASK-LOGIN-001
 bash scripts/codex-delegate.sh TASK-LOGIN-001
-\`\`\`
+```
 
-The second command invokes actual Codex via \`codex exec --sandbox workspace-write\`. It checks Git status and a worktree-wide lock, preserves the full prompt before invocation to avoid early-stdin SIGPIPE, records results/baselines under ignored \`.claude/handoffs/\`, and detects changes to protected paths. It imposes a portable timeout (default 1800 seconds). It never commits, pushes, merges or deploys.
+The second command invokes actual Codex via `codex exec --sandbox workspace-write`. The wrapper always passes `-c sandbox_workspace_write.network_access=false`, overriding `~/.codex/config.toml`; set `CODEX_NETWORK=1` only for a run that must install dependencies. It checks Git status and a worktree-wide lock, preserves the full prompt before invocation to avoid early-stdin SIGPIPE, records results/baselines under ignored `.claude/handoffs/`, and detects changes to protected paths. It imposes a portable timeout (default 1800 seconds). It never commits, pushes, merges or deploys.
 
 A zero exit code is **not** acceptance: Claude must inspect Git diff, verification commands, acceptance criteria and protected-path warnings. Postchecks cannot prevent modifications, and interrupted child processes require inspection. The secret pattern scan is only a heuristic, not a substitute for dedicated security scanners.
 
 ## Project structure
 
-- \`CLAUDE.md\` — Lead role and routing rules.
-- \`AGENTS.md\` — implementation rules and project configuration.
-- \`.claude/skills/plan-quality/SKILL.md\` — PASS/WARNING/BLOCK review for Medium/Large.
-- \`.claude/skills/codex-delegate/SKILL.md\` — approved handoff and safe Codex invocation.
-- \`.claude/skills/learn-from-task/SKILL.md\` — evidence-based lessons.
-- \`.claude/lessons/INDEX.md\` — project-local lesson index.
-- \`docs/workflow/\` — project setup, handoff, evaluation templates.
-- \`scripts/\` — wrapper and offline regression tests.
-- \`.github/workflows/validate-template.yml\` — CI checks, no model invocation.
+- `CLAUDE.md` — Lead role and routing rules.
+- `AGENTS.md` — implementation rules and project configuration.
+- `.claude/skills/vibe/SKILL.md` — default fast loop for low-risk work.
+- `.claude/settings.json` + `scripts/hooks/` — Claude Code permissions and protected-path hook.
+- `docs/workflow/examples/` — a filled-in handoff example.
+- `docs/workflow/pilot-checklist.md` — live Claude Code / Codex checks that offline tests cannot prove.
+- `.claude/skills/plan-quality/SKILL.md` — PASS/WARNING/BLOCK review for Medium/Large.
+- `.claude/skills/codex-delegate/SKILL.md` — approved handoff and safe Codex invocation.
+- `.claude/skills/learn-from-task/SKILL.md` — evidence-based lessons.
+- `.claude/lessons/INDEX.md` — project-local lesson index.
+- `docs/workflow/` — project setup, handoff, evaluation templates.
+- `scripts/` — wrapper and offline regression tests.
+- `.github/workflows/validate-template.yml` — CI checks, no model invocation.
 
-Existing repositories created from a GitHub template do not automatically receive changes from this source repository. See \`docs/workflow/project-setup.md\`.
+Existing repositories created from a GitHub template do not automatically receive changes from this source repository. See `docs/workflow/project-setup.md`.
 
 
 ## Evidence-based Experience Library
