@@ -32,6 +32,8 @@ need '.claude/skills/vibe/SKILL.md' '## 3. Verify (never skipped)' 'vibe skill m
 need '.claude/skills/vibe/SKILL.md' 'Never push, merge or deploy.' 'vibe skill must not push'
 # The implementer rule must be byte-identical wherever it appears, so the model gets one answer.
 rule="$(grep -o '\*\*Implementer rule:\*\*.*overrides (1)–(2)\.' .claude/skills/vibe/SKILL.md)" || fail 'vibe skill implementer rule missing'
+expected='**Implementer rule:** (1) Claude implements directly SMALL, LOW-risk changes — text/copy, styles, config values, or a local fix or small feature with simple logic in at most 3 source files (plus their tests), with no new module, schema, API or dependency. (2) Codex implements MEDIUM or larger work, anything beyond (1), and every HIGH-risk change, when Codex is installed. (3) If Codex is unavailable, Claude implements and says so. (4) Claude always reviews the diff and runs verification. An explicit user choice overrides (1)–(2).'
+[[ "$rule" == "$expected" ]] || fail 'implementer rule differs from approved wording'
 for f in CLAUDE.md "$doc"; do grep -Fq -- "$rule" "$f" || fail "implementer rule in $f differs from the vibe skill"; done
 need '.claude/skills/vibe/SKILL.md' 'Never stash silently.' 'dirty-tree handling missing'
 need '.claude/skills/vibe/SKILL.md' 'Do not ask about checkpoints by default.' 'checkpoint prompts must be opt-in'

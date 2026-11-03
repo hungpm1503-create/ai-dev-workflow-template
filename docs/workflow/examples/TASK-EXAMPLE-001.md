@@ -1,6 +1,6 @@
 # Example handoff (MEDIUM / LOW / LOW, Claude plan → Codex)
 
-A filled-in copy of `docs/workflow/handoff-template.md` for reference. Real handoffs live in the ignored `.claude/handoffs/` folder. For VIBE-mode tasks, the short form in `.claude/skills/vibe/SKILL.md` is enough.
+A filled-in copy of `docs/workflow/handoff-template.md` for reference. Real handoffs live in the ignored `.workflow/handoffs/` folder. For VIBE-mode tasks, the short form in `.claude/skills/vibe/SKILL.md` is enough.
 
 ## Task ID
 TASK-EXAMPLE-001

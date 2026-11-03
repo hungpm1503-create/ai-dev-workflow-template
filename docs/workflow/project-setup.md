@@ -46,7 +46,9 @@ The simulated `codex` tests do not use tokens or modify application code. They c
 
 ## 4. Run an approved task
 
-Create `.claude/handoffs/TASK-DEMO-001.md` with `## Approval status` followed by `Status: APPROVED` **only after approval**. The wrapper rejects pending/non-approved tasks. This line is a process reminder, not proof of human authorization.
+Create `.workflow/handoffs/TASK-DEMO-001.md` with `## Approval status` followed by `Status: APPROVED` **only after approval**. The wrapper rejects pending/non-approved tasks. This line is a process reminder, not proof of human authorization.
+
+For an existing project, create `.workflow/` and move local scratch folders, for example `mv .claude/handoffs .workflow/handoffs`; repeat for `work-memory`, `experience-drafts` and `instinct-candidates` when present. The wrapper and `workflow-memory.sh show` still read legacy files with a deprecation warning.
 
 ```bash
 bash scripts/codex-delegate.sh --dry-run TASK-DEMO-001
@@ -72,7 +74,7 @@ For a meaningful failed/reworked task, inspect the run folder printed by `codex-
 bash scripts/capture-experience.sh TASK-LOGIN-001 TASK-LOGIN-001-run.XXXXXX
 ```
 
-Use the run folder's actual six-character suffix, never the literal `XXXXXX`. The draft stays under ignored `.claude/experience-drafts/` and contains metadata/references, not copied private logs. Inspect and redact the evidence before moving an approved, useful record into `.claude/lessons/` using `.claude/lessons/EXPERIENCE_TEMPLATE.md`.
+Use the run folder's actual six-character suffix, never the literal `XXXXXX`. The draft stays under ignored `.workflow/experience-drafts/` and contains metadata/references, not copied private logs. Inspect and redact the evidence before moving an approved, useful record into `.claude/lessons/` using `.claude/lessons/EXPERIENCE_TEMPLATE.md`.
 
 Document **cue → observed failure → workflow change → before/after verification → adoption decision**. A baseline SHA and an adopted-change SHA let you reconstruct the relevant prompt/skill/scripts from Git without storing full harness duplicates.
 
@@ -87,8 +89,8 @@ bash scripts/workflow-memory.sh init TASK-EXAMPLE-001
 bash scripts/workflow-memory.sh show TASK-EXAMPLE-001
 ```
 
-Write only a concise objective, verified decisions, actual blockers and next action in ignored `.claude/work-memory/TASK-EXAMPLE-001/STATE.md`. The Codex wrapper records an additional run checkpoint automatically **when possible**. Claude still checks Git diff and real test evidence; a completed run is not an accepted feature.
+Write only a concise objective, verified decisions, actual blockers and next action in ignored `.workflow/work-memory/TASK-EXAMPLE-001/STATE.md`. The Codex wrapper records an additional run checkpoint automatically **when possible**. Claude still checks Git diff and real test evidence; a completed run is not an accepted feature.
 
-Use the `verify-change` skill on meaningful changes and the existing `learn-from-task` skill only for serious or repeated issues. Draft optional instincts from `.claude/lessons/INSTINCT_CANDIDATE_TEMPLATE.md`, under ignored `.claude/instinct-candidates/`, and never auto-apply candidates. Keep model-based reasoning on-demand inside the current Claude/Codex interaction.
+Use the `verify-change` skill on meaningful changes and the existing `learn-from-task` skill only for serious or repeated issues. Draft optional instincts from `.claude/lessons/INSTINCT_CANDIDATE_TEMPLATE.md`, under ignored `.workflow/instinct-candidates/`, and never auto-apply candidates. Keep model-based reasoning on-demand inside the current Claude/Codex interaction.
 
 Before `/compact` or opening a new session, refresh the short task state. Work memory is local to this worktree, not shared across machines unless the operator deliberately exports a reviewed, redacted artifact. See `docs/workflow/ecc-selective-integration.md`.

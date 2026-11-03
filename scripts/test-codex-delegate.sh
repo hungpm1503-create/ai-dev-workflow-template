@@ -5,13 +5,14 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 tmp="$(mktemp -d)"
 id="TASK-SMOKE-$$"
-handoffs="$root/.claude/handoffs"
+handoffs="$root/.workflow/handoffs"
 handoff="$handoffs/$id.md"
+legacy_handoff="$root/.claude/handoffs/$id.md"
 probe="$root/.github/workflows/.protected-probe-$$"
 mkdir -p "$handoffs"
 cleanup() {
-  rm -f "$handoff" "$probe"
-  rm -rf "$root/.claude/work-memory/$id"
+  rm -f "$handoff" "$legacy_handoff" "$probe"
+  rm -rf "$root/.workflow/work-memory/$id"
   find "$handoffs" -maxdepth 1 -type d -name "$id-run.*" -exec rm -rf {} +
   rmdir "$handoffs/.codex-delegate.lock" 2>/dev/null || :
   rm -rf "$tmp"
@@ -71,9 +72,42 @@ sed -i.bak 's/^Status:.*/Status: APPROVED/' "$handoff"; rm -f "$handoff.bak"
 
 bash scripts/codex-delegate.sh --dry-run "$id" > "$tmp/dry.txt"
 [[ ! -e "$FAKE_INVOKED" ]] || { echo 'FAIL: dry-run invoked fake Codex' >&2; exit 1; }
+mkdir -p "$(dirname "$legacy_handoff")"
+printf '## Approval status\nStatus: PENDING\n' > "$legacy_handoff"
+bash scripts/codex-delegate.sh --dry-run "$id" > "$tmp/preferred.txt" 2> "$tmp/preferred.err"
+grep -Fq ".workflow/handoffs/$id.md" "$tmp/preferred.txt" || { echo 'FAIL: new handoff was not preferred' >&2; exit 1; }
+[[ ! -s "$tmp/preferred.err" ]] || { echo 'FAIL: warned while using new handoff' >&2; exit 1; }
+rm -f "$legacy_handoff"
+mv "$handoff" "$legacy_handoff"
+bash scripts/codex-delegate.sh --dry-run "$id" > "$tmp/legacy.txt" 2> "$tmp/legacy.err"
+grep -Fq ".claude/handoffs/$id.md" "$tmp/legacy.txt" || { echo 'FAIL: legacy handoff was not used' >&2; exit 1; }
+grep -Fq 'deprecated' "$tmp/legacy.err" || { echo 'FAIL: legacy handoff warning missing' >&2; exit 1; }
+[[ "$(grep -c '^WARNING:' "$tmp/legacy.err")" == 1 ]] || { echo 'FAIL: expected one legacy handoff warning' >&2; exit 1; }
+sed -i.bak 's/^Status:.*/Status: PENDING/' "$legacy_handoff"; rm -f "$legacy_handoff.bak"
+if bash scripts/codex-delegate.sh --dry-run "$id" > /dev/null 2>&1; then
+  echo 'FAIL: unapproved legacy handoff accepted' >&2; exit 1
+else [[ $? == 3 ]] || { echo 'FAIL: legacy approval exit code' >&2; exit 1; }; fi
+cp "$legacy_handoff" "$handoff"
+rm -f "$legacy_handoff"
+mv "$handoff" "$tmp/legacy-target.md"
+ln -s "$tmp/legacy-target.md" "$legacy_handoff"
+if bash scripts/codex-delegate.sh --dry-run "$id" > /dev/null 2>&1; then
+  echo 'FAIL: symlinked legacy handoff accepted' >&2; exit 1
+else [[ $? == 2 ]] || { echo 'FAIL: legacy symlink exit code' >&2; exit 1; }; fi
+rm -f "$legacy_handoff"
+mv "$tmp/legacy-target.md" "$handoff"
+sed -i.bak 's/^Status:.*/Status: APPROVED/' "$handoff"; rm -f "$handoff.bak"
+mv "$handoff" "$tmp/new-target.md"
+ln -s "$tmp/new-target.md" "$handoff"
+if bash scripts/codex-delegate.sh --dry-run "$id" > /dev/null 2>&1; then
+  echo 'FAIL: symlinked new handoff accepted' >&2; exit 1
+else [[ $? == 2 ]] || { echo 'FAIL: new symlink exit code' >&2; exit 1; }; fi
+rm -f "$handoff"
+mv "$tmp/new-target.md" "$handoff"
 if bash scripts/codex-delegate.sh '../escape' >/dev/null 2>&1; then
   echo 'FAIL: path traversal accepted' >&2; exit 1
 fi
+echo 'PASS: handoff precedence, legacy warning, approval, symlink and traversal dry-run checks'
 
 # Repository must be clean (handoff and run logs are ignored).
 printf 'dirty\n' > ".dirty-worktree-probe-$$"
@@ -140,4 +174,4 @@ for repeat in 1 2 3 4; do
   [[ ! -d "$handoffs/.codex-delegate.lock" ]] || { echo "FAIL: lock stranded after forced shutdown (run $repeat)" >&2; cat "$tmp/stubborn-$repeat.txt"; exit 1; }
 done
 
-echo 'PASS: fake-Codex approval, dry-run, traversal, clean tree, early exit, protected paths, locking, timeout, network opt-in and exit-code tests'
+echo 'PASS: fake-Codex approval, legacy fallback, dry-run, traversal, clean tree, early exit, protected paths, locking, timeout, network opt-in and exit-code tests'

@@ -1,17 +1,17 @@
 # Claude Lead — Core Rules
 
-You are Lead/Planner/Reviewer; Codex is the primary implementer when installed. The user's request and the project's architecture beat generic assumptions. Verify that Codex, Spec Kit or Superpowers exist before relying on them.
+You are Lead/Planner/Reviewer and implement SMALL, LOW-risk changes directly under the rule below; Codex implements larger or higher-risk work when installed. The user's request and the project's architecture beat generic assumptions. Verify that Codex, Spec Kit or Superpowers exist before relying on them.
 
 ## 1. Route every task (say it in one line)
 
 - **Classify first:** assess complexity (SMALL/MEDIUM/LARGE), governance risk (LOW/HIGH) and traceability (LOW/HIGH) independently, together with the project's own rules, before choosing a route. **Any HIGH risk goes to FULL GOVERNANCE, never VIBE.** If the classification is uncertain, read `docs/workflow/task-routing.md` before deciding.
 - **VIBE mode** (`.claude/skills/vibe/SKILL.md`) only for SMALL, or MEDIUM with a clear path, with LOW risk and LOW traceability. No plan artifact and no formal handoff/approval step; when Codex implements, the vibe skill writes its short handoff.
 - **Leave VIBE mode immediately** when the task touches auth/permissions, payments or money, financial methodology or point-in-time rules, personal or sensitive data, destructive migrations or data deletion, infrastructure/deploy, secrets, autonomous execution, or anything the project's own rules (`AGENTS.md`, downstream governance) mark as HIGH risk, or grows into LARGE / HIGH-traceability work.
-- Outside VIBE: unclear MEDIUM → one Claude plan; LARGE → prefer **Superpowers** `brainstorming`/`writing-plans` when installed; HIGH traceability → prefer **Spec Kit**; ANY HIGH risk → **FULL GOVERNANCE** (independent review, explicit human approval, evidence-based verification). Exactly one planning source; Codex implements; never `/speckit-implement`. Matrix and examples: `docs/workflow/task-routing.md` — read it when leaving VIBE mode or when classification is uncertain.
+- Outside VIBE: unclear MEDIUM → one Claude plan; LARGE → prefer **Superpowers** `brainstorming`/`writing-plans` when installed; HIGH traceability → prefer **Spec Kit**; ANY HIGH risk → **FULL GOVERNANCE** (independent review, explicit human approval, evidence-based verification). Exactly one planning source; use the implementer rule below; never `/speckit-implement`. Matrix and examples: `docs/workflow/task-routing.md` — read it when leaving VIBE mode or when classification is uncertain.
 
 ## 2. Who implements
 
-**Implementer rule:** (1) Claude edits directly only for trivial changes — text/copy, styles, config values or an obviously local fix, at most 2 files and no new logic branch. (2) Codex implements anything with new logic (conditions, loops, parsing, state, data handling) or more than 2 files, when Codex is installed. (3) If Codex is unavailable, Claude implements and says so. (4) Claude always reviews the diff and runs verification. An explicit user choice overrides (1)–(2).
+**Implementer rule:** (1) Claude implements directly SMALL, LOW-risk changes — text/copy, styles, config values, or a local fix or small feature with simple logic in at most 3 source files (plus their tests), with no new module, schema, API or dependency. (2) Codex implements MEDIUM or larger work, anything beyond (1), and every HIGH-risk change, when Codex is installed. (3) If Codex is unavailable, Claude implements and says so. (4) Claude always reviews the diff and runs verification. An explicit user choice overrides (1)–(2).
 
 ## 3. Verify, never claim
 

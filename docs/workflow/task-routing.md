@@ -1,6 +1,6 @@
 # Adaptive AI Development Workflow — complexity × risk × traceability
 
-**Aim:** the smallest effective process. Claude Lead owns task classification, planning, handoff and independent review; Codex owns implementation. No automatic extra agent or planning ceremony.
+**Aim:** the smallest effective process. Claude Lead owns task classification, planning, handoff and independent review, and implements qualifying SMALL, LOW-risk changes directly. Codex implements work beyond that rule. No automatic extra agent or planning ceremony.
 
 ## Classification
 
@@ -17,7 +17,7 @@ For each task, assess these **three independent dimensions**:
 | SMALL | LOW | LOW | **NONE** | **VIBE mode** (default): direct change or minimal Codex handoff → real tests → brief report |
 | MEDIUM | LOW | LOW | **CLAUDE**, optionally **SUPERPOWERS** for meaningful ambiguity | **VIBE mode** when the path is clear; otherwise one short plan → Codex → proportionate review |
 | LARGE | LOW | LOW | **SUPERPOWERS preferred** (or one Claude plan when unavailable/not useful) | One canonical design/plan → Codex slices → independent review |
-| ANY | LOW | HIGH | **SPEC KIT preferred** for durable traceable artifacts | One canonical spec/plan/decision trail → Codex → review |
+| ANY | LOW | HIGH | **SPEC KIT preferred** for durable traceable artifacts | One canonical spec/plan/decision trail → implementer per rule below → review |
 | ANY | HIGH | ANY | **FULL GOVERNANCE + one project-allowed planning path** | Required independent reviews, explicit human gates, evidence-based tests/review and human acceptance when required |
 
 **Risk determines mandatory safeguards; complexity and traceability determine planning.** High-risk does **not** universally mandate Spec Kit: choose Spec Kit for significant traceability, Superpowers/Claude planning otherwise **only when the project's already-approved rules allow**. If a downstream project requires formal Spec Kit for HIGH risk, continue to follow it. Never silently replace a required gate with a lighter process.
@@ -26,7 +26,7 @@ For each task, assess these **three independent dimensions**:
 
 VIBE is an **execution mode, not a planning framework**: SMALL, or MEDIUM with an obvious path, with LOW risk and LOW traceability. No handoff file, approval marker or plan artifact is required; the user's chat request is the scope. Real verification (tests/lint/build with exit codes, PASS/FAIL/UNVERIFIED) is still mandatory. See `.claude/skills/vibe/SKILL.md`.
 
-**Implementer rule:** (1) Claude edits directly only for trivial changes — text/copy, styles, config values or an obviously local fix, at most 2 files and no new logic branch. (2) Codex implements anything with new logic (conditions, loops, parsing, state, data handling) or more than 2 files, when Codex is installed. (3) If Codex is unavailable, Claude implements and says so. (4) Claude always reviews the diff and runs verification. An explicit user choice overrides (1)–(2).
+**Implementer rule:** (1) Claude implements directly SMALL, LOW-risk changes — text/copy, styles, config values, or a local fix or small feature with simple logic in at most 3 source files (plus their tests), with no new module, schema, API or dependency. (2) Codex implements MEDIUM or larger work, anything beyond (1), and every HIGH-risk change, when Codex is installed. (3) If Codex is unavailable, Claude implements and says so. (4) Claude always reviews the diff and runs verification. An explicit user choice overrides (1)–(2).
 
 **Exit triggers** (switch to the matrix above and say why): auth/permissions, payments or money, financial methodology or point-in-time rules, personal or sensitive data, destructive migrations or data deletion, infrastructure/deploy, secrets, autonomous execution, or anything the project's own rules (`AGENTS.md`, downstream governance) mark as HIGH risk; LARGE scope or HIGH traceability; or the same failure surviving three fix attempts. The trigger list is a reminder, not a substitute for classifying risk with the three dimensions above. VIBE never applies to HIGH risk.
 
@@ -37,7 +37,7 @@ VIBE is an **execution mode, not a planning framework**: SMALL, or MEDIUM with a
 - **SPEC KIT:** use relevant specification/plan/tasks/consistency stages when a persistent requirements-to-decisions-to-tests chain is needed. No automatic full Spec Kit sequence just because a feature is LARGE.
 - **FULL GOVERNANCE:** an **overlay, not a planning framework**. It still requires independent requirements/security/architecture review where applicable, real approvals, risk and rollback/verification evidence, and required acceptance regardless of planning tool.
 
-**Never run Spec Kit planning and Superpowers brainstorming/writing-plans for the same task.** Only Claude Lead selects the planning framework. Codex consumes the approved handoff and approved single plan; it must not repeat planning. Do not run Superpowers subagent-driven development or `executing-plans` as a second implementation engine. Do not invoke `/speckit-implement` or `/speckit.implement`: Codex is the implementation owner. Superpowers TDD, systematic debugging and verification skills may assist Codex regardless of planning source.
+**Never run Spec Kit planning and Superpowers brainstorming/writing-plans for the same task.** Only Claude Lead selects the planning framework. When Codex implements, it consumes the approved handoff and approved single plan; it must not repeat planning. Do not run Superpowers subagent-driven development or `executing-plans` as a second implementation engine. Do not invoke `/speckit-implement` or `/speckit.implement`: use the implementer rule above. Superpowers TDD, systematic debugging and verification skills may assist Codex regardless of planning source.
 
 For Medium/Low, one focused `plan-quality` review is generally enough. For Large/Low, review the one canonical design/spec proportionately. In a HIGH-risk project route, fulfill independent project gates but don't add another equivalent planning review without a specific uncovered risk.
 
@@ -64,6 +64,6 @@ For Medium/Low, one focused `plan-quality` review is generally enough. For Large
 
 ## Shared harness rules
 
-Claude → one approved plan source → Codex → independent Claude Review → Human approval when needed. Keep v0.4 Working Memory, risk-based Verification and adopted Experience Library; checkpoints and instinct candidates are never approval or authoritative specs. Skip duplicate docs and unnecessary model calls. No new benchmark or background agent.
+Claude → one approved plan source when needed → implementer under the rule above → Claude Review → Human approval when needed. Keep v0.4 Working Memory, risk-based Verification and adopted Experience Library; checkpoints and instinct candidates are never approval or authoritative specs. Skip duplicate docs and unnecessary model calls. No new benchmark or background agent.
 
 **Scope:** this template cannot override downstream project governance; sync to applications only through a separately reviewed project-specific change.

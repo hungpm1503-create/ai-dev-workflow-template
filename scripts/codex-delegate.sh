@@ -20,11 +20,18 @@ if ! repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || [[ "$repo_root"
   exit 2
 fi
 
-handoff_dir="$root/.claude/handoffs"
+handoff_dir="$root/.workflow/handoffs"
 handoff="$handoff_dir/$task_id.md"
-if [[ -L "$handoff_dir" || ! -f "$handoff" || -L "$handoff" || ! -s "$handoff" ]]; then
+legacy_handoff="$root/.claude/handoffs/$task_id.md"
+if [[ ! -e "$handoff" && ! -L "$handoff" && -f "$legacy_handoff" ]]; then
+  handoff="$legacy_handoff"
+fi
+if [[ -L "$handoff_dir" || -L "$(dirname "$handoff")" || ! -f "$handoff" || -L "$handoff" || ! -s "$handoff" ]]; then
   echo 'ERROR: approved handoff not found, empty, or symlinked.' >&2
   exit 2
+fi
+if [[ "$handoff" == "$legacy_handoff" ]]; then
+  echo "WARNING: .claude/handoffs/$task_id.md is deprecated; move it to .workflow/handoffs/." >&2
 fi
 
 # Parse an exact status from the designated section (not a substring such as NOT APPROVED).
@@ -41,7 +48,7 @@ if [[ "$approval_status" != 'APPROVED' ]]; then
 fi
 
 if (( dry_run )); then
-  echo "DRY RUN: approved handoff .claude/handoffs/$task_id.md"
+  echo "DRY RUN: approved handoff ${handoff#"$root/"}"
   dry_network=false; if [[ "${CODEX_NETWORK:-0}" == 1 ]]; then dry_network=true; fi
   echo "Would invoke: codex exec --sandbox workspace-write -c sandbox_workspace_write.network_access=$dry_network --output-last-message <run>/completion.md -"
   echo 'No Codex invocation or file modification performed.'
@@ -60,6 +67,7 @@ if [[ ! "$timeout_seconds" =~ ^[0-9]+$ ]] || (( ${#timeout_seconds} > 6 )) || ((
 fi
 
 # An atomic repo-worktree lock; do not run two Codex tasks on the same working tree.
+mkdir -p "$handoff_dir"
 lock_dir="$handoff_dir/.codex-delegate.lock"
 if ! mkdir "$lock_dir" 2>/dev/null; then
   echo 'ERROR: another Codex task holds this worktree lock; inspect it before manually removing a stale lock.' >&2

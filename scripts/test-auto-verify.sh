@@ -15,7 +15,7 @@ grep -Fq 'auto-verify.sh\" --mark-turn-start' "$root/.claude/settings.json" || f
 
 mkdir -p "$repo" && cd "$repo"
 git init -q && git config user.email t@example.com && git config user.name t
-printf '.claude/work-memory/\n' > .gitignore
+printf '.workflow/work-memory/\n' > .gitignore
 set_cmd() { printf -- '- Quick check command: %s\n' "$1" > AGENTS.md; git add -A; git commit -qm cfg; }
 run() { printf '{"hook_event_name":"Stop","stop_hook_active":false}' | CLAUDE_PROJECT_DIR="$repo" bash "$hook"; }
 mark() { printf '{"hook_event_name":"UserPromptSubmit","prompt":"x"}' | CLAUDE_PROJECT_DIR="$repo" bash "$hook" --mark-turn-start; }
@@ -47,16 +47,16 @@ echo c >> b.txt
 [[ -z "$(run)" && "$(runs)" == 2 ]] || fail 'new change was not re-checked'
 
 # 3b. Pre-existing dirty tree with no recorded PASS: a question-only turn must not run the check.
-echo pre > pre.txt; rm -f .claude/work-memory/.auto-verify-state
+echo pre > pre.txt; rm -f .workflow/work-memory/.auto-verify-state
 before="$(runs)"; [[ -z "$(mark)" ]] || fail 'mark produced output'
 [[ -z "$(run)" && "$(runs)" == "$before" ]] || fail 'question-only turn on a dirty tree ran the check'
 # ...but a change made during the turn is checked.
 mark; echo during >> pre.txt
 [[ -z "$(run)" && "$(runs)" == $((before + 1)) ]] || fail 'change made during the turn was not checked'
 # Without a baseline (hook not installed) it falls back to unverified working-tree changes.
-rm -f .claude/work-memory/.auto-verify-turn .claude/work-memory/.auto-verify-state
+rm -f .workflow/work-memory/.auto-verify-turn .workflow/work-memory/.auto-verify-state
 [[ -z "$(run)" && "$(runs)" == $((before + 2)) ]] || fail 'fallback without baseline did not check'
-rm pre.txt; rm -f .claude/work-memory/.auto-verify-turn
+rm pre.txt; rm -f .workflow/work-memory/.auto-verify-turn
 
 # 4. Failing check → block with valid JSON, only the tail, ANSI and quotes handled.
 git add -A; git commit -qm b
@@ -82,12 +82,12 @@ echo e > e.txt; out="$(run)"; [[ -n "$out" ]] || fail 'new change after limit no
 
 # 5b. A new user prompt gets a fresh set of attempts (limit is per turn).
 mark; echo e2 >> e.txt; out="$(run)"; grep -q 'attempt 1/3' <<<"$out" || fail "attempt counter not reset by a new turn: $out"
-rm -f .claude/work-memory/.auto-verify-turn
+rm -f .workflow/work-memory/.auto-verify-turn
 
 # 6. Passing again clears the failure counter.
 set_cmd "echo run >> '$count'"; echo f > f.txt
 [[ -z "$(run)" ]] || fail 'pass after failures should be silent'
-grep -q '^FAILS=0$' .claude/work-memory/.auto-verify-state || fail 'failure counter not reset'
+grep -q '^FAILS=0$' .workflow/work-memory/.auto-verify-state || fail 'failure counter not reset'
 
 # 7. Timeout stops the command and its children.
 marker="23.$$"; set_cmd "bash -c 'sleep $marker'"; echo g > g.txt

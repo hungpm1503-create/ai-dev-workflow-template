@@ -6,8 +6,8 @@ This repository selectively adopts **ideas** from `affaan-m/ECC` (Continuous Lea
 
 | Layer | Contains | Storage | Authority |
 | --- | --- | --- | --- |
-| Working Memory | Current task progress, blockers, next action, verification references | Ignored `.claude/work-memory/TASK-ID/` | **Unreviewed context** |
-| Instinct Candidate | One observed trigger/action hypothesis and evidence | Ignored `.claude/instinct-candidates/` | **Unverified proposal** |
+| Working Memory | Current task progress, blockers, next action, verification references | Ignored `.workflow/work-memory/TASK-ID/` | **Unreviewed context** |
+| Instinct Candidate | One observed trigger/action hypothesis and evidence | Ignored `.workflow/instinct-candidates/` | **Unverified proposal** |
 | Experience Library | Tested, approved workflow lessons | Versioned `.claude/lessons/` | Reusable guidance, subordinate to project/spec/user |
 | Canonical plan/decisions | Scope, approval, requirements, ADRs | Existing project artifacts | **Source of truth** |
 
@@ -15,7 +15,7 @@ This repository selectively adopts **ideas** from `affaan-m/ECC` (Continuous Lea
 
 ```bash
 bash scripts/workflow-memory.sh init TASK-DEMO-001
-# Edit .claude/work-memory/TASK-DEMO-001/STATE.md with concise verified facts
+# Edit .workflow/work-memory/TASK-DEMO-001/STATE.md with concise verified facts
 bash scripts/workflow-memory.sh show TASK-DEMO-001
 bash scripts/workflow-memory.sh search "migration"
 ```
@@ -27,7 +27,7 @@ Memory is **local and ignored**. Two separate clones or cloud computers do not a
 ## Learning: observation without a background observer
 
 - Existing `learn-from-task` examines meaningful test failures, rework and user corrections.
-- If evidence suggests a repeatable pattern, draft **one** candidate using `.claude/lessons/INSTINCT_CANDIDATE_TEMPLATE.md`, saved under `.claude/instinct-candidates/`.
+- If evidence suggests a repeatable pattern, draft **one** candidate using `.claude/lessons/INSTINCT_CANDIDATE_TEMPLATE.md`, saved under `.workflow/instinct-candidates/`.
 - Prefer linking to actual `capture-experience.sh` drafts, commit SHA and tests.
 - Compare similar candidates; a confidence label counts observations but does not independently prove benefit.
 - Review or reproduce the proposed change, then ask the user to promote a **validated** and **redacted** experience into `.claude/lessons/`.

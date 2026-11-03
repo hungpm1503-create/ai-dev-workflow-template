@@ -13,7 +13,7 @@ description: Delegate an approved task to Codex CLI using a unique ignored hando
 
 1. Verify `codex` is installed and authenticated, and this Git repository has a clean worktree.
 2. Confirm scope is approved. Material architecture, security, costs and irreversible operations still require explicit user approval.
-3. Review the one canonical plan proportionately when needed; for ANY/HIGH, ensure required independent project review and human approval gates without duplicated reviews. Use `docs/workflow/handoff-template.md`. Write `.claude/handoffs/TASK-ID.md` with **## Approval status** and exact **Status: APPROVED**, only after appropriate approval. This text is not cryptographic authorization.
+3. Review the one canonical plan proportionately when needed; for ANY/HIGH, ensure required independent project review and human approval gates without duplicated reviews. Use `docs/workflow/handoff-template.md`. Write `.workflow/handoffs/TASK-ID.md` with **## Approval status** and exact **Status: APPROVED**, only after appropriate approval. This text is not cryptographic authorization.
 4. Verify `AGENTS.md > Protected paths` is configured for this project, if applicable.
 5. Dry run: `bash scripts/codex-delegate.sh --dry-run TASK-ID` (no model invocation).
 6. Execute only when permitted: `bash scripts/codex-delegate.sh TASK-ID`.

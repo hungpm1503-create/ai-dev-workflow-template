@@ -30,7 +30,7 @@ cmd="$(printf '%s' "$cmd" | sed 's/^`//; s/`$//; s/[[:space:]]*$//')"
 timeout_s="${AUTO_VERIFY_TIMEOUT:-300}"; tail_n="${AUTO_VERIFY_TAIL:-40}"; max_blocks="${AUTO_VERIFY_MAX_BLOCKS:-3}"
 [[ "$timeout_s" =~ ^[0-9]+$ && "$tail_n" =~ ^[0-9]+$ && "$max_blocks" =~ ^[0-9]+$ ]] || exit 0
 
-state_dir="$root/.claude/work-memory"
+state_dir="$root/.workflow/work-memory"
 state="$state_dir/.auto-verify-state"
 turn_file="$state_dir/.auto-verify-turn"
 mkdir -p "$state_dir" 2>/dev/null || exit 0

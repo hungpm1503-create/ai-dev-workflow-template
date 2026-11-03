@@ -22,8 +22,12 @@ if [[ "$(git rev-parse --show-toplevel 2>/dev/null || :)" != "$root" ]]; then
   echo 'ERROR: run at the root of this Git repository.' >&2; exit 2
 fi
 
-handoffs="$root/.claude/handoffs"
+handoffs="$root/.workflow/handoffs"
 run_dir="$handoffs/$run_name"
+if [[ ! -e "$run_dir" && ! -L "$run_dir" ]]; then
+  handoffs="$root/.claude/handoffs"
+  run_dir="$handoffs/$run_name"
+fi
 if [[ -L "$handoffs" || -L "$run_dir" || ! -d "$run_dir" ]]; then
   echo 'ERROR: run folder is missing or symlinked.' >&2; exit 2
 fi
@@ -45,7 +49,7 @@ else
   changed_count="UNVERIFIED"
 fi
 
-drafts="$root/.claude/experience-drafts"
+drafts="$root/.workflow/experience-drafts"
 if [[ -L "$drafts" ]]; then echo 'ERROR: draft folder is symlinked.' >&2; exit 2; fi
 mkdir -p "$drafts"
 draft="$drafts/EXP-$run_name.md"
@@ -60,7 +64,7 @@ set -C
   printf 'Status: DRAFT (not validated or approved for promotion)\n'
   printf 'Date (UTC): %s\n' "$(date -u +%Y-%m-%d)"
   printf 'Task: %s\n' "$task_id"
-  printf 'Run: .claude/handoffs/%s/\n' "$run_name"
+  printf 'Run: %s/\n' "${run_dir#"$root/"}"
   printf 'Baseline HEAD: %s\n' "$head_sha"
   printf 'Wrapper final exit code: %s\n' "$code"
   printf 'Changed paths reported: %s\n\n' "$changed_count"
