@@ -11,10 +11,19 @@ pass() { printf 'PASS: %s\n' "$*"; }
 if [[ ! -f AGENTS.md ]]; then echo 'FAIL: AGENTS.md missing' >&2; exit 1; fi
 [[ "$(git rev-parse --show-toplevel 2>/dev/null || :)" == "$root" ]] || fail 'Not the root of a Git worktree.'
 field() {
-  local name="$1" count
-  count="$(grep -Ec "^[[:space:]]*-[[:space:]]*$name:[[:space:]]*" AGENTS.md || :)"
-  [[ "$count" == 1 ]] || return 1
-  sed -n "s/^[[:space:]]*-[[:space:]]*$name:[[:space:]]*//p" AGENTS.md | head -n 1
+  local name="$1"
+  awk -v name="$name" '
+    index($0, "- " name ":") == 1 || $0 ~ /^[[:space:]]+- / {
+      line=$0; sub(/^[[:space:]]*/, "", line)
+      prefix="- " name ":"
+      if (index(line, prefix) == 1) {
+        count++
+        value=substr(line, length(prefix)+1)
+        sub(/^[[:space:]]*/, "", value)
+      }
+    }
+    END { if (count != 1) exit 1; print value }
+  ' AGENTS.md
 }
 trim() { printf '%s' "$1" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//'; }
 check_field() {
