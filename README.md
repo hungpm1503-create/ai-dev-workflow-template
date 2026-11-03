@@ -6,12 +6,13 @@ Reusable, stack-independent workflow for **Claude Lead → Codex CLI** with sele
 ## Quick start (5 minutes)
 
 1. **Use this template → Create a new repository**, then clone it. (On the source repo, enable **Settings → General → Template repository** first.)
-2. Fill `AGENTS.md > Project Configuration` with your real stack, test/lint/build commands and protected paths.
+2. Fill `AGENTS.md > Project Configuration` with your real stack, test/lint/build commands, protected paths and a fast **Quick check command** (lint + affected tests, under ~60s).
 3. Check the workflow offline (no model calls, no tokens):
 
    ```bash
    bash scripts/validate-workflow.sh
    bash scripts/test-guard-hook.sh
+   bash scripts/test-auto-verify.sh
    bash scripts/test-codex-delegate.sh
    ```
 
@@ -34,6 +35,7 @@ Reusable, stack-independent workflow for **Claude Lead → Codex CLI** with sele
   - a PreToolUse hook (`scripts/hooks/guard-protected-paths.sh`) **asks before** Claude's Edit/Write tools touch protected paths (`CLAUDE.md`, `AGENTS.md`, `.claude/settings.json`, `.claude/skills/`, `scripts/hooks/`, workflows, plus your `AGENTS.md` list). Paths are JSON-parsed and normalised (`..`, symlinks, case); unparseable input fails closed with a prompt. Bash commands get a **best-effort** check only.
   - `Read(...)` deny rules stop Claude's **Read tool** from opening `.env`/key files. They do not block other routes (Bash, scripts, other tools); keep real secrets out of the repo.
   - `git push`, `git reset --hard` and `rm -rf` always ask.
+  - a **Stop hook** (`scripts/hooks/auto-verify.sh`) runs `AGENTS.md > Quick check command` whenever Claude finishes a turn with changed files. On failure Claude is sent back with only the last 40 lines of output (up to 3 attempts, then you are told). It skips unchanged states and does nothing until you configure the command. Disable per shell with `AUTO_VERIFY_DISABLE=1`.
   - This is an intent-confirmation layer for Claude, **not a security sandbox**; writes by Codex, scripts or editors are not intercepted (Codex runs get the wrapper's post-run check instead).
 - `scripts/codex-delegate.sh`: clean-tree requirement, lock, timeout, per-run logs and a post-run protected-path check for Codex.
 - Verification contract everywhere: PASS / FAIL / UNVERIFIED with real commands and exit codes.

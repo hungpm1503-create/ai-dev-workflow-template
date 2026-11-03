@@ -18,6 +18,8 @@ Routing rules live in `docs/workflow/task-routing.md`; don't duplicate them here
 
 Fill `AGENTS.md > Project Configuration`: actual stack, build/test/lint commands and protected paths. Protected paths are **literal repository-relative paths**, comma-separated, e.g. `src/config/, infrastructure/`. Directories end in `/`. The wrapper also protects `CLAUDE.md`, `AGENTS.md`, `scripts/codex-delegate.sh`, `scripts/hooks/`, `.claude/settings.json`, `.claude/skills/` and `.github/workflows/` by default. For Codex this is a **post-run detector**; for Claude Code the hook in `.claude/settings.json` asks *before* Edit/Write tool calls (best-effort for Bash). Neither is a file-system access control boundary.
 
+Set **Quick check command** to something fast (lint + affected tests, ideally under 60 seconds). The Claude Code Stop hook runs it automatically after a turn that changed files and sends Claude back to fix failures, so a slow command slows every turn.
+
 After configuring, run the live checks in `docs/workflow/pilot-checklist.md` once.
 
 ## 3. Verify workflow without a model
@@ -27,6 +29,7 @@ bash scripts/validate-workflow.sh
 bash scripts/test-secret-scan.sh
 bash scripts/test-codex-delegate.sh
 bash scripts/test-guard-hook.sh
+bash scripts/test-auto-verify.sh
 bash scripts/test-capture-experience.sh
 bash scripts/test-workflow-memory.sh
 ```

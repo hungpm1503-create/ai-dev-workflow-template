@@ -23,6 +23,8 @@ jobs:
         run: bash scripts/test-codex-delegate.sh
       - name: Test protected-path hook for Claude Code (offline)
         run: bash scripts/test-guard-hook.sh
+      - name: Test auto-verify Stop hook (offline, throwaway repo)
+        run: bash scripts/test-auto-verify.sh
       - name: Regression test experience capture (offline synthetic fixture)
         run: bash scripts/test-capture-experience.sh
       - name: Test working-memory checkpoints (offline, no API/model)
