@@ -11,8 +11,8 @@ Work as the primary implementation engineer on approved tasks. Respect project-s
 
 ## During implementation
 
-- Codex implements the approved Claude plan (Medium) or canonical Spec Kit artifacts (Large). Do not run the Spec Kit implementation stage (`/speckit-implement` / `/speckit.implement`).
-- Use Superpowers **only for TDD, systematic debugging, and verification** if its relevant skills are available to this agent. Never run Superpowers `brainstorming` or `writing-plans` to duplicate Claude/Spec Kit planning.
+- Codex implements the **approved handoff and one canonical plan/source**, produced by Claude, Superpowers or Spec Kit as selected by Claude Lead. For HIGH risk, also honor independently approved governing artifacts and human gates. Never run `/speckit-implement` or `/speckit.implement`.
+- Codex can use Superpowers for **TDD, systematic debugging and verification** when available. Claude Lead may already have used Superpowers `brainstorming`/`writing-plans` for the plan; Codex must not redo planning, start competing Superpowers subagents or use `executing-plans` as another implementation owner.
 - Match existing patterns and keep edits surgical: avoid unrelated refactors or formatting, and remove only unused code your change creates.
 - Use existing testing frameworks and relevant skills when actually installed.
 - Add/change tests when justified; protect security, data integrity and backward compatibility.
