@@ -4,7 +4,7 @@
 #   UserPromptSubmit:  auto-verify.sh --mark-turn-start   records a baseline fingerprint
 #   Stop:              auto-verify.sh                     checks if anything changed since then
 #
-# - Command comes from AGENTS.md > "Quick check command". [NOT CONFIGURED] → do nothing.
+# - Command comes from AGENTS.md > "Quick check command". [NOT CONFIGURED], N/A and NONE → do nothing.
 # - Fingerprint = HEAD + diff against HEAD + untracked files (names and contents).
 # - Stop skips when: the tree is clean; the fingerprint equals this turn's baseline (the turn
 #   changed nothing — e.g. a question-only turn on an already dirty tree); or the same state
@@ -25,7 +25,7 @@ git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
 cmd=''
 [[ -f AGENTS.md ]] && cmd="$(sed -n 's/^[[:space:]]*-[[:space:]]*Quick check command:[[:space:]]*//p' AGENTS.md | head -n 1)"
 cmd="$(printf '%s' "$cmd" | sed 's/^`//; s/`$//; s/[[:space:]]*$//')"
-[[ -z "$cmd" || "$cmd" == '[NOT CONFIGURED]' ]] && exit 0
+[[ -z "$cmd" || "$cmd" == '[NOT CONFIGURED]' || "$cmd" == 'N/A' || "$cmd" == 'NONE' ]] && exit 0
 
 timeout_s="${AUTO_VERIFY_TIMEOUT:-300}"; tail_n="${AUTO_VERIFY_TAIL:-40}"; max_blocks="${AUTO_VERIFY_MAX_BLOCKS:-3}"
 [[ "$timeout_s" =~ ^[0-9]+$ && "$tail_n" =~ ^[0-9]+$ && "$max_blocks" =~ ^[0-9]+$ ]] || exit 0
@@ -89,7 +89,8 @@ timed_out="$out.timedout"
   kill -KILL -- "-$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null
 ) >/dev/null 2>&1 </dev/null &
 watchdog=$!
-wait "$pid"; rc=$?
+# Intentional signal-based cancellation should not leak Bash job-control messages.
+wait "$pid" 2>/dev/null; rc=$?
 if [[ -f "$timed_out" ]]; then
   wait "$watchdog" 2>/dev/null          # let it finish the KILL step; do not cancel it
   kill -KILL -- "-$pid" 2>/dev/null || :  # belt and braces: nothing in the group may survive

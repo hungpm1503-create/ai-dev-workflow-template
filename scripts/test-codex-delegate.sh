@@ -38,6 +38,10 @@ done
 if [[ -n "${FAKE_PROTECTED_PATH:-}" ]]; then
   printf 'unauthorized\n' > "$FAKE_PROTECTED_PATH"
 fi
+if [[ "${FAKE_STUBBORN_CHILD:-0}" == 1 ]]; then
+  # A child survives TERM unless the watchdog escalates to KILL against the group.
+  bash -c 'trap "" TERM; while :; do sleep 0.3; done' &
+fi
 if [[ -n "${FAKE_SLEEP:-}" ]]; then sleep "$FAKE_SLEEP"; fi
 if [[ "${FAKE_SKIP_STDIN:-0}" != 1 ]]; then cat > "${FAKE_PROMPT_FILE:?}"; fi
 printf 'AC-01: PASS (fake Codex only)\n' > "$out"
@@ -124,5 +128,16 @@ wait "$background_pid"
 if CODEX_TIMEOUT_SECONDS=1 FAKE_SLEEP=6 bash scripts/codex-delegate.sh "$id" > "$tmp/timed-out.txt" 2>&1; then
   echo 'FAIL: time limit not enforced' >&2; exit 1
 else [[ $? == 124 ]] || { echo 'FAIL: timeout exit code not 124' >&2; exit 1; }; fi
+
+# Repeat timeout with TERM-resistant descendants: kill -0 may still see zombies.
+# Exit must be 124, and a clean shutdown must not strand the delegation lock.
+for repeat in 1 2 3 4; do
+  if CODEX_TIMEOUT_SECONDS=1 FAKE_SLEEP=6 FAKE_STUBBORN_CHILD=1 bash scripts/codex-delegate.sh "$id" > "$tmp/stubborn-$repeat.txt" 2>&1; then
+    echo "FAIL: stubborn descendant timeout accepted (run $repeat)" >&2; exit 1
+  else
+    [[ $? == 124 ]] || { echo "FAIL: stubborn descendant timeout wrong exit (run $repeat)" >&2; cat "$tmp/stubborn-$repeat.txt"; exit 1; }
+  fi
+  [[ ! -d "$handoffs/.codex-delegate.lock" ]] || { echo "FAIL: lock stranded after forced shutdown (run $repeat)" >&2; cat "$tmp/stubborn-$repeat.txt"; exit 1; }
+done
 
 echo 'PASS: fake-Codex approval, dry-run, traversal, clean tree, early exit, protected paths, locking, timeout, network opt-in and exit-code tests'

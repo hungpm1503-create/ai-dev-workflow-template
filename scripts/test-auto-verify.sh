@@ -29,6 +29,12 @@ valid_json() {
 set_cmd '[NOT CONFIGURED]'; echo a > a.txt
 [[ -z "$(run)" && "$(runs)" == 0 ]] || fail 'ran while not configured'
 
+# 1b. Bad optional placeholders must not run as shell commands even if the tree is dirty.
+set_cmd 'N/A'; echo change >> a.txt
+[[ -z "$(run)" && "$(runs)" == 0 ]] || fail 'N/A quick check was executed'
+set_cmd 'NONE'; echo another-change >> a.txt
+[[ -z "$(run)" && "$(runs)" == 0 ]] || fail 'NONE quick check was executed'
+
 # 2. Configured but clean tree → silent, nothing runs.
 rm a.txt; set_cmd "echo run >> '$count'"
 [[ -z "$(run)" && "$(runs)" == 0 ]] || fail 'ran on a clean tree'
