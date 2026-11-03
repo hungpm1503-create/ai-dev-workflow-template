@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 # Run one explicitly approved handoff. Requires a clean Git worktree.
+# The whole script is one { ... } block so Bash parses it completely before running it:
+# a delegated task may legitimately edit this file, and Bash otherwise reads scripts
+# incrementally, which would corrupt the post-run protected-path check.
+{
 set -euo pipefail
 umask 077
 
@@ -236,3 +240,4 @@ printf 'Task: %s\nFinal exit code: %s\n' "$task_id" "$exit_code"
 printf 'Run folder: %s\n' "${run_dir#"$root/"}"
 if (( exit_code != 0 )); then echo 'Review ignored logs and diff; do not mark the task PASS.' >&2; fi
 exit "$exit_code"
+}

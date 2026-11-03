@@ -43,6 +43,11 @@ if [[ "${FAKE_STUBBORN_CHILD:-0}" == 1 ]]; then
   # A child survives TERM unless the watchdog escalates to KILL against the group.
   bash -c 'trap "" TERM; while :; do sleep 0.3; done' &
 fi
+if [[ "${FAKE_SELF_EDIT:-0}" == 1 ]]; then
+  # Rewrite the running wrapper in place (same inode), shifting every byte offset after the edit.
+  { printf '# line inserted by the delegated task\n%.0s' 1 2 3 4 5 6 7 8; cat scripts/codex-delegate.sh; } > "$out.self"
+  cat "$out.self" > scripts/codex-delegate.sh; rm -f "$out.self"
+fi
 if [[ -n "${FAKE_SLEEP:-}" ]]; then sleep "$FAKE_SLEEP"; fi
 if [[ "${FAKE_SKIP_STDIN:-0}" != 1 ]]; then cat > "${FAKE_PROMPT_FILE:?}"; fi
 printf 'AC-01: PASS (fake Codex only)\n' > "$out"
@@ -174,4 +179,21 @@ for repeat in 1 2 3 4; do
   [[ ! -d "$handoffs/.codex-delegate.lock" ]] || { echo "FAIL: lock stranded after forced shutdown (run $repeat)" >&2; cat "$tmp/stubborn-$repeat.txt"; exit 1; }
 done
 
-echo 'PASS: fake-Codex approval, legacy fallback, dry-run, traversal, clean tree, early exit, protected paths, locking, timeout, network opt-in and exit-code tests'
+# A task that edits the wrapper itself while it runs must not corrupt the post-run checks
+# (Bash reads scripts incrementally). Isolated copy: the real wrapper is never modified.
+self="$(cd "$tmp" && pwd -P)/self-repo"  # physical path: macOS /var is a symlink to /private/var
+mkdir -p "$self/scripts" "$self/.workflow/handoffs"
+cp scripts/codex-delegate.sh "$self/scripts/"
+printf '# Fixture\n- Protected paths: NONE\n' > "$self/AGENTS.md"
+printf '.workflow/\n' > "$self/.gitignore"
+cp "$handoff" "$self/.workflow/handoffs/$id.md"
+(cd "$self" && git init -q && git add -A && git -c user.name=t -c user.email=t@example.invalid commit -q -m fixture)
+if (cd "$self" && FAKE_SELF_EDIT=1 bash scripts/codex-delegate.sh "$id") > "$tmp/self-edit.txt" 2>&1; then
+  echo 'FAIL: wrapper self-edit reported success' >&2; cat "$tmp/self-edit.txt" >&2; exit 1
+else
+  [[ $? == 4 ]] || { echo 'FAIL: wrapper self-edit exit code not 4' >&2; cat "$tmp/self-edit.txt" >&2; exit 1; }
+fi
+grep -q '^FINAL_EXIT_CODE=4$' "$self"/.workflow/handoffs/"$id"-run.*/status.txt || { echo 'FAIL: status not written after wrapper self-edit' >&2; exit 1; }
+grep -qx 'scripts/codex-delegate.sh' "$self"/.workflow/handoffs/"$id"-run.*/protected-violations.txt || { echo 'FAIL: wrapper self-edit not reported as protected' >&2; exit 1; }
+
+echo 'PASS: fake-Codex approval, legacy fallback, dry-run, traversal, clean tree, early exit, protected paths, wrapper self-edit, locking, timeout, network opt-in and exit-code tests'
