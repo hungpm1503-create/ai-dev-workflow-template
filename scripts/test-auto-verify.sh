@@ -74,6 +74,10 @@ before="$(runs)"; out="$(run)"
 # A new change resets nothing silently: it is checked again (and reported).
 echo e > e.txt; out="$(run)"; [[ -n "$out" ]] || fail 'new change after limit not checked'
 
+# 5b. A new user prompt gets a fresh set of attempts (limit is per turn).
+mark; echo e2 >> e.txt; out="$(run)"; grep -q 'attempt 1/3' <<<"$out" || fail "attempt counter not reset by a new turn: $out"
+rm -f .claude/work-memory/.auto-verify-turn
+
 # 6. Passing again clears the failure counter.
 set_cmd "echo run >> '$count'"; echo f > f.txt
 [[ -z "$(run)" ]] || fail 'pass after failures should be silent'

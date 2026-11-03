@@ -11,8 +11,8 @@
 #   already passed. Without a baseline (UserPromptSubmit hook not installed) it falls back to
 #   "any unverified changes in the working tree".
 # - On failure, blocks Claude from stopping and returns only the last lines of output (token economy).
-# - Gives up after AUTO_VERIFY_MAX_BLOCKS consecutive failures (default 3) and tells the user instead,
-#   so it can never loop forever.
+# - Gives up after AUTO_VERIFY_MAX_BLOCKS failures in one turn (default 3) and tells the user instead,
+#   so it can never loop forever. A new user prompt resets the count.
 # Env: AUTO_VERIFY_TIMEOUT (seconds, default 300), AUTO_VERIFY_TAIL (lines, default 40),
 #      AUTO_VERIFY_MAX_BLOCKS (default 3), AUTO_VERIFY_DISABLE=1 to switch off.
 set -uo pipefail
@@ -48,6 +48,10 @@ fingerprint() {
 
 if [[ "${1:-}" == --mark-turn-start ]]; then
   printf '%s\n' "$(fingerprint)" > "$turn_file"
+  # The attempt limit is per turn: a new user prompt gets a fresh set of attempts.
+  if [[ -f "$state" ]]; then
+    printf 'PASS=%s\nFAILS=0\nFAIL_FP=\n' "$(sed -n 's/^PASS=//p' "$state")" > "$state"
+  fi
   exit 0
 fi
 

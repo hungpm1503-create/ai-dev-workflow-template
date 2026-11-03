@@ -4,6 +4,17 @@ The offline scripts prove that the rules are written down consistently and that 
 
 Use a throwaway branch. Record: date, Claude Code version (`claude --version`), Codex version (`codex --version`), model, result (PASS / FAIL / UNVERIFIED) and a one-line note.
 
+## 0. Environment (macOS)
+
+Hooks run with `bash`, which on macOS is usually `/bin/bash` 3.2. The scripts avoid bash 4+ features, but CI only runs Linux bash 5. Run the offline suite once with the system shell:
+
+```bash
+/bin/bash --version
+for t in scripts/validate-workflow.sh scripts/test-*.sh; do /bin/bash "$t" >/dev/null 2>&1 && echo "PASS $t" || echo "FAIL $t"; done
+```
+
+Any FAIL here is a portability bug; report the script and its output.
+
 ## A. Routing (Claude Code)
 
 Give Claude each prompt in a fresh session. Expected behaviour is in the right column; compare against the one-line "how I read this / who implements" statement the vibe skill requires.

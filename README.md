@@ -1,6 +1,6 @@
 # AI Dev Workflow Template
 
-**Version:** 0.5.0 (pilot)  
+**Version:** 0.6.0 (pilot)  
 Reusable, stack-independent workflow for **Claude Lead → Codex CLI** with selective Quality Gates and Learning Loop. Everyday low-risk work runs in a fast **VIBE mode**; heavier governance applies only when risk or scope demands it. Spec Kit and Superpowers are optional integrations when installed.
 
 ## Quick start (5 minutes)
@@ -16,16 +16,16 @@ Reusable, stack-independent workflow for **Claude Lead → Codex CLI** with sele
    bash scripts/test-codex-delegate.sh
    ```
 
-4. Open Claude Code in the repo and just describe what you want. Small, low-risk tasks use **`/vibe`** automatically: change → run real tests → short PASS/FAIL report. Codex is optional for this mode.
+4. Open Claude Code in the repo and just describe what you want. Claude first classifies complexity, risk and traceability; small, low-risk tasks then use **`/vibe`** automatically: change → run real tests → short PASS/FAIL report. Codex is optional for this mode.
 
 ## What runs when
 
 | Task | Mode | What you get |
 | --- | --- | --- |
-| Small/medium, low risk, clear path (UI tweak, bug fix, small feature) | **VIBE** (`.claude/skills/vibe/`) | No handoff/approval paperwork; Claude does trivial edits, Codex does logic/multi-file work; real tests every step |
+| Small/medium, low risk, clear path (UI tweak, bug fix, small feature) | **VIBE** (`.claude/skills/vibe/`) | No plan or approval paperwork (Codex gets a short handoff); Claude does trivial edits, Codex does logic/multi-file work; real tests every step |
 | Medium with ambiguity / Large, low risk | One Claude or Superpowers plan → Codex | Plan review, handoff, Codex run, independent review |
 | Needs durable requirement ↔ decision ↔ test links | Spec Kit preferred | One canonical spec |
-| **Any HIGH risk** (auth, money, personal data, destructive migration, infra, secrets) | **FULL GOVERNANCE** | Real human gates, independent checks, verified acceptance |
+| **Any HIGH risk** (auth, money, financial methodology / point-in-time rules, personal data, destructive migration, infra, secrets, autonomous execution, project-defined) | **FULL GOVERNANCE** | Real human gates, independent checks, verified acceptance |
 
 **Risk determines safeguards; complexity and traceability select the planning tool.** The full matrix, VIBE exit triggers and examples live in `docs/workflow/task-routing.md` (single source of truth). This template never relaxes a downstream project's mandatory gates.
 
@@ -35,7 +35,7 @@ Reusable, stack-independent workflow for **Claude Lead → Codex CLI** with sele
   - a PreToolUse hook (`scripts/hooks/guard-protected-paths.sh`) **asks before** Claude's Edit/Write tools touch protected paths (`CLAUDE.md`, `AGENTS.md`, `.claude/settings.json`, `.claude/skills/`, `scripts/hooks/`, workflows, plus your `AGENTS.md` list). Paths are JSON-parsed and normalised (`..`, symlinks, case); unparseable input fails closed with a prompt. Bash commands get a **best-effort** check only.
   - `Read(...)` deny rules stop Claude's **Read tool** from opening `.env`/key files. They do not block other routes (Bash, scripts, other tools); keep real secrets out of the repo.
   - `git push`, `git reset --hard` and `rm -rf` always ask.
-  - a **Stop hook** (`scripts/hooks/auto-verify.sh`) runs `AGENTS.md > Quick check command` when Claude finishes a turn that changed files which have not passed yet (a `UserPromptSubmit` hook records the turn's starting point, so question-only turns on an already dirty tree do nothing). On failure Claude is sent back with only the last 40 lines of output (up to 3 attempts, then you are told). It skips unchanged states and does nothing until you configure the command. Disable per shell with `AUTO_VERIFY_DISABLE=1`.
+  - a **Stop hook** (`scripts/hooks/auto-verify.sh`) runs `AGENTS.md > Quick check command` when Claude finishes a turn that changed files which have not passed yet (a `UserPromptSubmit` hook records the turn's starting point, so question-only turns on an already dirty tree do nothing). On failure Claude is sent back with only the last 40 lines of output (up to 3 attempts, then you are told). It skips unchanged states and does nothing until you configure the command. Disable per shell with `AUTO_VERIFY_DISABLE=1`. The command runs automatically on your machine, so review changes to `AGENTS.md` (especially in pull requests) as carefully as code.
   - This is an intent-confirmation layer for Claude, **not a security sandbox**; writes by Codex, scripts or editors are not intercepted (Codex runs get the wrapper's post-run check instead).
 - `scripts/codex-delegate.sh`: clean-tree requirement, lock, timeout, per-run logs and a post-run protected-path check for Codex.
 - Verification contract everywhere: PASS / FAIL / UNVERIFIED with real commands and exit codes.
