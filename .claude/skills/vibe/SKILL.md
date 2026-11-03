@@ -65,6 +65,7 @@ The wrapper needs a clean tree so Codex's diff can be attributed. Never stash si
 - Run the real commands from `AGENTS.md > Project Configuration` that match the change (tests, typecheck/lint, build). If they are `[NOT CONFIGURED]`, detect the obvious project command (`package.json` scripts, `pytest`, `go test ./...`, etc.), run it, and suggest filling the configuration.
 - For UI changes, run the app or a screenshot/preview when possible.
 - Report in a few lines: what changed, commands + exit codes, each criterion PASS / FAIL / UNVERIFIED. A Codex exit code 0 is not PASS; read the diff.
+- The Stop hook re-runs `Quick check command` automatically when you finish with changed files; treat its block message as the test result and fix from that excerpt instead of re-running everything.
 - On failure: fix and re-run, at most 3 attempts on the same error, then stop and explain.
 
 ## 4. Commits

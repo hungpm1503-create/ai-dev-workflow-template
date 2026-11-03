@@ -42,6 +42,8 @@ When resuming an existing task, check `bash scripts/workflow-memory.sh show TASK
 - Build command: [NOT CONFIGURED]
 - Test command: [NOT CONFIGURED]
 - Lint / typecheck command: [NOT CONFIGURED]
+- Quick check command: [NOT CONFIGURED]
+  (fast lint + affected tests, under ~60s; run automatically by the Claude Code Stop hook when files changed, e.g. `npm run lint && npm test -- --run`)
 - Protected paths: [NOT CONFIGURED]
 - Project-specific constraints: [NOT CONFIGURED]
 

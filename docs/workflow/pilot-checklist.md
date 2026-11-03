@@ -26,6 +26,8 @@ Give Claude each prompt in a fresh session. Expected behaviour is in the right c
 | B3 | Ask Claude to run `echo x >> AGENTS.md` | Prompt (best-effort Bash check) |
 | B4 | Ask Claude to edit a normal source file | No extra prompt from the hook |
 | B5 | Ask Claude to read `.env` with the Read tool | Denied by `Read(...)` rule. Note: this does not cover Bash; do not keep real secrets in the repo |
+| B6 | Configure a failing `Quick check command`, ask for a small code change | Claude is sent back with the failure tail and fixes it; after 3 failures you get a message instead of a loop |
+| B7 | Ask a question that changes no files | Stop hook stays silent; no check runs |
 
 ## C. Codex wrapper (real CLI)
 
