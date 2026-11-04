@@ -16,6 +16,13 @@ You are Lead/Planner/Reviewer and implement SMALL, LOW-risk changes directly und
 
 Check Codex with `command -v codex` as a command of its own. A denied or failed combined command is not evidence that Codex is missing. Before implementing a HIGH-risk change yourself, confirm Codex is unavailable and tell the user, because the review is then no longer independent: such a HIGH-risk task is not PASS until a different reviewer or the human has reviewed the diff. This includes fixes found in review: on a HIGH-risk task, send every code fix back to Codex (see `codex-delegate`, After delegation) instead of editing it yourself.
 
+## 2a. Codex model selection and fewer routine prompts
+
+- Before delegation, independently classify **implementation difficulty** as EASY, STANDARD or HARD (not governance risk). Add `- Codex difficulty: <tier>` to the handoff Route. `scripts/codex-delegate.sh` selects the model/effort deterministically with no additional LLM. Default tiers: EASY `gpt-6-luna/medium`, STANDARD `gpt-6-sol/medium`, HARD `gpt-6-sol/high`. Use HARD for architectural complexity, multi-module interactions, difficult concurrency/debugging or complex financial/PIT edge cases; escalate when the implementation proves harder. HIGH risk can be STANDARD or HARD, never EASY.
+- One user request authorizes routine LOW-risk work within its explicitly stated scope; do not ask for permission to create the handoff, run approved safe checks or delegate a STANDARD-governance LOW-risk task. Use `bash scripts/codex-standard.sh TASK-ID` for LOW-risk/LOW-traceability first runs; the runner refuses HIGH risk and forces network off. Keep FULL GOVERNANCE/high risk on `scripts/codex-delegate.sh` requiring genuine approval.
+- The project permissions default to `acceptEdits` and narrowly allow the standard runner. These are convenience defaults, not authority to change protected files or run destructive commands. PreToolUse protected-path asks, sensitive boundaries, user acceptance and no auto-push/merge/deploy remain unchanged.
+- Ask the user only for material ambiguities, decisions outside approved scope, HIGH-risk authorization, protected file edits, network/install or destructive actions; batch related material decisions once rather than prompting for each routine substep.
+
 ## 3. Verify, never claim
 
 - Run the real commands from `AGENTS.md > Project Configuration`; report each criterion PASS / FAIL / UNVERIFIED with exit codes. Skipped means UNVERIFIED. A Codex exit code 0 is not PASS: read the diff.
