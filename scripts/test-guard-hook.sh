@@ -114,9 +114,11 @@ printf '%s' "$out" | python3 -c 'import json,sys; json.load(sys.stdin)' || { ech
 [[ ! -e "$tmp/git-error-canary" ]] || { echo 'FAIL: Git comparison error executed canary hook' >&2; exit 1; }
 
 # The low-risk entrypoint has an allow rule: its content must match HEAD before use.
+# Restore the original trusted guard before testing runner integrity.
 mkdir -p "$settings_repo/scripts"
+cp "$hook" "$settings_repo/scripts/hooks/guard-protected-paths.sh"
 cp "$root/scripts/codex-standard.sh" "$settings_repo/scripts/codex-standard.sh"
-(cd "$settings_repo" && git add scripts/codex-standard.sh && git -c user.name=t -c user.email=t"@"example.invalid commit -q -m standard-runner)
+(cd "$settings_repo" && git add scripts/hooks/guard-protected-paths.sh scripts/codex-standard.sh && git -c user.name=t -c user.email=t"@"example.invalid commit -q -m standard-runner)
 json_bash 'bash scripts/codex-standard.sh TASK-SAFE' | run_settings > "$tmp/standard-trusted.json"
 [[ ! -s "$tmp/standard-trusted.json" ]] || { echo 'FAIL: intact standard runner wrongly required approval' >&2; exit 1; }
 printf '\n# unreviewed edit\n' >> "$settings_repo/scripts/codex-standard.sh"
