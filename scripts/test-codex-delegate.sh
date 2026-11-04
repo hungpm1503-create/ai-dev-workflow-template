@@ -11,7 +11,7 @@ legacy_handoff="$root/.claude/handoffs/$id.md"
 probe="$root/.github/workflows/.protected-probe-$$"
 mkdir -p "$handoffs"
 cleanup() {
-  rm -f "$handoff" "$legacy_handoff" "$probe"
+  rm -f "$handoff" "$legacy_handoff" "$probe" "$handoffs/TASK-MODEL-$.md"
   rm -rf "$root/.workflow/work-memory/$id"
   find "$handoffs" -maxdepth 1 -type d -name "$id-run.*" -exec rm -rf {} +
   rmdir "$handoffs/.codex-delegate.lock" 2>/dev/null || :
@@ -32,6 +32,7 @@ while [[ $# -gt 0 ]]; do
     --sandbox) sandbox="$2"; shift 2;;
     --output-last-message) out="$2"; shift 2;;
     -c) printf '%s\n' "$2" >> "${FAKE_CONFIG_FILE:-/dev/null}"; shift 2;;
+    -m) printf '%s\n' "$2" >> "${FAKE_MODEL_FILE:-/dev/null}"; shift 2;;
     -) stdin_flag='-'; shift;;
     *) exit 42;;
   esac
@@ -149,6 +150,53 @@ if bash scripts/codex-delegate.sh '../escape' >/dev/null 2>&1; then
   echo 'FAIL: path traversal accepted' >&2; exit 1
 fi
 echo 'PASS: handoff precedence, legacy warning, approval, symlink and traversal dry-run checks'
+# Model tier is deterministic; no extra LLM call. HIGH risk has a minimum STANDARD tier.
+tier_id="TASK-MODEL-$"
+tier="$handoffs/$tier_id.md"
+cat > "$tier" <<'TIER'
+## Task ID
+TASK-MODEL
+## Route
+- Complexity: MEDIUM
+- Governance risk: LOW
+- Traceability: LOW
+- Codex difficulty: EASY
+## Approval status
+Status: APPROVED
+## Objective
+Fixture task
+TIER
+bash scripts/codex-delegate.sh --dry-run "$tier_id" > "$tmp/tier-easy.txt"
+grep -Fq 'Model: gpt-6-luna' "$tmp/tier-easy.txt"
+grep -Fq 'Reasoning effort: medium' "$tmp/tier-easy.txt"
+sed -i.bak 's/Codex difficulty: EASY/Codex difficulty: HARD/' "$tier"; rm -f "$tier.bak"
+bash scripts/codex-delegate.sh --dry-run "$tier_id" > "$tmp/tier-hard.txt"
+grep -Fq 'Model: gpt-6-sol' "$tmp/tier-hard.txt"
+grep -Fq 'Reasoning effort: high' "$tmp/tier-hard.txt"
+sed -i.bak 's/Governance risk: LOW/Governance risk: HIGH/; s/Codex difficulty: HARD/Codex difficulty: EASY/' "$tier"; rm -f "$tier.bak"
+if bash scripts/codex-delegate.sh --dry-run "$tier_id" > "$tmp/tier-invalid.txt" 2>&1; then
+  echo 'FAIL: HIGH-risk handoff allowed EASY model tier' >&2; exit 1
+else [[ $? == 2 ]] || { echo 'FAIL: wrong exit for HIGH-risk EASY tier' >&2; exit 1; }; fi
+sed -i.bak '/^- Codex difficulty:/d; s/Complexity: MEDIUM/Complexity: SMALL/' "$tier"; rm -f "$tier.bak"
+bash scripts/codex-delegate.sh --dry-run "$tier_id" > "$tmp/tier-legacy-high.txt"
+grep -Fq 'Codex difficulty: STANDARD' "$tmp/tier-legacy-high.txt" || { echo 'FAIL: old HIGH-risk handoff silently downgraded to EASY' >&2; exit 1; }
+sed -i.bak 's/Governance risk: HIGH/Governance risk: LOW/; s/Complexity: SMALL/Complexity: MEDIUM/' "$tier"; rm -f "$tier.bak"
+CODEX_MODEL_EASY=custom-mini CODEX_MODEL_STANDARD=custom-mid CODEX_MODEL_HARD=custom-strong CODEX_MODEL=override-model bash scripts/codex-delegate.sh --dry-run "$tier_id" > "$tmp/tier-override.txt"
+grep -Fq 'Model: override-model' "$tmp/tier-override.txt"
+if CODEX_MODEL='bad model' bash scripts/codex-delegate.sh --dry-run "$tier_id" >/dev/null 2>&1; then
+ echo 'FAIL: invalid model identifier accepted' >&2; exit 1
+else [[ $? == 2 ]] || exit 1; fi
+# Only ordinary LOW/LOW first rounds may use the narrow low-prompt entrypoint.
+if bash scripts/codex-standard.sh "$tier_id" > "$tmp/standard-run.txt" 2>&1; then
+ grep -Fq 'Final exit code: 0' "$tmp/standard-run.txt" || exit 1
+else echo 'FAIL: standard LOW/LOW runner rejected its approved task' >&2; cat "$tmp/standard-run.txt"; exit 1; fi
+sed -i.bak 's/Governance risk: LOW/Governance risk: HIGH/' "$tier"; rm -f "$tier.bak"
+if bash scripts/codex-standard.sh "$tier_id" > "$tmp/standard-high.txt" 2>&1; then
+ echo 'FAIL: standard runner accepted HIGH-risk task' >&2; exit 1
+else [[ $? == 3 ]] || { echo 'FAIL: incorrect standard high-risk exit' >&2; exit 1; }; fi
+rm -f "$tier"
+echo 'PASS: Codex difficulty/model routing, invalid tiers, overrides and LOW-only standard runner'
+
 
 # Repository must be clean (handoff and run logs are ignored).
 printf 'dirty\n' > ".dirty-worktree-probe-$$"
@@ -169,11 +217,13 @@ grep -q 'Final exit code: 0' "$tmp/success.txt"
 grep -q 'AC-01: PASS' "$handoffs"/"$id"-run.*/completion.md
 grep -q 'Diff for review (one read)' "$tmp/success.txt" || { echo 'FAIL: summary does not point to diff.patch' >&2; exit 1; }
 ls "$handoffs"/"$id"-run.*/diff.patch >/dev/null || { echo 'FAIL: diff.patch not written' >&2; exit 1; }
-grep -qx 'default' "$handoffs"/"$id"-run.*/effort.txt || { echo 'FAIL: default effort record missing' >&2; exit 1; }
+grep -qx 'medium' "$handoffs"/"$id"-run.*/effort.txt || { echo 'FAIL: default STANDARD effort record missing' >&2; exit 1; }
+grep -qx 'STANDARD' "$handoffs"/"$id"-run.*/difficulty.txt || { echo 'FAIL: default difficulty record missing' >&2; exit 1; }
+grep -qx 'gpt-6-sol' "$handoffs"/"$id"-run.*/model.txt || { echo 'FAIL: default model record missing' >&2; exit 1; }
 
 # Network is explicitly false by default (overrides ~/.codex/config.toml); CODEX_NETWORK=1 opts in.
 FAKE_CONFIG_FILE="$tmp/config-default.txt" bash scripts/codex-delegate.sh "$id" > /dev/null
-[[ "$(cat "$tmp/config-default.txt")" == 'sandbox_workspace_write.network_access=false' ]] || { echo 'FAIL: network not explicitly disabled by default' >&2; exit 1; }
+grep -qx 'sandbox_workspace_write.network_access=false' "$tmp/config-default.txt" || { echo 'FAIL: network not explicitly disabled by default' >&2; exit 1; }
 CODEX_NETWORK=yes FAKE_CONFIG_FILE="$tmp/config-typo.txt" bash scripts/codex-delegate.sh "$id" > /dev/null
 grep -qx 'sandbox_workspace_write.network_access=false' "$tmp/config-typo.txt" || { echo 'FAIL: only CODEX_NETWORK=1 may enable network' >&2; exit 1; }
 CODEX_NETWORK=1 FAKE_CONFIG_FILE="$tmp/config-net.txt" bash scripts/codex-delegate.sh "$id" > /dev/null
