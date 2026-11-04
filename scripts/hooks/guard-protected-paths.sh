@@ -72,7 +72,7 @@ tool="$(field tool_name)" || ask 'Protected-path hook could not parse the tool i
 
 # ---------- Protected path list ----------
 protected_list() {
-  printf '%s\n' 'CLAUDE.md' 'AGENTS.md' 'scripts/codex-delegate.sh' 'scripts/workflow-memory.sh' 'scripts/hooks/' '.claude/settings.json' '.claude/skills/' '.github/workflows/'
+  printf '%s\n' 'CLAUDE.md' 'AGENTS.md' 'scripts/codex-delegate.sh' 'scripts/codex-standard.sh' 'scripts/workflow-memory.sh' 'scripts/hooks/' '.claude/settings.json' '.claude/skills/' '.github/workflows/'
   if [[ -f "$root/AGENTS.md" ]]; then
     sed -n 's/^[[:space:]]*-[[:space:]]*Protected paths:[[:space:]]*//p' "$root/AGENTS.md" | head -n 1 | tr ',' '\n'
   fi
