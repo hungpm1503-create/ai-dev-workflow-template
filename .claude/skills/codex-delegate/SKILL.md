@@ -16,12 +16,12 @@ description: Delegate an approved task to Codex CLI using a unique ignored hando
 3. Review the one canonical plan proportionately when needed; for ANY/HIGH, ensure required independent project review and human approval gates without duplicated reviews. For HIGH risk, send the user a plan of at most about 10 lines plus the approval question first; write the handoff only after approval. Use the skeleton below. Do not open `docs/workflow/handoff-template.md` when this skeleton covers the route; open it only for FULL GOVERNANCE. Write `.workflow/handoffs/TASK-ID.md` with **## Approval status** and exact **Status: APPROVED**, only after appropriate approval. This text is not cryptographic authorization.
 4. Verify `AGENTS.md > Protected paths` is configured for this project, if applicable.
 5. Dry run: mandatory for FULL GOVERNANCE (except `--follow-up` fix rounds), optional for STANDARD: `bash scripts/codex-delegate.sh --dry-run TASK-ID` (no model invocation). The real run performs the same pre-invocation validation.
-6. Execute only when permitted: `bash scripts/codex-delegate.sh TASK-ID`.
+6. Execute only when permitted: for LOW-risk/LOW-traceability ordinary first runs, `bash scripts/codex-standard.sh TASK-ID` (auto-approved with a narrow rule); otherwise `bash scripts/codex-delegate.sh TASK-ID` with the applicable human approval.
 7. Read the wrapper summary, then `diff.patch` once; that is the independent diff review. If the summary marks the diff `INCOMPLETE` (`DIFF_COMPLETE=0`), the patch lacks new files: read every new path listed in `changed-paths.txt` before mapping any criterion. Open `completion.md`, `quick-check.log` or `codex.log` only when the summary shows a non-zero exit, a failed quick check, a protected violation or missing acceptance-criteria lines.
 
 The wrapper uses `codex exec --sandbox workspace-write --output-last-message ... -`. Handoffs and logs are gitignored, saved separately for every run. The wrapper blocks dirty worktrees and overlapping invocations, uses a portable time limit (default 1800 seconds; configure `CODEX_TIMEOUT_SECONDS`), passes `network_access=false` explicitly unless `CODEX_NETWORK=1`, and post-checks protected paths. Do not bypass the sandbox.
 
-The wrapper runs the configured quick check after Codex unless `CODEX_QUICK_CHECK=0`; inspect its compact summary and `quick-check.log`. `CODEX_REASONING_EFFORT=medium` may be tried for MEDIUM, LOW-risk delegations to measure token savings later; HIGH-risk tasks keep the default/high effort. This is an option to measure, not a routing rule.
+The wrapper runs the configured quick check after Codex unless `CODEX_QUICK_CHECK=0`; inspect its compact summary and `quick-check.log`. `Codex difficulty` is an explicit EASY/STANDARD/HARD routing dimension independent of complexity, risk and traceability. The wrapper selects `gpt-6-luna/medium`, `gpt-6-sol/medium`, or `gpt-6-sol/high` respectively (configurable via CODEX_MODEL_EASY/STANDARD/HARD, CODEX_MODEL and CODEX_REASONING_EFFORT); HIGH-risk may not be EASY. No LLM-based model router is used. For LOW-risk, LOW-traceability first runs, use the pre-approved `bash scripts/codex-standard.sh TASK-ID` entrypoint instead of requesting a separate Codex Bash approval; it fails closed for HIGH risk and disables network. For FULL GOVERNANCE or follow-ups, use `codex-delegate.sh`.
 
 **Important:** A protected-path postcheck detects changes **after** they happen and cannot prevent their creation; it never auto-reverts user files. The text approval marker can be edited and is not an independently verified user authorization. The secret scanner is heuristic. A timed-out Codex child may require manual inspection. If Codex cannot run, return the handoff and mark execution UNVERIFIED.
 
@@ -45,6 +45,7 @@ TASK-<id>
 - Governance risk: LOW / HIGH
 - Selected planning path: NONE / CLAUDE / SUPERPOWERS / SPEC KIT
 - Governance: STANDARD / FULL GOVERNANCE
+- Codex difficulty: EASY / STANDARD / HARD (implementation difficulty, independent of governance risk)
 ## Objective
 <one observable result>
 ## Approval status
