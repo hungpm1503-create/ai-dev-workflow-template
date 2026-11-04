@@ -18,6 +18,12 @@ Assess **three independent dimensions**:
 | ANY | LOW | HIGH | **SPEC KIT preferred** | Traceable plan → implementation → review |
 | ANY | HIGH | ANY | **FULL GOVERNANCE + one project-allowed planning path** | Independent review, human gates, verification, acceptance |
 
+## Permission economy
+
+A clear user implementation request authorizes routine LOW-risk steps; avoid requesting the same approval again. For HIGH risk, recognize explicit prior authorization for the exact scope and consequential decisions, but request approval for new material decisions or escalation. Batch genuine approval questions. A handoff's editable `Status: APPROVED` marker is not proof of user approval.
+
+Use the allowlisted `scripts/codex-standard.sh` only for LOW-risk/LOW-traceability first Codex delegations. It refuses HIGH-risk handoffs, disables network and enforces Quick check. FULL GOVERNANCE and follow-up runs use the standard `scripts/codex-delegate.sh` path. Do not allowlist unrestricted delegation or bypass protected-file hooks.
+
 ## VIBE mode
 
 For SMALL or clear-path MEDIUM, LOW risk, LOW traceability. No formal plan or approval artifact is required; a Codex delegation uses the short handoff. Real verification (tests/lint/build with exit codes, PASS/FAIL/UNVERIFIED) is still mandatory.
