@@ -46,6 +46,9 @@ fi
 if [[ "${FAKE_HOOK_CANARY:-0}" == 1 ]]; then
   printf '%s\n' '#!/usr/bin/env bash' 'printf x > "$CANARY"' > scripts/hooks/auto-verify.sh
 fi
+if [[ "${FAKE_MEMORY_CANARY:-0}" == 1 ]]; then
+  printf '%s\n' '#!/usr/bin/env bash' 'printf x > "$CANARY"' > scripts/workflow-memory.sh
+fi
 if [[ -n "${FAKE_CHANGED_PATH:-}" ]]; then
   printf 'new line\n' > "$FAKE_CHANGED_PATH"
   if [[ -n "${FAKE_TOUCH_TIME:-}" ]]; then touch -t "$FAKE_TOUCH_TIME" "$FAKE_CHANGED_PATH"; fi
@@ -231,6 +234,7 @@ quick="$(cd "$tmp" && pwd -P)/quick-repo"
 mkdir -p "$quick/scripts/hooks" "$quick/docs/workflow" "$quick/.workflow/handoffs"
 cp scripts/codex-delegate.sh "$quick/scripts/"
 cp scripts/hooks/auto-verify.sh "$quick/scripts/hooks/"
+cp scripts/workflow-memory.sh "$quick/scripts/"
 cp docs/workflow/codex-rules.md "$quick/docs/workflow/"
 cp "$handoff" "$quick/.workflow/handoffs/$id.md"
 printf '.workflow/\n' > "$quick/.gitignore"
@@ -261,6 +265,8 @@ printf 'old line\n' > "$quick/tracked.txt"
 touch -t 202001010000 "$quick/tracked.txt"
 (cd "$quick" && FAKE_CHANGED_PATH=new-file.txt bash scripts/codex-delegate.sh "$id") > "$tmp/quick-pass.txt"
 quick_run="$(ls -dt "$quick/.workflow/handoffs/$id"-run.* | head -n 1)"
+[[ -f "$quick/.workflow/work-memory/$id/RUN-$(basename "$quick_run").md" ]] || { echo 'FAIL: unchanged workflow-memory.sh did not record checkpoint' >&2; exit 1; }
+grep -q 'Checkpoint recorded:' "$quick_run/codex.log" || { echo 'FAIL: normal run log omitted checkpoint' >&2; exit 1; }
 grep -Fq 'diff --git a/new-file.txt b/new-file.txt' "$quick_run/diff.patch" || { echo 'FAIL: new-file patch omitted new-file.txt' >&2; exit 1; }
 grep -q '^+new line$' "$quick_run/diff.patch" || { echo 'FAIL: new-file patch omitted known content' >&2; exit 1; }
 grep -qx 'DIFF_COMPLETE=1' "$quick_run/status.txt" || { echo 'FAIL: complete patch status missing' >&2; exit 1; }
@@ -312,6 +318,17 @@ hook_run="$(ls -dt "$quick/.workflow/handoffs/$id"-run.* | head -n 1)"
 [[ ! -e "$tmp/hook-canary" ]] || { echo 'FAIL: changed hook ran' >&2; exit 1; }
 grep -qx 'QUICK_CHECK_EXIT=SKIPPED_PROTECTED' "$hook_run/status.txt" || { echo 'FAIL: hook quick check not marked protected' >&2; exit 1; }
 cp "$tmp/quick-hook-before" "$quick/scripts/hooks/auto-verify.sh"
+
+cp "$quick/scripts/workflow-memory.sh" "$tmp/quick-memory-before"
+if (cd "$quick" && CANARY="$tmp/memory-canary" FAKE_MEMORY_CANARY=1 bash scripts/codex-delegate.sh "$id") > "$tmp/memory-protected.txt" 2>&1; then
+  echo 'FAIL: changed workflow-memory.sh accepted' >&2; exit 1
+else [[ $? == 4 ]] || { echo 'FAIL: changed workflow-memory.sh exit code' >&2; exit 1; }; fi
+memory_run="$(ls -dt "$quick/.workflow/handoffs/$id"-run.* | head -n 1)"
+grep -qx 'scripts/workflow-memory.sh' "$memory_run/protected-violations.txt" || { echo 'FAIL: workflow-memory.sh not reported as protected' >&2; exit 1; }
+[[ ! -e "$tmp/memory-canary" ]] || { echo 'FAIL: changed workflow-memory.sh ran on host' >&2; exit 1; }
+grep -qx 'Working-memory checkpoint skipped: protected paths changed.' "$memory_run/codex.log" || { echo 'FAIL: protected checkpoint skip missing from run log' >&2; exit 1; }
+[[ ! -e "$quick/.workflow/work-memory/$id/RUN-$(basename "$memory_run").md" ]] || { echo 'FAIL: protected run recorded checkpoint' >&2; exit 1; }
+cp "$tmp/quick-memory-before" "$quick/scripts/workflow-memory.sh"
 
 # A failed post-run tree snapshot must not bypass protected-path review or status.
 snapshot_protected_id="TASK-SNAPSHOT-PROTECTED-$$"

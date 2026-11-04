@@ -230,7 +230,7 @@ fi
 
 # Snapshot protected paths before Codex can change AGENTS.md.
 {
-  printf '%s\n' 'CLAUDE.md' 'AGENTS.md' 'scripts/codex-delegate.sh' 'scripts/hooks/' '.claude/settings.json' '.claude/skills/' '.github/workflows/'
+  printf '%s\n' 'CLAUDE.md' 'AGENTS.md' 'scripts/codex-delegate.sh' 'scripts/workflow-memory.sh' 'scripts/hooks/' '.claude/settings.json' '.claude/skills/' '.github/workflows/'
   sed -n 's/^[[:space:]]*-[[:space:]]*Protected paths:[[:space:]]*//p' AGENTS.md | head -n 1 | tr ',' '\n'
 } | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | grep -v -E '^$|^\[NOT CONFIGURED\]$' > "$run_dir/protected-paths.txt" || :
 
@@ -366,7 +366,9 @@ if [[ -n "$follow_up_of" ]]; then
 fi
 
 # Deterministic, local-only memory checkpoint (best effort); never change the Codex verdict.
-if [[ -f "$root/scripts/workflow-memory.sh" ]]; then
+if [[ -s "$run_dir/protected-violations.txt" ]]; then
+  printf '%s\n' 'Working-memory checkpoint skipped: protected paths changed.' >> "$log"
+elif [[ -f "$root/scripts/workflow-memory.sh" ]]; then
   if ! bash "$root/scripts/workflow-memory.sh" record-run "$task_id" "$(basename "$run_dir")" >> "$log" 2>&1; then
     echo "WARNING: working-memory checkpoint failed; Codex result remains $exit_code." >&2
   fi

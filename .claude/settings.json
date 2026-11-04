@@ -30,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/hooks/guard-protected-paths.sh\""
+            "command": "if git -C \"$CLAUDE_PROJECT_DIR\" rev-parse --verify HEAD >/dev/null 2>&1; then git -C \"$CLAUDE_PROJECT_DIR\" diff --quiet HEAD -- scripts/hooks/guard-protected-paths.sh; result=$?; if [ \"$result\" -eq 1 ]; then printf '%s\\n' '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"guard-protected-paths.sh differs from HEAD; review it before trusting it.\"}}'; else bash \"$CLAUDE_PROJECT_DIR/scripts/hooks/guard-protected-paths.sh\"; fi; else bash \"$CLAUDE_PROJECT_DIR/scripts/hooks/guard-protected-paths.sh\"; fi; exit 0"
           }
         ]
       }
