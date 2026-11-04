@@ -157,6 +157,14 @@ case "$tool" in
   Bash)
     cmd="$(field tool_input.command)" || ask 'Protected-path hook could not parse the Bash command; confirm it manually.'
     [[ -n "$cmd" ]] || exit 0
+    # The LOW-risk entrypoint is pre-approved by command name: never execute a
+    # Codex-modified or unverifiable copy of that executable on the host.
+    if [[ "$cmd" == *"scripts/codex-standard.sh"* ]]; then
+      if ! git -C "$root" rev-parse --verify HEAD >/dev/null 2>&1 ||
+         ! git -C "$root" diff --quiet HEAD -- scripts/codex-standard.sh; then
+        ask 'codex-standard.sh differs from HEAD or integrity cannot be checked; review it before execution.'
+      fi
+    fi
     write_re='(^|[^<0-9&>])>{1,2}[^&]|(^|[[:space:];|&(])(tee|mv|cp|rm|truncate|install|ln|dd|chmod|chown)([[:space:]]|$)|sed[[:space:]]+(-[a-zA-Z]*i|--in-place)|perl[[:space:]]+-[a-zA-Z]*i|git[[:space:]]+(checkout|restore|apply|am|reset|stash|rm|mv|clean)'
     if printf '%s' "$cmd" | grep -Eq -- "$write_re"; then
       lcmd="$(lower "$cmd")"
