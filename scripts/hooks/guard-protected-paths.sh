@@ -160,6 +160,10 @@ case "$tool" in
     # The LOW-risk entrypoint is pre-approved by command name: never execute a
     # Codex-modified or unverifiable copy of that executable on the host.
     if [[ "$cmd" == *"scripts/codex-standard.sh"* ]]; then
+      # Avoid allowing shell chaining or arbitrary flags through a Bash prefix rule.
+      if [[ ! "$cmd" =~ ^bash[[:space:]]+scripts/codex-standard[.]sh[[:space:]]+TASK-[A-Za-z0-9][A-Za-z0-9_-]*$ ]]; then
+        ask 'Auto-approved Codex command must be exactly: bash scripts/codex-standard.sh TASK-ID.'
+      fi
       if ! git -C "$root" rev-parse --verify HEAD >/dev/null 2>&1 ||
          ! git -C "$root" diff --quiet HEAD -- scripts/codex-standard.sh; then
         ask 'codex-standard.sh differs from HEAD or integrity cannot be checked; review it before execution.'
