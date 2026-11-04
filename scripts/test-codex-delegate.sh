@@ -323,6 +323,8 @@ if (cd "$quick" && CODEX_NETWORK=1 CODEX_QUICK_CHECK=0 FAKE_CONFIG_FILE="$tmp/st
 else echo 'FAIL: standard LOW/LOW runner rejected isolated approved task' >&2; cat "$tmp/standard-run.txt"; exit 1; fi
 grep -qx 'sandbox_workspace_write.network_access=false' "$tmp/standard-network.txt" || { echo 'FAIL: standard runner did not force network off' >&2; exit 1; }
 [[ -f "$QUICK_COUNT" ]] || { echo 'FAIL: standard runner skipped its quick check' >&2; exit 1; }
+# Reset isolated quick-check counter for the existing exact-count assertions below.
+: > "$QUICK_COUNT"
 
 stale_id="TASK-STALE-STAT-$$"
 cp "$handoff" "$quick/.workflow/handoffs/$stale_id.md"
