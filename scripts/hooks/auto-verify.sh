@@ -17,7 +17,9 @@
 #      AUTO_VERIFY_MAX_BLOCKS (default 3), AUTO_VERIFY_DISABLE=1 to switch off.
 set -uo pipefail
 root="${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-cat >/dev/null   # hook input is not needed
+check_now=0
+[[ "${1:-}" == --check-now ]] && check_now=1
+if (( ! check_now )); then cat >/dev/null; fi   # hook input is not needed
 [[ "${AUTO_VERIFY_DISABLE:-0}" == 1 ]] && exit 0
 cd "$root" 2>/dev/null || exit 0
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
@@ -25,7 +27,10 @@ git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
 cmd=''
 [[ -f AGENTS.md ]] && cmd="$(sed -n 's/^[[:space:]]*-[[:space:]]*Quick check command:[[:space:]]*//p' AGENTS.md | head -n 1)"
 cmd="$(printf '%s' "$cmd" | sed 's/^`//; s/`$//; s/[[:space:]]*$//')"
-[[ -z "$cmd" || "$cmd" == '[NOT CONFIGURED]' || "$cmd" == 'N/A' || "$cmd" == 'NONE' ]] && exit 0
+if [[ -z "$cmd" || "$cmd" == '[NOT CONFIGURED]' || "$cmd" == 'N/A' || "$cmd" == 'NONE' ]]; then
+  if (( check_now )); then echo 'Quick check not configured; skipped.'; fi
+  exit 0
+fi
 
 timeout_s="${AUTO_VERIFY_TIMEOUT:-300}"; tail_n="${AUTO_VERIFY_TAIL:-40}"; max_blocks="${AUTO_VERIFY_MAX_BLOCKS:-3}"
 [[ "$timeout_s" =~ ^[0-9]+$ && "$tail_n" =~ ^[0-9]+$ && "$max_blocks" =~ ^[0-9]+$ ]] || exit 0
@@ -55,19 +60,21 @@ if [[ "${1:-}" == --mark-turn-start ]]; then
   exit 0
 fi
 
-[[ -n "$(git status --porcelain --untracked-files=normal 2>/dev/null)" ]] || exit 0
+if (( ! check_now )); then
+  [[ -n "$(git status --porcelain --untracked-files=normal 2>/dev/null)" ]] || exit 0
+fi
 fp="$(fingerprint)"
 # This turn did not change anything (question-only turn, possibly on an already dirty tree).
-if [[ -f "$turn_file" && "$(cat "$turn_file")" == "$fp" ]]; then exit 0; fi
+if (( ! check_now )) && [[ -f "$turn_file" && "$(cat "$turn_file")" == "$fp" ]]; then exit 0; fi
 last_pass=''; fails=0; last_fail_fp=''
 if [[ -f "$state" ]]; then
   last_pass="$(sed -n 's/^PASS=//p' "$state")"
   fails="$(sed -n 's/^FAILS=//p' "$state")"; [[ "$fails" =~ ^[0-9]+$ ]] || fails=0
   last_fail_fp="$(sed -n 's/^FAIL_FP=//p' "$state")"
 fi
-[[ "$fp" == "$last_pass" ]] && exit 0
+if (( ! check_now )) && [[ "$fp" == "$last_pass" ]]; then exit 0; fi
 # Same failing state as last time and the limit is reached: stay quiet (already reported).
-if (( fails > max_blocks )) && [[ "$fp" == "$last_fail_fp" ]]; then exit 0; fi
+if (( ! check_now && fails > max_blocks )) && [[ "$fp" == "$last_fail_fp" ]]; then exit 0; fi
 
 out="$(mktemp)"; trap 'rm -f "$out" "$out.timedout"' EXIT
 set -m   # own process group, so a timeout also stops children (npm → node, etc.)
@@ -110,6 +117,13 @@ json_str() {
 if (( rc == 0 )) && [[ ! -f "$timed_out" ]]; then
   printf 'PASS=%s\nFAILS=0\nFAIL_FP=\n' "$fp" > "$state"
   exit 0
+fi
+
+if (( check_now )); then
+  [[ -f "$timed_out" ]] && rc=124
+  printf 'PASS=\nFAILS=0\nFAIL_FP=\n' > "$state"
+  tail -n "$tail_n" "$out" | clean
+  exit "$rc"
 fi
 
 fails=$((fails + 1))

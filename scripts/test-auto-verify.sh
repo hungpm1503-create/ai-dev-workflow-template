@@ -19,6 +19,7 @@ printf '.workflow/work-memory/\n' > .gitignore
 set_cmd() { printf -- '- Quick check command: %s\n' "$1" > AGENTS.md; git add -A; git commit -qm cfg; }
 run() { printf '{"hook_event_name":"Stop","stop_hook_active":false}' | CLAUDE_PROJECT_DIR="$repo" bash "$hook"; }
 mark() { printf '{"hook_event_name":"UserPromptSubmit","prompt":"x"}' | CLAUDE_PROJECT_DIR="$repo" bash "$hook" --mark-turn-start; }
+check_now() { CLAUDE_PROJECT_DIR="$repo" bash "$hook" --check-now </dev/null; }
 runs() { [[ -f "$count" ]] && wc -l < "$count" | tr -d ' ' || echo 0; }
 valid_json() {
   python3 -c 'import json,sys; json.loads(sys.stdin.read())' 2>/dev/null \
@@ -28,12 +29,15 @@ valid_json() {
 # 1. Not configured → silent, nothing runs.
 set_cmd '[NOT CONFIGURED]'; echo a > a.txt
 [[ -z "$(run)" && "$(runs)" == 0 ]] || fail 'ran while not configured'
+[[ "$(check_now)" == *'not configured'* && "$(runs)" == 0 ]] || fail 'check-now missing unconfigured notice'
 
 # 1b. Bad optional placeholders must not run as shell commands even if the tree is dirty.
 set_cmd 'N/A'; echo change >> a.txt
 [[ -z "$(run)" && "$(runs)" == 0 ]] || fail 'N/A quick check was executed'
+[[ "$(check_now)" == *'not configured'* ]] || fail 'N/A check-now notice missing'
 set_cmd 'NONE'; echo another-change >> a.txt
 [[ -z "$(run)" && "$(runs)" == 0 ]] || fail 'NONE quick check was executed'
+[[ "$(check_now)" == *'not configured'* ]] || fail 'NONE check-now notice missing'
 
 # 2. Configured but clean tree → silent, nothing runs.
 rm a.txt; set_cmd "echo run >> '$count'"
@@ -45,6 +49,20 @@ echo b > b.txt
 [[ -z "$(run)" && "$(runs)" == 1 ]] || fail 'unchanged passing state was re-checked'
 echo c >> b.txt
 [[ -z "$(run)" && "$(runs)" == 2 ]] || fail 'new change was not re-checked'
+
+# Immediate checks run despite a turn baseline and record PASS for the Stop hook.
+mark; echo now > now.txt
+before="$(runs)"
+[[ -z "$(check_now)" && "$(runs)" == $((before + 1)) ]] || fail 'check-now did not run'
+[[ -z "$(run)" && "$(runs)" == $((before + 1)) ]] || fail 'Stop repeated passing check-now state'
+rm -f .workflow/work-memory/.auto-verify-turn
+
+# Immediate failures return their code and only the configured tail.
+set_cmd "echo first; echo last; exit 7"; echo failed > failed.txt
+if out="$(AUTO_VERIFY_TAIL=1 check_now)"; then fail 'check-now accepted failing command';
+else [[ $? == 7 ]] || fail 'check-now lost command exit code'; fi
+[[ "$out" == *last* && "$out" != *first* ]] || fail 'check-now failure tail incorrect'
+set_cmd "echo run >> '$count'; :"
 
 # 3b. Pre-existing dirty tree with no recorded PASS: a question-only turn must not run the check.
 echo pre > pre.txt; rm -f .workflow/work-memory/.auto-verify-state
@@ -59,6 +77,7 @@ rm -f .workflow/work-memory/.auto-verify-turn .workflow/work-memory/.auto-verify
 rm pre.txt; rm -f .workflow/work-memory/.auto-verify-turn
 
 # 4. Failing check → block with valid JSON, only the tail, ANSI and quotes handled.
+echo later > later.txt
 git add -A; git commit -qm b
 set_cmd "echo run >> '$count'; for i in \$(seq 1 100); do printf 'line-%s \"q\" \\\\ \\033[31mred\\033[0m\\n' \$i; done; exit 3"
 echo d > d.txt
@@ -94,6 +113,8 @@ marker="23.$$"; set_cmd "bash -c 'sleep $marker'"; echo g > g.txt
 start=$(date +%s); out="$(AUTO_VERIFY_TIMEOUT=1 run)"; elapsed=$(( $(date +%s) - start ))
 grep -q 'timed out after 1s' <<<"$out" || fail "timeout not reported: $out"
 (( elapsed < 10 )) || fail "timeout took ${elapsed}s"
+if AUTO_VERIFY_TIMEOUT=1 check_now > /dev/null; then fail 'check-now accepted timed-out command';
+else [[ $? == 124 ]] || fail 'check-now timeout exit code'; fi
 sleep 1; pgrep -f "sleep $marker" >/dev/null && fail 'child process survived timeout'
 
 # 7b. A child that ignores SIGTERM must still be stopped (watchdog has to reach SIGKILL).

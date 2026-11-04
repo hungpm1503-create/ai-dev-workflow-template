@@ -51,10 +51,17 @@ if [[ "$approval_status" != 'APPROVED' ]]; then
   exit 3
 fi
 
+reasoning_effort="${CODEX_REASONING_EFFORT:-}"
+case "$reasoning_effort" in
+  ''|minimal|low|medium|high|xhigh) ;;
+  *) echo 'ERROR: CODEX_REASONING_EFFORT must be minimal, low, medium, high or xhigh.' >&2; exit 2 ;;
+esac
+
 if (( dry_run )); then
   echo "DRY RUN: approved handoff ${handoff#"$root/"}"
   dry_network=false; if [[ "${CODEX_NETWORK:-0}" == 1 ]]; then dry_network=true; fi
-  echo "Would invoke: codex exec --sandbox workspace-write -c sandbox_workspace_write.network_access=$dry_network --output-last-message <run>/completion.md -"
+  echo "Reasoning effort: ${reasoning_effort:-default}"
+  echo "Would invoke: codex exec --sandbox workspace-write -c sandbox_workspace_write.network_access=$dry_network${reasoning_effort:+ -c model_reasoning_effort=\"$reasoning_effort\"} --output-last-message <run>/completion.md -"
   echo 'No Codex invocation or file modification performed.'
   exit 0
 fi
@@ -141,6 +148,7 @@ prompt="$run_dir/prompt.md"
 before="$run_dir/status-before.txt"
 head_sha="$(git rev-parse HEAD)"
 printf '%s\n' "$head_sha" > "$run_dir/head-before.txt"
+printf '%s\n' "${reasoning_effort:-default}" > "$run_dir/effort.txt"
 git status --porcelain=v1 --untracked-files=all > "$before"
 if [[ -s "$before" ]]; then
   echo 'ERROR: working tree is dirty. Commit, safely stash, or isolate your changes before delegating; no changes were made.' >&2
@@ -162,7 +170,13 @@ fi
     'Do not commit, push, merge, deploy, remove safety controls or perform destructive operations.' \
     'Escalate material scope, security or architectural changes instead of guessing.' \
     'Report actual build/test commands and exit codes; mark unchecked criteria UNVERIFIED.' \
-    '' '--- BEGIN APPROVED HANDOFF ---'
+    'Start from the files listed in the handoff and open other files only when needed to satisfy the acceptance criteria.'
+  if [[ -f "$root/docs/workflow/codex-rules.md" ]]; then
+    printf '\n%s\n' '--- BEGIN CODEX RULES ---'
+    cat "$root/docs/workflow/codex-rules.md"
+    printf '\n%s\n' '--- END CODEX RULES ---'
+  fi
+  printf '\n%s\n' '--- BEGIN APPROVED HANDOFF ---'
   cat "$handoff"
   printf '\n%s\n' '--- END APPROVED HANDOFF ---'
 } > "$prompt"
@@ -172,6 +186,7 @@ fi
 network_access=false
 if [[ "${CODEX_NETWORK:-0}" == 1 ]]; then network_access=true; fi
 codex_args=(exec --sandbox workspace-write -c "sandbox_workspace_write.network_access=$network_access")
+if [[ -n "$reasoning_effort" ]]; then codex_args+=(-c "model_reasoning_effort=\"$reasoning_effort\""); fi
 printf 'NETWORK_ACCESS=%s\n' "$network_access" > "$run_dir/network.txt"
 # Launch Codex in a dedicated process group (Bash job control also works on macOS Bash 3.2).
 # This lets the watchdog terminate child tools, not just the Codex parent.
@@ -228,7 +243,22 @@ if [[ -s "$run_dir/protected-violations.txt" ]]; then
   cat "$run_dir/protected-violations.txt" >&2
   exit_code=4
 fi
-printf 'CODEX_EXIT_CODE=%s\nFINAL_EXIT_CODE=%s\nHEAD_BEFORE=%s\n' "$codex_exit_code" "$exit_code" "$head_sha" > "$status"
+quick_check_exit=SKIPPED
+quick_log="$run_dir/quick-check.log"
+if (( exit_code == 124 || exit_code == 125 )); then
+  printf '%s\n' 'Quick check skipped: Codex timed out or left processes; tree state is not final.' > "$quick_log"
+elif [[ "${CODEX_QUICK_CHECK:-1}" != 0 ]]; then
+  if bash "$root/scripts/hooks/auto-verify.sh" --check-now > "$quick_log" 2>&1; then
+    quick_check_exit=0
+    if grep -Fq 'Quick check not configured; skipped.' "$quick_log"; then quick_check_exit=SKIPPED; fi
+  else
+    quick_check_exit=$?
+    if (( exit_code == 0 )); then exit_code=7; fi
+  fi
+else
+  printf '%s\n' 'Quick check disabled by CODEX_QUICK_CHECK=0.' > "$quick_log"
+fi
+printf 'CODEX_EXIT_CODE=%s\nQUICK_CHECK_EXIT=%s\nFINAL_EXIT_CODE=%s\nHEAD_BEFORE=%s\n' "$codex_exit_code" "$quick_check_exit" "$exit_code" "$head_sha" > "$status"
 
 # Deterministic, local-only memory checkpoint (best effort); never change the Codex verdict.
 if [[ -f "$root/scripts/workflow-memory.sh" ]]; then
@@ -236,7 +266,27 @@ if [[ -f "$root/scripts/workflow-memory.sh" ]]; then
     echo "WARNING: working-memory checkpoint failed; Codex result remains $exit_code." >&2
   fi
 fi
-printf 'Task: %s\nFinal exit code: %s\n' "$task_id" "$exit_code"
+printf 'Final exit code: %s\n' "$exit_code"
+printf 'Changed files:\n'
+summary_files="$run_dir/summary-files.txt"
+git diff --numstat HEAD | awk -F '\t' '{printf "  %s (+%s/-%s)\n", $3, $1, $2}' > "$summary_files"
+git ls-files --others --exclude-standard | sed 's/^/  /; s/$/ (new)/' >> "$summary_files"
+head -n 6 "$summary_files"
+file_count="$(wc -l < "$summary_files" | tr -d ' ')"
+if (( file_count > 6 )); then printf '  ... %s more\n' "$((file_count - 6))"; fi
+if [[ -s "$run_dir/protected-violations.txt" ]]; then
+  printf 'Protected violations:\n'
+  head -n 3 "$run_dir/protected-violations.txt" | sed 's/^/  /'
+fi
+printf 'Quick check: %s\n' "$quick_check_exit"
+if [[ "$quick_check_exit" != SKIPPED && "$quick_check_exit" != 0 ]]; then
+  tail -n 8 "$quick_log" | sed 's/^/  /'
+elif [[ -s "$quick_log" ]]; then
+  head -n 1 "$quick_log" | sed 's/^/  /'
+fi
+if [[ -f "$result" ]]; then
+  grep -E '^AC-|\| AC-' "$result" | head -n 3 || :
+fi
 printf 'Run folder: %s\n' "${run_dir#"$root/"}"
 if (( exit_code != 0 )); then echo 'Review ignored logs and diff; do not mark the task PASS.' >&2; fi
 exit "$exit_code"
