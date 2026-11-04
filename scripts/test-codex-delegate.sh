@@ -153,7 +153,7 @@ if bash scripts/codex-delegate.sh '../escape' >/dev/null 2>&1; then
 fi
 echo 'PASS: handoff precedence, legacy warning, approval, symlink and traversal dry-run checks'
 # Model tier is deterministic; no extra LLM call. HIGH risk has a minimum STANDARD tier.
-tier_id="TASK-MODEL-$"
+tier_id="TASK-MODEL-${id##*-}"
 tier="$handoffs/$tier_id.md"
 cat > "$tier" <<'TIER'
 ## Task ID
