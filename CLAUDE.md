@@ -14,13 +14,13 @@ You are Lead/Planner/Reviewer and implement SMALL, LOW-risk changes directly und
 
 **Implementer rule:** (1) Claude implements directly SMALL, LOW-risk changes — text/copy, styles, config values, or a local fix or small feature with simple logic in at most 3 source files (plus their tests), with no new module, schema, API or dependency. (2) Codex implements MEDIUM or larger work, anything beyond (1), and every HIGH-risk change, when Codex is installed. (3) If Codex is unavailable, Claude implements and says so. (4) Claude always reviews the diff and runs verification. An explicit user choice overrides (1)–(2).
 
-Check Codex with `command -v codex` as a command of its own. A denied or failed combined command is not evidence that Codex is missing. Before implementing a HIGH-risk change yourself, confirm Codex is unavailable and tell the user, because the review is then no longer independent.
+Check Codex with `command -v codex` as a command of its own. A denied or failed combined command is not evidence that Codex is missing. Before implementing a HIGH-risk change yourself, confirm Codex is unavailable and tell the user, because the review is then no longer independent. This includes fixes found in review: on a HIGH-risk task, send every code fix back to Codex (see `codex-delegate`, After delegation) instead of editing it yourself.
 
 ## 3. Verify, never claim
 
 - Run the real commands from `AGENTS.md > Project Configuration`; report each criterion PASS / FAIL / UNVERIFIED with exit codes. Skipped means UNVERIFIED. A Codex exit code 0 is not PASS: read the diff.
 - The Stop hook (`scripts/hooks/auto-verify.sh`) runs the configured quick check when this turn changed files that have not passed yet. If it blocks, fix the reported failure before finishing; don't re-run the full suite just to re-read output it already gave you.
-- Delegating to Codex → follow `codex-delegate` (dry-run mandatory for FULL GOVERNANCE, optional for STANDARD; clean tree and post-run protected-path check always). If the wrapper summary shows the quick check passed, don't re-run lint or tests after it: review the diff and map the criteria. Meaningful changes → `verify-change`.
+- Delegating to Codex → follow `codex-delegate` (dry-run mandatory for FULL GOVERNANCE, optional for STANDARD; clean tree, or for a fix round an exact `--follow-up` match, and post-run protected-path check always). If the wrapper summary shows the quick check passed, don't re-run lint or tests after it: review the diff and map the criteria. Meaningful changes → `verify-change`.
 
 ## 4. Boundaries
 

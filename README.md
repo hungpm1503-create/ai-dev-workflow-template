@@ -43,9 +43,10 @@ Reusable, stack-independent workflow for **Claude Lead → Codex CLI** with sele
   - a PreToolUse hook (`scripts/hooks/guard-protected-paths.sh`) **asks before** Claude's Edit/Write tools touch protected paths (`CLAUDE.md`, `AGENTS.md`, `.claude/settings.json`, `.claude/skills/`, `scripts/hooks/`, workflows, plus your `AGENTS.md` list). Paths are JSON-parsed and normalised (`..`, symlinks, case); unparseable input fails closed with a prompt. Bash commands get a **best-effort** check only.
   - `Read(...)` deny rules stop Claude's **Read tool** from opening `.env`/key files. They do not block other routes (Bash, scripts, other tools); keep real secrets out of the repo.
   - `git push`, `git reset --hard` and `rm -rf` always ask.
+  - `Edit(./.workflow/**)` lets Claude write handoffs and working memory in the ignored scratch folder without a prompt. To also let Claude start real Codex runs without asking, add `Bash(bash scripts/codex-delegate.sh:*)` to your own `.claude/settings.local.json`.
   - a **Stop hook** (`scripts/hooks/auto-verify.sh`) runs `AGENTS.md > Quick check command` when Claude finishes a turn that changed files which have not passed yet (a `UserPromptSubmit` hook records the turn's starting point, so question-only turns on an already dirty tree do nothing). On failure Claude is sent back with only the last 40 lines of output (up to 3 attempts, then you are told). It skips unchanged states and does nothing until you configure the command. Disable per shell with `AUTO_VERIFY_DISABLE=1`. The command runs automatically on your machine, so review changes to `AGENTS.md` (especially in pull requests) as carefully as code.
   - This is an intent-confirmation layer for Claude, **not a security sandbox**; writes by Codex, scripts or editors are not intercepted (Codex runs get the wrapper's post-run check instead).
-- `scripts/codex-delegate.sh`: clean-tree requirement, lock, timeout, per-run logs and a post-run protected-path check for Codex.
+- `scripts/codex-delegate.sh`: clean-tree requirement for first runs, exact-tree follow-ups, lock, timeout, per-run logs and a post-run protected-path check for Codex.
 - Verification contract everywhere: PASS / FAIL / UNVERIFIED with real commands and exit codes.
 
 ## Delegation
@@ -55,9 +56,10 @@ Create `.workflow/handoffs/TASK-LOGIN-001.md` from `docs/workflow/handoff-templa
 ```bash
 bash scripts/codex-delegate.sh --dry-run TASK-LOGIN-001
 bash scripts/codex-delegate.sh TASK-LOGIN-001
+bash scripts/codex-delegate.sh --follow-up TASK-LOGIN-001 TASK-LOGIN-FIX-001
 ```
 
-The second command invokes actual Codex via `codex exec --sandbox workspace-write`. The wrapper always passes `-c sandbox_workspace_write.network_access=false`, overriding `~/.codex/config.toml`; set `CODEX_NETWORK=1` only for a run that must install dependencies. It checks Git status and a worktree-wide lock, preserves the full prompt before invocation to avoid early-stdin SIGPIPE, records results/baselines under ignored `.workflow/handoffs/`, and detects changes to protected paths. It imposes a portable timeout (default 1800 seconds). It never commits, pushes, merges or deploys.
+The second and third commands invoke actual Codex via `codex exec --sandbox workspace-write`. A follow-up requires the same HEAD and complete worktree tree left by the newest parent run; it reports only the new fix in `diff.patch`, while protected-path checks remain cumulative. The wrapper always passes `-c sandbox_workspace_write.network_access=false`, overriding `~/.codex/config.toml`; set `CODEX_NETWORK=1` only for a run that must install dependencies. It checks Git status and a worktree-wide lock, preserves the full prompt before invocation to avoid early-stdin SIGPIPE, records results/baselines under ignored `.workflow/handoffs/`, and detects changes to protected paths. It imposes a portable timeout (default 1800 seconds). It never commits, pushes, merges or deploys.
 
 For existing projects, create `.workflow/` and move local scratch folders, for example `mv .claude/handoffs .workflow/handoffs`; do the same for `work-memory`, `experience-drafts` and `instinct-candidates` when present. Legacy handoffs and working-memory checkpoints still read with a deprecation warning.
 

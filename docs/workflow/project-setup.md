@@ -53,9 +53,10 @@ For an existing project, create `.workflow/` and move local scratch folders, for
 ```bash
 bash scripts/codex-delegate.sh --dry-run TASK-DEMO-001
 bash scripts/codex-delegate.sh TASK-DEMO-001
+bash scripts/codex-delegate.sh --follow-up TASK-DEMO-001 TASK-DEMO-FIX-001
 ```
 
-The second command calls a real model and can modify repo files. It refuses to run if Git status is dirty or a lock already exists. Use `CODEX_TIMEOUT_SECONDS=1800` to adjust the default 30-minute timeout. A stale lock from an interrupted process must be inspected and removed manually. Each run captures an ignored prompt, completion, log, git baseline and changed paths. A zero exit code is not acceptance.
+The second and third commands call a real model and can modify repo files. A first run refuses a dirty Git tree; a follow-up requires the same HEAD and complete worktree tree left by its newest parent run. Both refuse an existing lock. Use `CODEX_TIMEOUT_SECONDS=1800` to adjust the default 30-minute timeout. A stale lock from an interrupted process must be inspected and removed manually. Each run captures an ignored prompt, completion, log, git baseline and changed paths. A zero exit code is not acceptance.
 
 ## 5. Network and dependencies
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run one explicitly approved handoff. Requires a clean Git worktree.
+# Run one explicitly approved handoff. Normal runs require a clean Git worktree.
 # The whole script is one { ... } block so Bash parses it completely before running it:
 # a delegated task may legitimately edit this file, and Bash otherwise reads scripts
 # incrementally, which would corrupt the post-run protected-path check.
@@ -9,22 +9,92 @@ umask 077
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
-usage() { echo 'Usage: bash scripts/codex-delegate.sh [--dry-run] TASK-ID' >&2; }
+# Status and diff commands must not refresh the caller's real index on disk.
+export GIT_OPTIONAL_LOCKS=0
+usage() { echo 'Usage: bash scripts/codex-delegate.sh [--dry-run] [--follow-up PARENT-TASK-ID] TASK-ID' >&2; }
 
 dry_run=0
-if [[ "${1:-}" == '--dry-run' ]]; then dry_run=1; shift; fi
+follow_up_of=''
+while (( $# > 0 )); do
+  case "$1" in
+    --dry-run) dry_run=1; shift ;;
+    --follow-up)
+      if [[ -n "$follow_up_of" || $# -lt 2 ]]; then usage; exit 2; fi
+      follow_up_of="$2"; shift 2 ;;
+    *) break ;;
+  esac
+done
 if [[ $# -ne 1 ]]; then usage; exit 2; fi
 task_id="$1"
-if [[ ! "$task_id" =~ ^TASK-[A-Za-z0-9][A-Za-z0-9_-]*$ ]] || (( ${#task_id} > 72 )); then
-  echo 'ERROR: invalid task ID (expected TASK-[A-Za-z0-9_-], maximum 72 characters).' >&2
-  exit 2
-fi
+for id_to_check in "$task_id" "$follow_up_of"; do
+  [[ -n "$id_to_check" ]] || continue
+  if [[ ! "$id_to_check" =~ ^TASK-[A-Za-z0-9][A-Za-z0-9_-]*$ ]] || (( ${#id_to_check} > 72 )); then
+    echo 'ERROR: invalid task ID (expected TASK-[A-Za-z0-9_-], maximum 72 characters).' >&2
+    exit 2
+  fi
+done
 if ! repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || [[ "$repo_root" != "$root" ]]; then
   echo 'ERROR: script must run at the root of its own Git worktree.' >&2
   exit 2
 fi
 
 handoff_dir="$root/.workflow/handoffs"
+# Build a complete worktree tree in a disposable index. Git respects .gitignore;
+# the real index is read only and must not acquire staged entries or changed bytes.
+worktree_tree() {
+  local temp_index index_path tree
+  temp_index="$(mktemp "${TMPDIR:-/tmp}/codex-index.XXXXXX")"
+  index_path="$(git rev-parse --git-path index)"
+  if [[ -f "$index_path" ]]; then
+    cp "$index_path" "$temp_index"
+  else
+    rm -f "$temp_index"
+    GIT_INDEX_FILE="$temp_index" git read-tree --empty
+  fi
+  if ! GIT_INDEX_FILE="$temp_index" git add -A || ! tree="$(GIT_INDEX_FILE="$temp_index" git write-tree)"; then
+    rm -f "$temp_index"
+    return 1
+  fi
+  rm -f "$temp_index"
+  printf '%s\n' "$tree"
+}
+
+parent_tree=''
+parent_head=''
+if [[ -n "$follow_up_of" ]]; then
+  parent_run=''
+  while IFS= read -r candidate; do
+    if [[ -d "$candidate" && ! -L "$candidate" && -f "$candidate/status.txt" && -s "$candidate/tree-after.txt" ]]; then
+      parent_run="$candidate"
+      break
+    fi
+  done < <(ls -dt "$handoff_dir/$follow_up_of"-run.* 2>/dev/null || :)
+  if [[ -z "$parent_run" ]]; then
+    echo "ERROR: no completed parent run found for $follow_up_of." >&2
+    exit 2
+  fi
+  parent_head="$(sed -n 's/^HEAD_BEFORE=//p' "$parent_run/status.txt" | head -n 1)"
+  parent_tree="$(cat "$parent_run/tree-after.txt")"
+  if [[ -z "$parent_head" || ! "$parent_tree" =~ ^[0-9a-f]+$ ]] || ! git cat-file -e "$parent_tree^{tree}" 2>/dev/null; then
+    echo 'ERROR: parent run metadata is incomplete or invalid.' >&2
+    exit 2
+  fi
+fi
+
+check_follow_up() {
+  local current_head current_tree
+  current_head="$(git rev-parse HEAD)"
+  current_tree="$(worktree_tree)"
+  if [[ "$current_head" == "$parent_head" && "$current_tree" == "$parent_tree" ]]; then return 0; fi
+  echo 'ERROR: follow-up worktree or HEAD differs from the parent run.' >&2
+  if [[ "$current_head" != "$parent_head" ]]; then
+    printf '  HEAD: expected %s, found %s\n' "$parent_head" "$current_head" >&2
+  fi
+  git diff --name-only "$parent_tree" "$current_tree" | sed -n '1,10p' | sed 's/^/  /' >&2
+  if [[ -n "${status:-}" ]]; then printf 'RESULT=BLOCKED_FOLLOW_UP_MISMATCH\n' > "$status"; fi
+  return 6
+}
+
 handoff="$handoff_dir/$task_id.md"
 legacy_handoff="$root/.claude/handoffs/$task_id.md"
 if [[ ! -e "$handoff" && ! -L "$handoff" && -f "$legacy_handoff" ]]; then
@@ -58,11 +128,13 @@ case "$reasoning_effort" in
 esac
 
 if (( dry_run )); then
+  if [[ -n "$follow_up_of" ]]; then check_follow_up || exit $?; fi
   echo "DRY RUN: approved handoff ${handoff#"$root/"}"
+  if [[ -n "$follow_up_of" ]]; then echo "Follow-up of: $follow_up_of"; fi
   dry_network=false; if [[ "${CODEX_NETWORK:-0}" == 1 ]]; then dry_network=true; fi
   echo "Reasoning effort: ${reasoning_effort:-default}"
   echo "Would invoke: codex exec --sandbox workspace-write -c sandbox_workspace_write.network_access=$dry_network${reasoning_effort:+ -c model_reasoning_effort=\"$reasoning_effort\"} --output-last-message <run>/completion.md -"
-  echo 'No Codex invocation or file modification performed.'
+  echo 'No Codex invocation or worktree modification performed.'
   exit 0
 fi
 if ! command -v codex >/dev/null 2>&1; then
@@ -150,7 +222,9 @@ head_sha="$(git rev-parse HEAD)"
 printf '%s\n' "$head_sha" > "$run_dir/head-before.txt"
 printf '%s\n' "${reasoning_effort:-default}" > "$run_dir/effort.txt"
 git status --porcelain=v1 --untracked-files=all > "$before"
-if [[ -s "$before" ]]; then
+if [[ -n "$follow_up_of" ]]; then
+  check_follow_up || exit $?
+elif [[ -s "$before" ]]; then
   echo 'ERROR: working tree is dirty. Commit, safely stash, or isolate your changes before delegating; no changes were made.' >&2
   head -n 10 "$before" | sed 's/^/  /' >&2
   printf 'RESULT=BLOCKED_DIRTY_WORKTREE\n' > "$status"
@@ -176,6 +250,9 @@ fi
     printf '\n%s\n' '--- BEGIN CODEX RULES ---'
     cat "$root/docs/workflow/codex-rules.md"
     printf '\n%s\n' '--- END CODEX RULES ---'
+  fi
+  if [[ -n "$follow_up_of" ]]; then
+    printf '\n%s\n' "The tree already contains this task's approved earlier changes; build on them; do not revert or restyle them."
   fi
   printf '\n%s\n' '--- BEGIN APPROVED HANDOFF ---'
   cat "$handoff"
@@ -225,7 +302,21 @@ fi
 
 git status --porcelain=v1 --untracked-files=all > "$run_dir/status-after.txt"
 { git diff --name-only HEAD; git ls-files --others --exclude-standard; } | sort -u > "$run_dir/changed-paths.txt"
-git diff HEAD > "$run_dir/diff.patch" 2>/dev/null || :
+snapshot_failed=0
+if (( exit_code != 124 && exit_code != 125 )); then
+  if ! worktree_tree > "$run_dir/tree-after.txt"; then
+    rm -f "$run_dir/tree-after.txt"
+    echo 'WARNING: post-run tree snapshot failed; follow-up unavailable; continuing post-run checks.' >&2
+    snapshot_failed=1
+  fi
+fi
+if [[ -n "$follow_up_of" && -f "$run_dir/tree-after.txt" ]]; then
+  tree_after="$(cat "$run_dir/tree-after.txt")"
+  git diff --name-only "$parent_tree" "$tree_after" > "$run_dir/delta-paths.txt"
+  git diff "$parent_tree" "$tree_after" > "$run_dir/diff.patch"
+else
+  git diff HEAD > "$run_dir/diff.patch" 2>/dev/null || :
+fi
 : > "$run_dir/protected-violations.txt"
 while IFS= read -r changed; do
   [[ -n "$changed" ]] || continue
@@ -260,7 +351,15 @@ elif [[ "${CODEX_QUICK_CHECK:-1}" != 0 ]]; then
 else
   printf '%s\n' 'Quick check disabled by CODEX_QUICK_CHECK=0.' > "$quick_log"
 fi
+if (( snapshot_failed && exit_code == 0 )); then
+  echo 'ERROR: post-run tree snapshot unavailable; returning exit 1.' >&2
+  exit_code=1
+fi
 printf 'CODEX_EXIT_CODE=%s\nQUICK_CHECK_EXIT=%s\nFINAL_EXIT_CODE=%s\nHEAD_BEFORE=%s\n' "$codex_exit_code" "$quick_check_exit" "$exit_code" "$head_sha" > "$status"
+if (( snapshot_failed )); then printf 'TREE_AFTER=UNAVAILABLE\n' >> "$status"; fi
+if [[ -n "$follow_up_of" ]]; then
+  printf 'FOLLOW_UP_OF=%s\nTREE_BEFORE=%s\n' "$follow_up_of" "$parent_tree" >> "$status"
+fi
 
 # Deterministic, local-only memory checkpoint (best effort); never change the Codex verdict.
 if [[ -f "$root/scripts/workflow-memory.sh" ]]; then
@@ -269,10 +368,15 @@ if [[ -f "$root/scripts/workflow-memory.sh" ]]; then
   fi
 fi
 printf 'Final exit code: %s\n' "$exit_code"
+if [[ -n "$follow_up_of" ]]; then printf 'Follow-up of: %s\n' "$follow_up_of"; fi
 printf 'Changed files:\n'
 summary_files="$run_dir/summary-files.txt"
-git diff --numstat HEAD | awk -F '\t' '{printf "  %s (+%s/-%s)\n", $3, $1, $2}' > "$summary_files"
-git ls-files --others --exclude-standard | sed 's/^/  /; s/$/ (new)/' >> "$summary_files"
+if [[ -n "$follow_up_of" && -f "$run_dir/tree-after.txt" ]]; then
+  git diff --numstat "$parent_tree" "$tree_after" | awk -F '\t' '{printf "  %s (+%s/-%s)\n", $3, $1, $2}' > "$summary_files"
+else
+  git diff --numstat HEAD | awk -F '\t' '{printf "  %s (+%s/-%s)\n", $3, $1, $2}' > "$summary_files"
+  git ls-files --others --exclude-standard | sed 's/^/  /; s/$/ (new)/' >> "$summary_files"
+fi
 head -n 6 "$summary_files"
 file_count="$(wc -l < "$summary_files" | tr -d ' ')"
 if (( file_count > 6 )); then printf '  ... %s more\n' "$((file_count - 6))"; fi

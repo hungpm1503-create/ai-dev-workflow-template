@@ -43,6 +43,10 @@ fi
 if [[ -n "${FAKE_CHANGED_PATH:-}" ]]; then
   printf 'new line\n' > "$FAKE_CHANGED_PATH"
 fi
+if [[ -n "${FAKE_UNREADABLE_PATH:-}" ]]; then
+  printf 'unreadable\n' > "$FAKE_UNREADABLE_PATH"
+  chmod 000 "$FAKE_UNREADABLE_PATH"
+fi
 if [[ "${FAKE_STUBBORN_CHILD:-0}" == 1 ]]; then
   # A child survives TERM unless the watchdog escalates to KILL against the group.
   bash -c 'trap "" TERM; while :; do sleep 0.3; done' &
@@ -201,6 +205,8 @@ wait "$background_pid"
 if CODEX_TIMEOUT_SECONDS=1 FAKE_SLEEP=6 bash scripts/codex-delegate.sh "$id" > "$tmp/timed-out.txt" 2>&1; then
   echo 'FAIL: time limit not enforced' >&2; exit 1
 else [[ $? == 124 ]] || { echo 'FAIL: timeout exit code not 124' >&2; exit 1; }; fi
+timeout_run="$(ls -dt "$handoffs/$id"-run.* | head -n 1)"
+[[ ! -e "$timeout_run/tree-after.txt" ]] || { echo 'FAIL: timed-out run recorded an unfinished tree' >&2; exit 1; }
 
 # Repeat timeout with TERM-resistant descendants: kill -0 may still see zombies.
 # Exit must be 124, and a clean shutdown must not strand the delegation lock.
@@ -261,6 +267,127 @@ if (cd "$quick" && QUICK_FAIL=1 FAKE_PROTECTED_PATH="$quick/CLAUDE.md" bash scri
   echo 'FAIL: protected change accepted with quick-check failure' >&2; exit 1
 else [[ $? == 4 ]] || { echo 'FAIL: protected exit did not take precedence over quick check' >&2; exit 1; }; fi
 rm -f "$quick/CLAUDE.md"
+
+# A failed post-run tree snapshot must not bypass protected-path review or status.
+snapshot_protected_id="TASK-SNAPSHOT-PROTECTED-$$"
+snapshot_plain_id="TASK-SNAPSHOT-PLAIN-$$"
+cp "$handoff" "$quick/.workflow/handoffs/$snapshot_protected_id.md"
+cp "$handoff" "$quick/.workflow/handoffs/$snapshot_plain_id.md"
+if (cd "$quick" && FAKE_UNREADABLE_PATH=unreadable.txt FAKE_PROTECTED_PATH="$quick/CLAUDE.md" bash scripts/codex-delegate.sh "$snapshot_protected_id") > "$tmp/snapshot-protected.txt" 2>&1; then
+  echo 'FAIL: protected change accepted after snapshot failure' >&2; exit 1
+else [[ $? == 4 ]] || { echo 'FAIL: snapshot failure bypassed protected-path exit 4' >&2; exit 1; }; fi
+snapshot_protected_run="$(ls -dt "$quick/.workflow/handoffs/$snapshot_protected_id"-run.* | head -n 1)"
+chmod 600 "$quick/unreadable.txt"
+[[ -f "$snapshot_protected_run/status.txt" ]] || { echo 'FAIL: snapshot failure omitted status' >&2; exit 1; }
+grep -qx 'CLAUDE.md' "$snapshot_protected_run/protected-violations.txt" || { echo 'FAIL: snapshot failure bypassed protected-path report' >&2; exit 1; }
+[[ ! -e "$snapshot_protected_run/tree-after.txt" ]] || { echo 'FAIL: failed snapshot left tree-after.txt' >&2; exit 1; }
+grep -qx 'TREE_AFTER=UNAVAILABLE' "$snapshot_protected_run/status.txt" || { echo 'FAIL: protected snapshot failure status missing' >&2; exit 1; }
+grep -qx 'QUICK_CHECK_EXIT=0' "$snapshot_protected_run/status.txt" || { echo 'FAIL: quick check skipped after protected snapshot failure' >&2; exit 1; }
+grep -q 'Final exit code: 4' "$tmp/snapshot-protected.txt" || { echo 'FAIL: protected snapshot failure omitted summary' >&2; exit 1; }
+rm -f "$quick/CLAUDE.md" "$quick/unreadable.txt"
+
+if (cd "$quick" && FAKE_UNREADABLE_PATH=unreadable.txt bash scripts/codex-delegate.sh "$snapshot_plain_id") > "$tmp/snapshot-plain.txt" 2>&1; then
+  echo 'FAIL: snapshot failure returned success' >&2; exit 1
+else [[ $? == 1 ]] || { echo 'FAIL: snapshot failure did not return exit 1' >&2; exit 1; }; fi
+snapshot_plain_run="$(ls -dt "$quick/.workflow/handoffs/$snapshot_plain_id"-run.* | head -n 1)"
+chmod 600 "$quick/unreadable.txt"
+grep -q '^WARNING:.*snapshot' "$tmp/snapshot-plain.txt" || { echo 'FAIL: snapshot warning missing' >&2; exit 1; }
+grep -qx 'TREE_AFTER=UNAVAILABLE' "$snapshot_plain_run/status.txt" || { echo 'FAIL: snapshot availability status missing' >&2; exit 1; }
+grep -qx 'FINAL_EXIT_CODE=1' "$snapshot_plain_run/status.txt" || { echo 'FAIL: snapshot failure final status missing' >&2; exit 1; }
+grep -qx 'QUICK_CHECK_EXIT=0' "$snapshot_plain_run/status.txt" || { echo 'FAIL: quick check skipped after snapshot failure' >&2; exit 1; }
+[[ ! -e "$snapshot_plain_run/tree-after.txt" ]] || { echo 'FAIL: failed snapshot left tree-after.txt' >&2; exit 1; }
+grep -q 'Final exit code: 1' "$tmp/snapshot-plain.txt" || { echo 'FAIL: snapshot failure omitted summary' >&2; exit 1; }
+rm -f "$quick/unreadable.txt"
+if (cd "$quick" && bash scripts/codex-delegate.sh --follow-up "$snapshot_plain_id" "$snapshot_protected_id") > "$tmp/snapshot-follow.txt" 2>&1; then
+  echo 'FAIL: follow-up accepted a parent with no snapshot' >&2; exit 1
+else [[ $? == 2 ]] || { echo 'FAIL: follow-up without parent snapshot exit code' >&2; exit 1; }; fi
+echo 'PASS: failed tree snapshot preserves protected review, quick check, status, warning and nonzero exit'
+
+# Follow-ups accept only the exact worktree left by the newest parent run.
+parent_id="TASK-FOLLOW-PARENT-$$"
+fix_id="TASK-FOLLOW-FIX-$$"
+cp "$handoff" "$quick/.workflow/handoffs/$parent_id.md"
+cp "$handoff" "$quick/.workflow/handoffs/$fix_id.md"
+cp "$quick/.git/index" "$tmp/index-before"
+(cd "$quick" && CODEX_QUICK_CHECK=0 FAKE_CHANGED_PATH=tracked.txt bash scripts/codex-delegate.sh "$parent_id") > "$tmp/follow-parent.txt"
+parent_run="$(ls -dt "$quick/.workflow/handoffs/$parent_id"-run.* | head -n 1)"
+[[ -s "$parent_run/tree-after.txt" ]] || { echo 'FAIL: parent tree snapshot missing' >&2; exit 1; }
+cmp -s "$tmp/index-before" "$quick/.git/index" || { echo 'FAIL: real Git index changed' >&2; exit 1; }
+mkdir "$quick/.workflow/handoffs/$parent_id-run.incomplete"
+printf 'HEAD_BEFORE=ignored\n' > "$quick/.workflow/handoffs/$parent_id-run.incomplete/status.txt"
+
+invocations_before="$(wc -l < "$FAKE_INVOKED" | tr -d ' ')"
+printf 'intruder\n' > "$quick/tracked.txt"
+if (cd "$quick" && CODEX_QUICK_CHECK=0 bash scripts/codex-delegate.sh --dry-run --follow-up "$parent_id" "$fix_id") > "$tmp/follow-dry-mismatch.txt" 2>&1; then
+  echo 'FAIL: dry-run accepted an intervening tracked edit' >&2; exit 1
+else [[ $? == 6 ]] || { echo 'FAIL: dry-run mismatch exit code' >&2; exit 1; }; fi
+if (cd "$quick" && CODEX_QUICK_CHECK=0 bash scripts/codex-delegate.sh --follow-up "$parent_id" "$fix_id") > "$tmp/follow-tracked.txt" 2>&1; then
+  echo 'FAIL: follow-up accepted an intervening tracked edit' >&2; exit 1
+else [[ $? == 6 ]] || { echo 'FAIL: tracked mismatch exit code' >&2; exit 1; }; fi
+grep -q 'tracked.txt' "$tmp/follow-tracked.txt" || { echo 'FAIL: tracked mismatch path omitted' >&2; exit 1; }
+printf 'new line\n' > "$quick/tracked.txt"
+printf 'intruder\n' > "$quick/intruder.txt"
+if (cd "$quick" && CODEX_QUICK_CHECK=0 bash scripts/codex-delegate.sh --follow-up "$parent_id" "$fix_id") > "$tmp/follow-untracked.txt" 2>&1; then
+  echo 'FAIL: follow-up accepted an intervening untracked file' >&2; exit 1
+else [[ $? == 6 ]] || { echo 'FAIL: untracked mismatch exit code' >&2; exit 1; }; fi
+grep -q 'intruder.txt' "$tmp/follow-untracked.txt" || { echo 'FAIL: untracked mismatch path omitted' >&2; exit 1; }
+rm -f "$quick/intruder.txt"
+(cd "$quick" && git -c user.name=t -c user.email=t@example.invalid commit -q --allow-empty -m intervening)
+if (cd "$quick" && CODEX_QUICK_CHECK=0 bash scripts/codex-delegate.sh --follow-up "$parent_id" "$fix_id") > "$tmp/follow-head.txt" 2>&1; then
+  echo 'FAIL: follow-up accepted a HEAD change' >&2; exit 1
+else [[ $? == 6 ]] || { echo 'FAIL: HEAD mismatch exit code' >&2; exit 1; }; fi
+(cd "$quick" && git reset -q --soft HEAD^)
+[[ "$(wc -l < "$FAKE_INVOKED" | tr -d ' ')" == "$invocations_before" ]] || { echo 'FAIL: mismatch invoked Codex' >&2; exit 1; }
+grep -q '^RESULT=BLOCKED_FOLLOW_UP_MISMATCH$' "$quick"/.workflow/handoffs/"$fix_id"-run.*/status.txt || { echo 'FAIL: mismatch status missing' >&2; exit 1; }
+
+if (cd "$quick" && CODEX_QUICK_CHECK=0 bash scripts/codex-delegate.sh --follow-up TASK-UNKNOWN "$fix_id") > "$tmp/follow-unknown.txt" 2>&1; then
+  echo 'FAIL: unknown follow-up parent accepted' >&2; exit 1
+else [[ $? == 2 ]] || { echo 'FAIL: unknown parent exit code' >&2; exit 1; }; fi
+if (cd "$quick" && CODEX_QUICK_CHECK=0 bash scripts/codex-delegate.sh --follow-up ../escape "$fix_id") > /dev/null 2>&1; then
+  echo 'FAIL: invalid follow-up parent accepted' >&2; exit 1
+else [[ $? == 2 ]] || { echo 'FAIL: invalid parent exit code' >&2; exit 1; }; fi
+(cd "$quick" && CODEX_QUICK_CHECK=0 bash scripts/codex-delegate.sh --dry-run --follow-up "$parent_id" "$fix_id") > "$tmp/follow-dry.txt"
+grep -q "Follow-up of: $parent_id" "$tmp/follow-dry.txt" || { echo 'FAIL: dry-run follow-up not reported' >&2; exit 1; }
+(cd "$quick" && CODEX_QUICK_CHECK=0 bash scripts/codex-delegate.sh --follow-up "$parent_id" --dry-run "$fix_id") > "$tmp/follow-dry-reverse.txt"
+grep -q "Follow-up of: $parent_id" "$tmp/follow-dry-reverse.txt" || { echo 'FAIL: reverse flag order not accepted' >&2; exit 1; }
+if (cd "$quick" && CODEX_QUICK_CHECK=0 FAKE_CHANGED_PATH=work.txt FAKE_UNREADABLE_PATH=unreadable.txt bash scripts/codex-delegate.sh --follow-up "$parent_id" "$fix_id") > "$tmp/follow-snapshot-fail.txt" 2>&1; then
+  echo 'FAIL: follow-up snapshot failure accepted' >&2; exit 1
+else [[ $? == 1 ]] || { echo 'FAIL: follow-up snapshot failure exit code' >&2; exit 1; }; fi
+follow_snapshot_run="$(ls -dt "$quick/.workflow/handoffs/$fix_id"-run.* | head -n 1)"
+chmod 600 "$quick/unreadable.txt"
+grep -qx 'TREE_AFTER=UNAVAILABLE' "$follow_snapshot_run/status.txt" || { echo 'FAIL: follow-up snapshot failure status missing' >&2; exit 1; }
+grep -q 'tracked.txt' "$follow_snapshot_run/diff.patch" || { echo 'FAIL: follow-up snapshot failure omitted cumulative diff' >&2; exit 1; }
+grep -q 'tracked.txt' "$tmp/follow-snapshot-fail.txt" || { echo 'FAIL: follow-up snapshot failure omitted cumulative summary' >&2; exit 1; }
+[[ ! -e "$follow_snapshot_run/delta-paths.txt" ]] || { echo 'FAIL: follow-up snapshot failure wrote delta paths' >&2; exit 1; }
+rm -f "$quick/work.txt" "$quick/unreadable.txt"
+(cd "$quick" && CODEX_QUICK_CHECK=0 FAKE_CHANGED_PATH=work.txt bash scripts/codex-delegate.sh --follow-up "$parent_id" "$fix_id") > "$tmp/follow-pass.txt"
+fix_run="$(ls -dt "$quick/.workflow/handoffs/$fix_id"-run.* | head -n 1)"
+grep -q 'work.txt' "$fix_run/diff.patch" || { echo 'FAIL: follow-up diff omitted fix' >&2; exit 1; }
+! grep -q 'tracked.txt' "$fix_run/diff.patch" || { echo 'FAIL: follow-up diff includes earlier change' >&2; exit 1; }
+grep -qx 'work.txt' "$fix_run/delta-paths.txt" || { echo 'FAIL: fix delta path missing' >&2; exit 1; }
+[[ "$(wc -l < "$fix_run/delta-paths.txt" | tr -d ' ')" == 1 ]] || { echo 'FAIL: delta includes earlier change' >&2; exit 1; }
+grep -qx 'tracked.txt' "$fix_run/changed-paths.txt" || { echo 'FAIL: cumulative tracked path missing' >&2; exit 1; }
+grep -qx 'work.txt' "$fix_run/changed-paths.txt" || { echo 'FAIL: cumulative new path missing' >&2; exit 1; }
+grep -q 'work.txt (+1/-0)' "$tmp/follow-pass.txt" || { echo 'FAIL: summary omitted fix' >&2; exit 1; }
+! grep -q 'tracked.txt' "$tmp/follow-pass.txt" || { echo 'FAIL: summary includes earlier change' >&2; exit 1; }
+grep -q 'earlier changes' "$FAKE_PROMPT_FILE" || { echo 'FAIL: follow-up prompt guidance missing' >&2; exit 1; }
+grep -q "^FOLLOW_UP_OF=$parent_id$" "$fix_run/status.txt" || { echo 'FAIL: follow-up status missing parent' >&2; exit 1; }
+grep -q '^TREE_BEFORE=' "$fix_run/status.txt" || { echo 'FAIL: follow-up status missing tree' >&2; exit 1; }
+cmp -s "$tmp/index-before" "$quick/.git/index" || { echo 'FAIL: real Git index changed after follow-up' >&2; exit 1; }
+rm -f "$quick/work.txt"
+printf 'old line\n' > "$quick/tracked.txt"
+
+# A protected change from round one remains a violation in round two.
+protected_id="TASK-FOLLOW-PROTECTED-$$"
+cp "$handoff" "$quick/.workflow/handoffs/$protected_id.md"
+if (cd "$quick" && CODEX_QUICK_CHECK=0 FAKE_PROTECTED_PATH="$quick/CLAUDE.md" bash scripts/codex-delegate.sh "$protected_id") > "$tmp/follow-protected-parent.txt" 2>&1; then
+  echo 'FAIL: protected parent accepted' >&2; exit 1
+else [[ $? == 4 ]] || { echo 'FAIL: protected parent exit code' >&2; exit 1; }; fi
+if (cd "$quick" && CODEX_QUICK_CHECK=0 FAKE_CHANGED_PATH=work.txt bash scripts/codex-delegate.sh --follow-up "$protected_id" "$fix_id") > "$tmp/follow-protected-fix.txt" 2>&1; then
+  echo 'FAIL: protected follow-up accepted' >&2; exit 1
+else [[ $? == 4 ]] || { echo 'FAIL: protected follow-up exit code' >&2; exit 1; }; fi
+rm -f "$quick/CLAUDE.md" "$quick/work.txt"
+echo 'PASS: follow-up tree continuity, delta review, cumulative protection and index isolation'
 
 # A task that edits the wrapper itself while it runs must not corrupt the post-run checks
 # (Bash reads scripts incrementally). Isolated copy: the real wrapper is never modified.

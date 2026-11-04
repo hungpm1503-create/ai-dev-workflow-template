@@ -41,6 +41,9 @@ need 'CLAUDE.md' 'prefer **Superpowers**' 'Claude cannot choose Superpowers'
 need 'CLAUDE.md' 'prefer **Spec Kit**' 'Claude cannot choose Spec Kit'
 need 'CLAUDE.md' 'FULL GOVERNANCE' 'Claude High-risk override missing'
 need 'docs/workflow/codex-rules.md' 'Codex must not redo planning' 'Codex ownership missing'
+need '.claude/skills/codex-delegate/SKILL.md' '**HIGH-risk task: Claude never edits the code itself, however small the fix.**' 'HIGH-risk review fixes must go back to Codex'
+need '.claude/skills/codex-delegate/SKILL.md' 'bash scripts/codex-delegate.sh --follow-up' 'fix rounds must use --follow-up'
+need 'CLAUDE.md' 'send every code fix back to Codex' 'CLAUDE.md must route HIGH-risk review fixes to Codex'
 need 'docs/workflow/handoff-template.md' '- Traceability: LOW / HIGH' 'handoff traceability missing'
 # The inline FULL GOVERNANCE skeleton in the skill must not drop a section of the full form.
 full_sections="$(sed -n '/^## Full form/,$p' docs/workflow/handoff-template.md | grep '^## ' | grep -v '^## Full form' | sed 's/ (keep concise)//' | sort -u)"
