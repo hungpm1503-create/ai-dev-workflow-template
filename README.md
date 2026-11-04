@@ -51,6 +51,12 @@ Reusable, stack-independent workflow for **Claude Lead → Codex CLI** with sele
 - The tree snapshot hashes untracked files into the local `.git/objects` (unreferenced, never pushed, pruned by `git gc`). Keep sensitive files in `.gitignore`.
 - Verification contract everywhere: PASS / FAIL / UNVERIFIED with real commands and exit codes.
 
+## Model routing and fewer confirmation prompts
+
+Implementation difficulty is **EASY / STANDARD / HARD**, independent of governance risk, complexity and traceability. Claude sets `- Codex difficulty: TIER` in `## Route` before delegation; no separate classifier agent or API call. The wrapper selects EASY `gpt-6-luna` / medium effort, STANDARD `gpt-6-sol` / medium, HARD `gpt-6-sol` / high. Customize via `CODEX_MODEL_EASY`, `CODEX_MODEL_STANDARD`, `CODEX_MODEL_HARD`, `CODEX_MODEL`, and `CODEX_REASONING_EFFORT` only after checking which model IDs the local Codex account supports. The wrapper logs the effective choice. HIGH-risk tasks cannot select EASY.
+
+Claude Code's project permissions use `acceptEdits` by default, retaining protected-path PreToolUse checks. The narrow `Bash(bash scripts/codex-standard.sh:*)` permission avoids repeated tool prompts for **LOW-risk + LOW-traceability** initial Codex delegations, forcing network off and Quick check on. Higher-risk delegations, protected path edits, push, deployment, destructive operations and material architecture/financial decisions still require approval. Do **not** add a broad `Bash(bash scripts/codex-delegate.sh:*)` auto-allow: it would apply to HIGH-risk tasks too. Consent for a task's scope is not authorization for every possible change. Use `/permissions` to inspect or customize your local rules. 
+
 ## Delegation
 
 Create `.workflow/handoffs/TASK-LOGIN-001.md` from `docs/workflow/handoff-template.md`. After genuine scope approval, put the exact `Status: APPROVED` under `## Approval status`. The marker is not proof of who approved the task.
