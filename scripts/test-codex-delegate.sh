@@ -150,7 +150,7 @@ if bash scripts/codex-delegate.sh '../escape' >/dev/null 2>&1; then
 fi
 echo 'PASS: handoff precedence, legacy warning, approval, symlink and traversal dry-run checks'
 # A privileged low-risk entrypoint may never run HIGH-risk work.
-gate_id="TASK-GATE-$"
+gate_id="TASK-GATE-$$"
 gate="$handoffs/$gate_id.md"
 cat > "$gate" <<'GATE'
 ## Task ID
@@ -271,7 +271,7 @@ CHECK
 (cd "$quick" && git init -q && git config core.trustctime false && git add -A && git -c user.name=t -c user.email=t@example.invalid commit -q -m fixture)
 export QUICK_COUNT="$tmp/quick-count"
 # Check the real LOW-risk runner inside the isolated fixture, not the host app.
-standard_id="TASK-STANDARD-$"
+standard_id="TASK-STANDARD-$$"
 cat > "$quick/.workflow/handoffs/$standard_id.md" <<'STANDARD'
 ## Task ID
 TASK-STANDARD
