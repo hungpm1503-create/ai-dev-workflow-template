@@ -16,6 +16,7 @@ Use this form for STANDARD governance (about 30 lines maximum). FULL GOVERNANCE 
 TASK-<unique>
 ## Route
 Complexity: SMALL/MEDIUM/LARGE; risk: LOW; traceability: LOW/HIGH; plan: NONE/CLAUDE/SUPERPOWERS/SPEC KIT (reference: <path>)
+- Codex difficulty: EASY / STANDARD / HARD (independent of risk; deterministic model/effort routing)
 ## Objective
 <one observable result>
 ## Approval status
@@ -41,6 +42,7 @@ TASK-<unique>
 - Traceability: LOW / HIGH
 - Selected planning path: NONE / CLAUDE / SUPERPOWERS / SPEC KIT
 - Governance: STANDARD / FULL GOVERNANCE (HIGH risk overrides size)
+- Codex difficulty: EASY / STANDARD / HARD (HIGH risk minimum STANDARD)
 - Single canonical source: [approved path or concise in-handoff plan]
 - Required independent reviews and human approval evidence: [actual records or PENDING; never infer authorization]
 
