@@ -152,6 +152,7 @@ printf '%s\n' "${reasoning_effort:-default}" > "$run_dir/effort.txt"
 git status --porcelain=v1 --untracked-files=all > "$before"
 if [[ -s "$before" ]]; then
   echo 'ERROR: working tree is dirty. Commit, safely stash, or isolate your changes before delegating; no changes were made.' >&2
+  head -n 10 "$before" | sed 's/^/  /' >&2
   printf 'RESULT=BLOCKED_DIRTY_WORKTREE\n' > "$status"
   exit 6
 fi
@@ -224,6 +225,7 @@ fi
 
 git status --porcelain=v1 --untracked-files=all > "$run_dir/status-after.txt"
 { git diff --name-only HEAD; git ls-files --others --exclude-standard; } | sort -u > "$run_dir/changed-paths.txt"
+git diff HEAD > "$run_dir/diff.patch" 2>/dev/null || :
 : > "$run_dir/protected-violations.txt"
 while IFS= read -r changed; do
   [[ -n "$changed" ]] || continue
@@ -278,11 +280,12 @@ if [[ -s "$run_dir/protected-violations.txt" ]]; then
   printf 'Protected violations:\n'
   head -n 3 "$run_dir/protected-violations.txt" | sed 's/^/  /'
 fi
+printf 'Diff for review (one read): %s (%s lines)\n' "${run_dir#"$root/"}/diff.patch" "$(wc -l < "$run_dir/diff.patch" | tr -d ' ')"
 printf 'Quick check: %s\n' "$quick_check_exit"
 if [[ "$quick_check_exit" != SKIPPED && "$quick_check_exit" != 0 ]]; then
   tail -n 8 "$quick_log" | sed 's/^/  /'
 elif [[ -s "$quick_log" ]]; then
-  head -n 1 "$quick_log" | sed 's/^/  /'
+  head -n 4 "$quick_log" | sed 's/^/  /'
 fi
 if [[ -f "$result" ]]; then
   grep -E '^AC-|\| AC-' "$result" | head -n 3 || :

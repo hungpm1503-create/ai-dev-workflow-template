@@ -13,7 +13,7 @@ description: Delegate an approved task to Codex CLI using a unique ignored hando
 
 1. Verify `codex` is installed and authenticated, and this Git repository has a clean worktree.
 2. Confirm scope is approved. Material architecture, security, costs and irreversible operations still require explicit user approval.
-3. Review the one canonical plan proportionately when needed; for ANY/HIGH, ensure required independent project review and human approval gates without duplicated reviews. For HIGH risk, send the user a plan of at most about 10 lines plus the approval question first; write the handoff only after approval. Use `docs/workflow/handoff-template.md`. Write `.workflow/handoffs/TASK-ID.md` with **## Approval status** and exact **Status: APPROVED**, only after appropriate approval. This text is not cryptographic authorization.
+3. Review the one canonical plan proportionately when needed; for ANY/HIGH, ensure required independent project review and human approval gates without duplicated reviews. For HIGH risk, send the user a plan of at most about 10 lines plus the approval question first; write the handoff only after approval. Use the skeleton below. Do not open `docs/workflow/handoff-template.md` when this skeleton covers the route; open it only for FULL GOVERNANCE. Write `.workflow/handoffs/TASK-ID.md` with **## Approval status** and exact **Status: APPROVED**, only after appropriate approval. This text is not cryptographic authorization.
 4. Verify `AGENTS.md > Protected paths` is configured for this project, if applicable.
 5. Dry run: mandatory for FULL GOVERNANCE, optional for STANDARD: `bash scripts/codex-delegate.sh --dry-run TASK-ID` (no model invocation). The real run performs the same pre-invocation validation.
 6. Execute only when permitted: `bash scripts/codex-delegate.sh TASK-ID`.
@@ -33,12 +33,63 @@ Never auto-commit, push, merge or deploy. Never claim unrun tests passed.
 2. Distinguish verified facts, assumptions and unknowns; raise consequential ambiguity or simpler viable approaches before approval.
 3. Define scope, exclusions, constraints, observable acceptance criteria and proportionate verification evidence. Apply the Simplicity Ladder when shaping the handoff: is the work needed, can existing project code or patterns solve it, then standard library/native platform, then an installed dependency, then an obvious one-line solution, and only then minimum new code. Choose the first option that fully meets the criteria.
 4. Require a minimal complete change: include affected callers, tests, fixtures, configuration and exports; preserve necessary validation, error handling, security and accessibility. Apply only the selected route's required planning/review; escalate HIGH-risk or unresolved critical blockers before delegation.
-5. Reuse `docs/workflow/handoff-template.md`, referencing the one approved Claude, Superpowers or Spec Kit planning source rather than copying it.
+5. Reference the one approved Claude, Superpowers or Spec Kit planning source rather than copying it.
+
+**Handoff skeleton** (write this directly; do not re-read the template for every task):
+
+```markdown
+## Task ID
+TASK-<id>
+## Route
+- Complexity: SMALL / MEDIUM / LARGE
+- Governance risk: LOW / HIGH
+- Selected planning path: NONE / CLAUDE / SUPERPOWERS / SPEC KIT
+- Governance: STANDARD / FULL GOVERNANCE
+## Objective
+<one observable result>
+## Approval status
+Status: APPROVED
+## Files
+- read: <exact paths>
+- change: <exact paths>
+- callers/consumers of every changed function or type (e.g. import, export or quote paths that pass the value through): <exact paths>
+## Acceptance criteria and verification
+| ID | Outcome | Command |
+| --- | --- | --- |
+| AC-01 | <outcome> | <command> |
+## Constraints
+- Out of scope: <list>
+```
+
+**FULL GOVERNANCE additions** (same sections as the full form in `docs/workflow/handoff-template.md`; write them from here instead of re-reading the template, and open the template only if a section's meaning is unclear):
+
+```markdown
+## Route (add to the lines above)
+- Traceability: LOW / HIGH
+- Single canonical source: <approved plan path or concise in-handoff plan>
+- Required independent reviews and human approval evidence: <actual records or PENDING; never infer authorization>
+## Verified context
+<paths, symbols, project docs; label assumptions>
+## Scope
+- In scope: <modules/outcomes>
+- Out of scope: <exclusions>
+- Constraints: <architecture/security/backward compatibility>
+## Implementation steps
+1. <actionable step>
+## Verification commands
+<commands verified against the project, or UNVERIFIED>
+## Escalation triggers
+<missing requirements, unexpected scope, architectural/security changes, data loss>
+## Completion contract
+Codex reports changed files, each criterion PASS/FAIL/UNVERIFIED, commands with exit codes, failure excerpts and remaining risk. A zero CLI exit code does not prove the task passed.
+```
+
+Approval status stays `PENDING` until the human approves; only then set exactly `Status: APPROVED`. Money, auth and data-flow changes must list every caller path in `## Files`; a partial implementation found after Codex returns is costly to fix in Claude's own turns. Keep every section within the length limits there (about 2 KB total unless justified).
 
 ## After delegation
 
 1. Inspect Git diff, changed paths and actual command/test evidence; do not trust unsupported completion claims; confirm changed lines trace to approved scope.
-2. Map acceptance criteria to PASS / FAIL / UNVERIFIED; skipped checks are UNVERIFIED.
+2. In headless or delegated runs, put each verification command in its own Bash call; do not chain them with `;` and `echo $?`, which the permission approver may deny and which costs an extra turn. Map acceptance criteria to PASS / FAIL / UNVERIFIED; skipped checks are UNVERIFIED. If the wrapper summary reports `Quick check: 0` (or `SKIPPED` with a reason) and the quick check covers the acceptance criteria, do not re-run lint or tests; review the diff and map the criteria from that evidence. Re-run only when the summary is missing or you change files afterwards.
 3. If review finds a fix that itself fits implementer rule (1) and the task is not HIGH risk, Claude fixes it directly and re-verifies. Re-delegate only fixes beyond rule (1) or HIGH-risk fixes to preserve author/reviewer independence. Never re-delegate the whole task for a small fix.
 4. Escalate material architectural changes, sensitive actions, destructive actions, and consequential business decisions to the user.
 5. Trigger `/learn-from-task` selectively for meaningful Medium/Large findings, critical defects or repeated rework.

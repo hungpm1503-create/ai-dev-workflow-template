@@ -1,6 +1,11 @@
 # Claude → Codex Task Handoff Template
 
 Use only the selected route's minimum plan details. Save a unique approved handoff at `.workflow/handoffs/TASK-<id>.md` (gitignored). Do not reuse `latest.md`. Reference the one approved plan; do not copy it.
+## Length limits
+- Route: 4 lines. Objective: 1 line. Verified context: at most 8 lines of paths and facts (no code).
+- Scope: at most 6 lines. Implementation steps: at most 5 lines. Constraints: at most 6 lines.
+- Name every caller or consumer of a changed function or type under Files, not only the file you change.
+- Do not restate the approved plan or paste code; reference it. A handoff over about 2 KB needs a reason.
 
 ## Lite form (STANDARD governance)
 

@@ -116,6 +116,10 @@ json_str() {
 
 if (( rc == 0 )) && [[ ! -f "$timed_out" ]]; then
   printf 'PASS=%s\nFAILS=0\nFAIL_FP=\n' "$fp" > "$state"
+  if (( check_now )); then  # evidence for the caller, so nobody re-runs the check just to see it
+    printf 'Quick check PASS (exit 0): %s\n' "$cmd"
+    tail -n 5 "$out" | clean
+  fi
   exit 0
 fi
 

@@ -142,6 +142,7 @@ if bash scripts/codex-delegate.sh "$id" > "$tmp/dirty.txt" 2>&1; then
   echo 'FAIL: accepted a dirty worktree' >&2; exit 1
 else [[ $? == 6 ]] || { echo 'FAIL: dirty worktree error code' >&2; exit 1; }; fi
 rm -f ".dirty-worktree-probe-$$"
+grep -q "dirty-worktree-probe-$$" "$tmp/dirty.txt" || { echo 'FAIL: dirty-tree error does not list the dirty path' >&2; exit 1; }
 
 bash scripts/codex-delegate.sh "$id" > "$tmp/success.txt"
 grep -q 'BEGIN APPROVED HANDOFF' "$FAKE_PROMPT_FILE"
@@ -152,6 +153,8 @@ grep -q 'Avoid storing credentials or user data.' "$FAKE_PROMPT_FILE" || { echo 
 grep -q 'END CODEX RULES' "$FAKE_PROMPT_FILE" || { echo 'FAIL: Codex rules closing marker missing' >&2; exit 1; }
 grep -q 'Final exit code: 0' "$tmp/success.txt"
 grep -q 'AC-01: PASS' "$handoffs"/"$id"-run.*/completion.md
+grep -q 'Diff for review (one read)' "$tmp/success.txt" || { echo 'FAIL: summary does not point to diff.patch' >&2; exit 1; }
+ls "$handoffs"/"$id"-run.*/diff.patch >/dev/null || { echo 'FAIL: diff.patch not written' >&2; exit 1; }
 grep -qx 'default' "$handoffs"/"$id"-run.*/effort.txt || { echo 'FAIL: default effort record missing' >&2; exit 1; }
 
 # Network is explicitly false by default (overrides ~/.codex/config.toml); CODEX_NETWORK=1 opts in.

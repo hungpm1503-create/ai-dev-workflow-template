@@ -53,7 +53,8 @@ echo c >> b.txt
 # Immediate checks run despite a turn baseline and record PASS for the Stop hook.
 mark; echo now > now.txt
 before="$(runs)"
-[[ -z "$(check_now)" && "$(runs)" == $((before + 1)) ]] || fail 'check-now did not run'
+pass_out="$(check_now)"
+[[ "$pass_out" == *'Quick check PASS (exit 0)'* && "$(runs)" == $((before + 1)) ]] || fail 'check-now PASS left no evidence'
 [[ -z "$(run)" && "$(runs)" == $((before + 1)) ]] || fail 'Stop repeated passing check-now state'
 rm -f .workflow/work-memory/.auto-verify-turn
 

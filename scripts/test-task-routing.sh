@@ -42,6 +42,15 @@ need 'CLAUDE.md' 'prefer **Spec Kit**' 'Claude cannot choose Spec Kit'
 need 'CLAUDE.md' 'FULL GOVERNANCE' 'Claude High-risk override missing'
 need 'docs/workflow/codex-rules.md' 'Codex must not redo planning' 'Codex ownership missing'
 need 'docs/workflow/handoff-template.md' '- Traceability: LOW / HIGH' 'handoff traceability missing'
+# The inline FULL GOVERNANCE skeleton in the skill must not drop a section of the full form.
+full_sections="$(sed -n '/^## Full form/,$p' docs/workflow/handoff-template.md | grep '^## ' | grep -v '^## Full form' | sed 's/ (keep concise)//' | sort -u)"
+while IFS= read -r sec; do
+  [[ -z "$sec" ]] && continue
+  grep -Fq -- "$sec" .claude/skills/codex-delegate/SKILL.md || fail "codex-delegate skeleton is missing full-form section: $sec"
+done <<< "$full_sections"
+for line in '- Traceability: LOW / HIGH' '- Required independent reviews and human approval evidence:'; do
+  grep -Fq -- "$line" .claude/skills/codex-delegate/SKILL.md || fail "codex-delegate skeleton is missing: $line"
+done
 need 'docs/workflow/handoff-template.md' '- Selected planning path: NONE / CLAUDE / SUPERPOWERS / SPEC KIT' 'handoff planning choice missing'
 need 'docs/workflow/handoff-template.md' '- Governance: STANDARD / FULL GOVERNANCE' 'handoff governance missing'
 need 'docs/workflow/project-setup.md' 'Project-required approvals' 'setup missing project overrides'
