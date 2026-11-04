@@ -44,7 +44,7 @@ Status: APPROVED
 - AC-01: <outcome> — <command>
 ```
 
-`Status: APPROVED` here only records that the user asked for this LOW-risk change in the chat. Run `bash scripts/codex-delegate.sh TASK-<short-id>`. Network is off; add `CODEX_NETWORK=1` only for a run that must install dependencies.
+`Status: APPROVED` here only records that the user asked for this LOW-risk change in the chat. Run `bash scripts/codex-standard.sh TASK-<short-id>` for LOW-risk, LOW-traceability initial delegations without another confirmation; it refuses HIGH risk. Network is off; add `CODEX_NETWORK=1` only for a run that must install dependencies.
 For STANDARD governance, a dry-run is optional; the real wrapper validates the same prerequisites before invoking Codex.
 
 ### If the worktree is dirty
