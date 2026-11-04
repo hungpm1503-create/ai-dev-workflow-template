@@ -41,7 +41,7 @@ for parser in "${parsers[@]}"; do
   # --- Protected: direct, relative, normalised, case, symlinks ---
   for p in "$root/CLAUDE.md" 'AGENTS.md' './CLAUDE.md' "$root/src/../CLAUDE.md" 'src/../../'"$(basename "$root")"'/AGENTS.md' \
            "$root/.github/workflows/ci.yml" "$root/.claude/skills/vibe/SKILL.md" "$root/scripts/hooks/x.sh" \
-           "$root/.claude/settings.json" "$root/claude.md" "$root/.GITHUB/workflows/a.yml" \
+           "$root/.claude/settings.json" "$root/scripts/workflow-memory.sh" "$root/claude.md" "$root/.GITHUB/workflows/a.yml" \
            "$root/.hook-test-link-$$/settings.json" "$root/.hook-test-filelink-$$.md" "$root//CLAUDE.md" "$root/./.claude/skills/"; do
     json_edit Edit "$p" | expect_ask "$p"
   done
@@ -73,5 +73,59 @@ done
 # No parser at all → fail closed.
 parser=none
 json_edit Write "$root/src/a.ts" | expect_ask 'no parser available'
+
+# Execute the exact registered PreToolUse command in isolated repositories.
+pretool_command="$(python3 -c 'import json; d=json.load(open(".claude/settings.json")); print(d["hooks"]["PreToolUse"][0]["hooks"][0]["command"])')"
+settings_repo="$tmp/settings-repo"
+mkdir -p "$settings_repo/scripts/hooks"
+cp "$hook" "$settings_repo/scripts/hooks/"
+printf '# Fixture\n- Protected paths: NONE\n' > "$settings_repo/AGENTS.md"
+(cd "$settings_repo" && git init -q && git add -A && git -c user.name=t -c user.email=t@example.invalid commit -q -m fixture)
+run_settings() { (cd "$settings_repo" && CLAUDE_PROJECT_DIR="$settings_repo" bash -c "$pretool_command"); }
+json_edit Edit "$settings_repo/AGENTS.md" | run_settings > "$tmp/settings-protected.json"
+grep -Fq '"permissionDecision":"ask"' "$tmp/settings-protected.json" || { echo 'FAIL: unchanged guard did not ask for protected edit' >&2; exit 1; }
+json_edit Edit "$settings_repo/plain.txt" | run_settings > "$tmp/settings-plain.json"
+[[ ! -s "$tmp/settings-plain.json" ]] || { echo 'FAIL: unchanged guard blocked ordinary edit' >&2; exit 1; }
+printf '%s\n' '#!/usr/bin/env bash' 'printf x > "$CANARY"' > "$settings_repo/scripts/hooks/guard-protected-paths.sh"
+json_edit Edit "$settings_repo/plain.txt" | CANARY="$tmp/settings-canary" run_settings > "$tmp/settings-changed.json"
+grep -Fq '"permissionDecision":"ask"' "$tmp/settings-changed.json" || { echo 'FAIL: changed guard was not gated' >&2; exit 1; }
+grep -Fq 'guard-protected-paths.sh differs from HEAD; review it before trusting it.' "$tmp/settings-changed.json" || { echo 'FAIL: changed guard review reason missing' >&2; exit 1; }
+python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$tmp/settings-changed.json" || { echo 'FAIL: changed guard decision is invalid JSON' >&2; exit 1; }
+[[ ! -e "$tmp/settings-canary" ]] || { echo 'FAIL: changed guard ran on host' >&2; exit 1; }
+
+# Git comparison errors (e.g., exit 128) must also fail closed, not invoke the hook.
+# Commit a canary hook as the fixture baseline so only the injected Git failure
+# prevents execution. The Git shim delegates every other Git command unchanged.
+(cd "$settings_repo" && git add scripts/hooks/guard-protected-paths.sh && git -c user.name=t -c user.email=t@example.invalid commit -q -m guard-canary)
+mkdir -p "$tmp/git-diff-fail"
+cat > "$tmp/git-diff-fail/git" <<'GIT_SHIM'
+#!/usr/bin/env bash
+if [[ " $* " == *" diff --quiet HEAD -- scripts/hooks/guard-protected-paths.sh "* ]]; then
+  exit 128
+fi
+exec "${GIT_REAL:?}" "$@"
+GIT_SHIM
+chmod +x "$tmp/git-diff-fail/git"
+git_real="$(command -v git)"
+out="$(json_edit Edit "$settings_repo/plain.txt" | PATH="$tmp/git-diff-fail:$PATH" GIT_REAL="$git_real" CANARY="$tmp/git-error-canary" run_settings)"
+grep -Fq '"permissionDecision":"ask"' <<< "$out" || { echo 'FAIL: Git comparison error did not ask' >&2; exit 1; }
+grep -Fq 'guard-protected-paths.sh differs from HEAD' <<< "$out" || { echo 'FAIL: Git comparison error omitted warning' >&2; exit 1; }
+printf '%s' "$out" | python3 -c 'import json,sys; json.load(sys.stdin)' || { echo 'FAIL: Git-error decision is invalid JSON' >&2; exit 1; }
+[[ ! -e "$tmp/git-error-canary" ]] || { echo 'FAIL: Git comparison error executed canary hook' >&2; exit 1; }
+
+no_head_repo="$tmp/no-head-repo"
+mkdir -p "$no_head_repo/scripts/hooks"
+cp "$hook" "$no_head_repo/scripts/hooks/"
+printf '# Fixture\n- Protected paths: NONE\n' > "$no_head_repo/AGENTS.md"
+(cd "$no_head_repo" && git init -q)
+json_edit Edit "$no_head_repo/AGENTS.md" | (cd "$no_head_repo" && CLAUDE_PROJECT_DIR="$no_head_repo" bash -c "$pretool_command") > "$tmp/settings-no-head.json"
+grep -Fq '"permissionDecision":"ask"' "$tmp/settings-no-head.json" || { echo 'FAIL: no-HEAD repository did not run guard' >&2; exit 1; }
+
+non_git_dir="$tmp/non-git-dir"
+mkdir -p "$non_git_dir/scripts/hooks"
+cp "$hook" "$non_git_dir/scripts/hooks/"
+printf '# Fixture\n- Protected paths: NONE\n' > "$non_git_dir/AGENTS.md"
+json_edit Edit "$non_git_dir/AGENTS.md" | (cd "$non_git_dir" && CLAUDE_PROJECT_DIR="$non_git_dir" bash -c "$pretool_command") > "$tmp/settings-non-git.json"
+grep -Fq '"permissionDecision":"ask"' "$tmp/settings-non-git.json" || { echo 'FAIL: non-Git directory did not run guard' >&2; exit 1; }
 
 echo "PASS: protected-path hook (${parsers[*]}): normalised paths, symlinks, case, content decoys, Bash heuristic, fail-closed"

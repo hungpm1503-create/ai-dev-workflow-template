@@ -21,12 +21,12 @@ Use after meaningful Medium/Large tasks or significant rework, user correction, 
    bash scripts/capture-experience.sh TASK-EXAMPLE-001 TASK-EXAMPLE-001-run.XXXXXX
    ```
 
-   Replace `XXXXXX` with the run folder's actual suffix. The output stays in `.claude/experience-drafts/` (ignored) and must be reviewed before sharing.
+   Replace `XXXXXX` with the run folder's actual suffix. The output stays in `.workflow/experience-drafts/` (ignored) and must be reviewed before sharing.
 4. A wrapper exit code 0 is **not** an acceptance criterion PASS; missing results remain UNVERIFIED.
 
 ## Optional instinct candidate (no observer)
 
-If a meaningful correction or repeated failure suggests one precise trigger/action pattern, draft a **CANDIDATE**, not a new rule. Use `.claude/lessons/INSTINCT_CANDIDATE_TEMPLATE.md`; store the filled copy in ignored `.claude/instinct-candidates/`. Record actual occurrence counts, redacted evidence, counterexamples and proposed verification. A confidence label reflects signal strength, not correctness. Do not scrape whole session transcripts or run any background model. Skip when evidence is weak.
+If a meaningful correction or repeated failure suggests one precise trigger/action pattern, draft a **CANDIDATE**, not a new rule. Use `.claude/lessons/INSTINCT_CANDIDATE_TEMPLATE.md`; store the filled copy in ignored `.workflow/instinct-candidates/`. Record actual occurrence counts, redacted evidence, counterexamples and proposed verification. A confidence label reflects signal strength, not correctness. Do not scrape whole session transcripts or run any background model. Skip when evidence is weak.
 
 Before proposing, compare against adopted entries in `.claude/lessons/INDEX.md` to avoid duplicates; promote only by the existing Validate → human-approved Adopt gate.
 

@@ -22,9 +22,9 @@ bash scripts/workflow-memory.sh show TASK-EXAMPLE-001
 bash scripts/workflow-memory.sh search "API migration"
 ```
 
-The file `.claude/work-memory/TASK-ID/STATE.md` is a short agent-maintained checkpoint. Edit it **only with verified information** and pointers to approved plans; list which decisions are pending human approval. Use `STATE.md` for objective, confirmed decisions, current progress/blockers, next action, and evidence links. Do not duplicate the complete chat.
+The file `.workflow/work-memory/TASK-ID/STATE.md` is a short agent-maintained checkpoint. Edit it **only with verified information** and pointers to approved plans; list which decisions are pending human approval. Use `STATE.md` for objective, confirmed decisions, current progress/blockers, next action, and evidence links. Do not duplicate the complete chat.
 
-The existing Codex wrapper **attempts** to record a separate run event at `.claude/work-memory/TASK-ID/RUN-...md` from status, baseline and changed-path metadata. Agent review still determines PASS/FAIL/UNVERIFIED. `LATEST.md` is only a pointer to the most recent run; it is not a task acceptance statement.
+The existing Codex wrapper **attempts** to record a separate run event at `.workflow/work-memory/TASK-ID/RUN-...md` from status, baseline and changed-path metadata. Agent review still determines PASS/FAIL/UNVERIFIED. `LATEST.md` is only a pointer to the most recent run; it is not a task acceptance statement.
 
 ## Session transfer
 

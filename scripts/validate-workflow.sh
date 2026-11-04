@@ -21,6 +21,8 @@ files=(
   docs/workflow/evaluation-template.md
   docs/workflow/project-setup.md
   docs/workflow/task-routing.md
+  docs/workflow/task-routing-notes.md
+  docs/workflow/codex-rules.md
   scripts/codex-delegate.sh
   scripts/test-codex-delegate.sh
   scripts/test-secret-scan.sh

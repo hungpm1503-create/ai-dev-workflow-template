@@ -4,8 +4,8 @@ set -euo pipefail
 umask 077
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
-memory_dir="$root/.claude/work-memory"
-handoff_dir="$root/.claude/handoffs"
+memory_dir="$root/.workflow/work-memory"
+handoff_dir="$root/.workflow/handoffs"
 
 usage() {
   echo 'Usage: bash scripts/workflow-memory.sh init TASK-ID | record-run TASK-ID TASK-ID-run.XXXXXX | show TASK-ID | search QUERY' >&2
@@ -60,7 +60,7 @@ case "$cmd" in
     [[ $# -eq 1 ]] || { usage; exit 2; }
     task="$1"; valid_task "$task" || fail 'invalid task ID'
     ensure_task "$task"
-    echo "Task state: .claude/work-memory/$task/STATE.md"
+    echo "Task state: .workflow/work-memory/$task/STATE.md"
     ;;
   record-run)
     [[ $# -eq 2 ]] || { usage; exit 2; }
@@ -87,12 +87,12 @@ case "$cmd" in
       cat > "$event" <<EOF
 # Codex run evidence — $task
 
-Run: .claude/handoffs/$run/
+Run: .workflow/handoffs/$run/
 Baseline HEAD: $head_sha
 Reported final exit code: $exit_code
 Changed paths count: $paths_count
 Acceptance review: UNVERIFIED
-Evidence: .claude/handoffs/$run/status.txt; .claude/handoffs/$run/changed-paths.txt; .claude/handoffs/$run/completion.md
+Evidence: .workflow/handoffs/$run/status.txt; .workflow/handoffs/$run/changed-paths.txt; .workflow/handoffs/$run/completion.md
 
 The exit code reports CLI execution only. Claude must independently review actual diff, acceptance criteria and test evidence.
 No raw logs, prompts or model completion text is copied here.
@@ -103,13 +103,21 @@ EOF
     temp="$(mktemp "$dir/.LATEST.XXXXXX")"
     printf '# Latest recorded Codex run\n\nTask: %s\nCheckpoint: %s\nReported final exit code: %s\nReview: UNVERIFIED\nNext action: Claude independently reviews the changes and updates STATE.md.\n' "$task" "RUN-$run.md" "$exit_code" > "$temp"
     mv -f "$temp" "$dir/LATEST.md"
-    echo "Checkpoint recorded: .claude/work-memory/$task/RUN-$run.md"
+    echo "Checkpoint recorded: .workflow/work-memory/$task/RUN-$run.md"
     ;;
   show)
     [[ $# -eq 1 ]] || { usage; exit 2; }
     task="$1"; valid_task "$task" || fail 'invalid task ID'
     dir="$memory_dir/$task"
+    legacy_dir="$root/.claude/work-memory/$task"
+    if [[ ! -e "$dir/STATE.md" && ! -L "$dir/STATE.md" && -f "$legacy_dir/STATE.md" ]]; then
+      dir="$legacy_dir"
+    fi
     [[ -f "$dir/STATE.md" && ! -L "$dir" && ! -L "$dir/STATE.md" ]] || fail 'no such task state'
+    if [[ "$dir" == "$legacy_dir" ]]; then
+      [[ ! -L "$root/.claude/work-memory" ]] || fail 'memory directory must not be a symlink'
+      echo "WARNING: .claude/work-memory/$task/ is deprecated; move it to .workflow/work-memory/." >&2
+    fi
     cat "$dir/STATE.md"
     if [[ -f "$dir/LATEST.md" && ! -L "$dir/LATEST.md" ]]; then
       printf '\n---\n'

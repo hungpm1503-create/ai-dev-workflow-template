@@ -8,7 +8,8 @@
       "Bash(bash scripts/validate-workflow.sh)",
       "Bash(bash scripts/test-*.sh)",
       "Bash(bash scripts/workflow-memory.sh:*)",
-      "Bash(bash scripts/codex-delegate.sh --dry-run:*)"
+      "Bash(bash scripts/codex-delegate.sh --dry-run:*)",
+      "Edit(./.workflow/**)"
     ],
     "ask": [
       "Bash(git push:*)",
@@ -29,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/hooks/guard-protected-paths.sh\""
+            "command": "if git -C \"$CLAUDE_PROJECT_DIR\" rev-parse --verify HEAD >/dev/null 2>&1; then git -C \"$CLAUDE_PROJECT_DIR\" diff --quiet HEAD -- scripts/hooks/guard-protected-paths.sh; result=$?; if [ \"$result\" -ne 0 ]; then printf '%s\\n' '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"guard-protected-paths.sh differs from HEAD; review it before trusting it.\"}}'; else bash \"$CLAUDE_PROJECT_DIR/scripts/hooks/guard-protected-paths.sh\"; fi; else bash \"$CLAUDE_PROJECT_DIR/scripts/hooks/guard-protected-paths.sh\"; fi; exit 0"
           }
         ]
       }
@@ -39,7 +40,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/hooks/auto-verify.sh\" --mark-turn-start",
+            "command": "if ! git -C \"$CLAUDE_PROJECT_DIR\" rev-parse --is-inside-work-tree >/dev/null 2>&1 || git -C \"$CLAUDE_PROJECT_DIR\" diff --quiet HEAD -- scripts/hooks/auto-verify.sh; then bash \"$CLAUDE_PROJECT_DIR/scripts/hooks/auto-verify.sh\" --mark-turn-start; fi",
             "timeout": 60
           }
         ]
@@ -50,7 +51,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/hooks/auto-verify.sh\"",
+            "command": "if ! git -C \"$CLAUDE_PROJECT_DIR\" rev-parse --is-inside-work-tree >/dev/null 2>&1 || git -C \"$CLAUDE_PROJECT_DIR\" diff --quiet HEAD -- scripts/hooks/auto-verify.sh; then bash \"$CLAUDE_PROJECT_DIR/scripts/hooks/auto-verify.sh\"; else printf '%s\\n' '{\"systemMessage\":\"Auto-verify: quick check skipped until scripts/hooks/auto-verify.sh is reviewed and committed.\"}'; fi",
             "timeout": 600
           }
         ]

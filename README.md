@@ -30,7 +30,7 @@ Reusable, stack-independent workflow for **Claude Lead → Codex CLI** with sele
 
 | Task | Mode | What you get |
 | --- | --- | --- |
-| Small/medium, low risk, clear path (UI tweak, bug fix, small feature) | **VIBE** (`.claude/skills/vibe/`) | No plan or approval paperwork (Codex gets a short handoff); Claude does trivial edits, Codex does logic/multi-file work; real tests every step |
+| Small/medium, low risk, clear path (UI tweak, bug fix, small feature) | **VIBE** (`.claude/skills/vibe/`) | No plan or approval paperwork (Codex gets a short handoff); Claude handles qualifying SMALL changes with simple logic, Codex handles MEDIUM or larger work; real tests every step |
 | Medium with ambiguity / Large, low risk | One Claude or Superpowers plan → Codex | Plan review, handoff, Codex run, independent review |
 | Needs durable requirement ↔ decision ↔ test links | Spec Kit preferred | One canonical spec |
 | **Any HIGH risk** (auth, money, financial methodology / point-in-time rules, personal data, destructive migration, infra, secrets, autonomous execution, project-defined) | **FULL GOVERNANCE** | Real human gates, independent checks, verified acceptance |
@@ -40,24 +40,30 @@ Reusable, stack-independent workflow for **Claude Lead → Codex CLI** with sele
 ## Guardrails built in
 
 - `.claude/settings.json`:
-  - a PreToolUse hook (`scripts/hooks/guard-protected-paths.sh`) **asks before** Claude's Edit/Write tools touch protected paths (`CLAUDE.md`, `AGENTS.md`, `.claude/settings.json`, `.claude/skills/`, `scripts/hooks/`, workflows, plus your `AGENTS.md` list). Paths are JSON-parsed and normalised (`..`, symlinks, case); unparseable input fails closed with a prompt. Bash commands get a **best-effort** check only.
+  - a PreToolUse hook (`scripts/hooks/guard-protected-paths.sh`) **asks before** Claude's Edit/Write tools touch protected paths (`CLAUDE.md`, `AGENTS.md`, `scripts/workflow-memory.sh`, `.claude/settings.json`, `.claude/skills/`, `scripts/hooks/`, workflows, plus your `AGENTS.md` list). Paths are JSON-parsed and normalised (`..`, symlinks, case); unparseable input fails closed with a prompt. Bash commands get a **best-effort** check only.
   - `Read(...)` deny rules stop Claude's **Read tool** from opening `.env`/key files. They do not block other routes (Bash, scripts, other tools); keep real secrets out of the repo.
   - `git push`, `git reset --hard` and `rm -rf` always ask.
+  - `Edit(./.workflow/**)` lets Claude write handoffs and working memory in the ignored scratch folder without a prompt. Real Codex runs still ask. That prompt is the human confirmation for FULL GOVERNANCE work; the `Status: APPROVED` text in a handoff is not evidence of approval on its own (the human's own reply must be recorded). Only on projects or sessions with STANDARD, LOW-risk work, you may add `Bash(bash scripts/codex-delegate.sh:*)` to your own `.claude/settings.local.json` for convenience; remove it before HIGH-risk work.
   - a **Stop hook** (`scripts/hooks/auto-verify.sh`) runs `AGENTS.md > Quick check command` when Claude finishes a turn that changed files which have not passed yet (a `UserPromptSubmit` hook records the turn's starting point, so question-only turns on an already dirty tree do nothing). On failure Claude is sent back with only the last 40 lines of output (up to 3 attempts, then you are told). It skips unchanged states and does nothing until you configure the command. Disable per shell with `AUTO_VERIFY_DISABLE=1`. The command runs automatically on your machine, so review changes to `AGENTS.md` (especially in pull requests) as carefully as code.
   - This is an intent-confirmation layer for Claude, **not a security sandbox**; writes by Codex, scripts or editors are not intercepted (Codex runs get the wrapper's post-run check instead).
-- `scripts/codex-delegate.sh`: clean-tree requirement, lock, timeout, per-run logs and a post-run protected-path check for Codex.
+- `scripts/codex-delegate.sh`: clean-tree requirement for first runs, exact-tree follow-ups, lock, timeout, per-run logs and a post-run protected-path check for Codex.
+- Host execution: the quick check, and tests Codex wrote, run on your machine outside the Codex sandbox. The wrapper skips the quick check when protected paths changed, and the auto-verify hooks skip while `AGENTS.md` or `scripts/hooks/` differ from HEAD. For untrusted input, run in an isolated environment or set `CODEX_QUICK_CHECK=0`. After a protected-path violation the wrapper runs no repository script (quick check and working-memory checkpoint are skipped), and the PreToolUse command asks instead of running `guard-protected-paths.sh` while it differs from HEAD. Residual risk: if Codex changes `.claude/settings.json` itself, Claude Code may use the changed hook commands; the wrapper reports exit 4, and a human must review before continuing.
+- The tree snapshot hashes untracked files into the local `.git/objects` (unreferenced, never pushed, pruned by `git gc`). Keep sensitive files in `.gitignore`.
 - Verification contract everywhere: PASS / FAIL / UNVERIFIED with real commands and exit codes.
 
 ## Delegation
 
-Create `.claude/handoffs/TASK-LOGIN-001.md` from `docs/workflow/handoff-template.md`. After genuine scope approval, put the exact `Status: APPROVED` under `## Approval status`. The marker is not proof of who approved the task.
+Create `.workflow/handoffs/TASK-LOGIN-001.md` from `docs/workflow/handoff-template.md`. After genuine scope approval, put the exact `Status: APPROVED` under `## Approval status`. The marker is not proof of who approved the task.
 
 ```bash
 bash scripts/codex-delegate.sh --dry-run TASK-LOGIN-001
 bash scripts/codex-delegate.sh TASK-LOGIN-001
+bash scripts/codex-delegate.sh --follow-up TASK-LOGIN-001 TASK-LOGIN-FIX-001
 ```
 
-The second command invokes actual Codex via `codex exec --sandbox workspace-write`. The wrapper always passes `-c sandbox_workspace_write.network_access=false`, overriding `~/.codex/config.toml`; set `CODEX_NETWORK=1` only for a run that must install dependencies. It checks Git status and a worktree-wide lock, preserves the full prompt before invocation to avoid early-stdin SIGPIPE, records results/baselines under ignored `.claude/handoffs/`, and detects changes to protected paths. It imposes a portable timeout (default 1800 seconds). It never commits, pushes, merges or deploys.
+The second and third commands invoke actual Codex via `codex exec --sandbox workspace-write`. A follow-up requires the same HEAD and complete worktree tree left by the newest parent run; it reports only the new fix in `diff.patch`, while protected-path checks remain cumulative. The wrapper always passes `-c sandbox_workspace_write.network_access=false`, overriding `~/.codex/config.toml`; set `CODEX_NETWORK=1` only for a run that must install dependencies. It checks Git status and a worktree-wide lock, preserves the full prompt before invocation to avoid early-stdin SIGPIPE, records results/baselines under ignored `.workflow/handoffs/`, and detects changes to protected paths. It imposes a portable timeout (default 1800 seconds). It never commits, pushes, merges or deploys.
+
+For existing projects, create `.workflow/` and move local scratch folders, for example `mv .claude/handoffs .workflow/handoffs`; do the same for `work-memory`, `experience-drafts` and `instinct-candidates` when present. Legacy handoffs and working-memory checkpoints still read with a deprecation warning.
 
 A zero exit code is **not** acceptance: Claude must inspect Git diff, verification commands, acceptance criteria and protected-path warnings. Postchecks cannot prevent modifications, and interrupted child processes require inspection. The secret pattern scan is only a heuristic, not a substitute for dedicated security scanners.
 
@@ -91,7 +97,7 @@ For a completed delegated run:
 bash scripts/capture-experience.sh TASK-LOGIN-001 TASK-LOGIN-001-run.XXXXXX
 ```
 
-This creates a **private, ignored** draft in `.claude/experience-drafts/`. It references `status.txt`, `changed-paths.txt`, the baseline Git SHA, and local logs **without copying full logs or prompts**. Record actual before/after tests and the precise workflow change (Git commit/PR) in the draft.
+This creates a **private, ignored** draft in `.workflow/experience-drafts/`. It references `status.txt`, `changed-paths.txt`, the baseline Git SHA, and local logs **without copying full logs or prompts**. Record actual before/after tests and the precise workflow change (Git commit/PR) in the draft.
 
 Once reviewed and approved, use `.claude/lessons/EXPERIENCE_TEMPLATE.md` for a concise, redacted permanent lesson and link it from `.claude/lessons/INDEX.md`. Store the changed harness as **Git commit + file paths**, not a duplicate configuration tree. Only validated and adopted lessons should direct future tasks. The index is read selectively to minimize context.
 
@@ -114,11 +120,11 @@ The template now includes **low-cost patterns inspired by ECC** without installi
 
 ```bash
 bash scripts/workflow-memory.sh init TASK-EXAMPLE-001
-# Edit .claude/work-memory/TASK-EXAMPLE-001/STATE.md with verified state/next action.
+# Edit .workflow/work-memory/TASK-EXAMPLE-001/STATE.md with verified state/next action.
 bash scripts/workflow-memory.sh show TASK-EXAMPLE-001
 bash scripts/test-workflow-memory.sh
 ```
 
-Run metadata is captured from `scripts/codex-delegate.sh` on a best-effort basis, without copying raw logs. `.claude/work-memory/` and `.claude/instinct-candidates/` are gitignored. **They do not sync between devices/clones automatically.** No hooks, observers, cron jobs or new API calls are enabled.
+Run metadata is captured from `scripts/codex-delegate.sh` on a best-effort basis, without copying raw logs. `.workflow/work-memory/` and `.workflow/instinct-candidates/` are gitignored. **They do not sync between devices/clones automatically.** No hooks, observers, cron jobs or new API calls are enabled.
 
 See `docs/workflow/ecc-selective-integration.md` for design, authority boundaries, limitations and acceptance scenarios. These additions do **not** make the harness an ECC Memory Vault installation.

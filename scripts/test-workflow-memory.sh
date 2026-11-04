@@ -4,15 +4,16 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 task="TASK-MEMORY-$$"
-runs=".claude/handoffs"
+runs=".workflow/handoffs"
 mkdir -p "$runs"
 run_dir="$(mktemp -d "$runs/$task-run.XXXXXX")"
 run_name="$(basename "$run_dir")"
-dir=".claude/work-memory/$task"
+dir=".workflow/work-memory/$task"
+legacy_dir=".claude/work-memory/$task"
 tmp="$(mktemp)"
 cleanup() {
-  rm -rf "$run_dir" "$dir"
-  rm -f "$tmp"
+  rm -rf "$run_dir" "$dir" "$legacy_dir"
+  rm -f "$tmp" "$tmp.err"
 }
 trap cleanup EXIT
 bash scripts/workflow-memory.sh init "$task" > "$tmp"
@@ -34,6 +35,16 @@ if grep -F -q 'PRIVATE_FAKE_LOG_DO_NOT_COPY' "$dir/RUN-$run_name.md"; then
 fi
 bash scripts/workflow-memory.sh show "$task" > "$tmp"
 grep -q FixtureKeywordXYZ "$tmp"
+mkdir -p "$(dirname "$legacy_dir")"
+cp -R "$dir" "$legacy_dir"
+bash scripts/workflow-memory.sh show "$task" > "$tmp" 2> "$tmp.err"
+[[ ! -s "$tmp.err" ]] || { echo 'FAIL: warned while using new task state' >&2; exit 1; }
+rm -rf "$dir"
+bash scripts/workflow-memory.sh show "$task" > "$tmp" 2> "$tmp.err"
+grep -q FixtureKeywordXYZ "$tmp"
+grep -Fq 'deprecated' "$tmp.err" || { echo 'FAIL: legacy task state warning missing' >&2; exit 1; }
+[[ "$(grep -c '^WARNING:' "$tmp.err")" == 1 ]] || { echo 'FAIL: expected one legacy task state warning' >&2; exit 1; }
+mv "$legacy_dir" "$dir"
 if bash scripts/workflow-memory.sh record-run "$task" "$run_name" >/dev/null 2>&1; then
   echo 'FAIL: run event overwritten' >&2; exit 1
 fi

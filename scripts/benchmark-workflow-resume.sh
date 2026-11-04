@@ -9,11 +9,11 @@ cd "$root"
 command -v node >/dev/null 2>&1 || { echo 'ERROR: Node.js is required for this small coding fixture.' >&2; exit 127; }
 task="TASK-BENCH-COUPON-$$"
 tmp="$(mktemp -d)"
-mkdir -p ".claude/handoffs"
-run_dir="$(mktemp -d ".claude/handoffs/$task-run.XXXXXX")"
+mkdir -p ".workflow/handoffs"
+run_dir="$(mktemp -d ".workflow/handoffs/$task-run.XXXXXX")"
 run_name="$(basename "$run_dir")"
-handoff=".claude/handoffs/$task.md"
-memory_dir=".claude/work-memory/$task"
+handoff=".workflow/handoffs/$task.md"
+memory_dir=".workflow/work-memory/$task"
 cleanup() {
   rm -f "$handoff"
   rm -rf "$run_dir" "$memory_dir" "$tmp"
@@ -115,7 +115,7 @@ Source: deterministic synthetic coding fixture (not Codex/Claude)
 
 ## Objective / approved source
 Normalize coupon code: trim and uppercase; reject whitespace-only and non-string inputs.
-Canonical task: .claude/handoffs/$task.md
+Canonical task: .workflow/handoffs/$task.md
 
 ## Confirmed decisions and evidence
 AC-01..AC-04: 4/4 checks PASS after fixture correction.

@@ -20,11 +20,11 @@ Say which trigger fired. Otherwise state in one line how you read the request an
 
 ## 2. Who implements
 
-**Implementer rule:** (1) Claude edits directly only for trivial changes — text/copy, styles, config values or an obviously local fix, at most 2 files and no new logic branch. (2) Codex implements anything with new logic (conditions, loops, parsing, state, data handling) or more than 2 files, when Codex is installed. (3) If Codex is unavailable, Claude implements and says so. (4) Claude always reviews the diff and runs verification. An explicit user choice overrides (1)–(2).
+**Implementer rule:** (1) Claude implements directly SMALL, LOW-risk changes — text/copy, styles, config values, or a local fix or small feature with simple logic in at most 3 source files (plus their tests), with no new module, schema, API or dependency. (2) Codex implements MEDIUM or larger work, anything beyond (1), and every HIGH-risk change, when Codex is installed. (3) If Codex is unavailable, Claude implements and says so. (4) Claude always reviews the diff and runs verification. An explicit user choice overrides (1)–(2).
 
 ### Codex handoff (minimal form)
 
-Write `.claude/handoffs/TASK-<short-id>.md`:
+Write `.workflow/handoffs/TASK-<short-id>.md`:
 
 ```markdown
 ## Task ID
@@ -38,11 +38,14 @@ TASK-<short-id>
 <one observable result>
 ## Approval status
 Status: APPROVED
+## Files
+- Read/change: <exact repository paths>
 ## Acceptance criteria and verification
 - AC-01: <outcome> — <command>
 ```
 
 `Status: APPROVED` here only records that the user asked for this LOW-risk change in the chat. Run `bash scripts/codex-delegate.sh TASK-<short-id>`. Network is off; add `CODEX_NETWORK=1` only for a run that must install dependencies.
+For STANDARD governance, a dry-run is optional; the real wrapper validates the same prerequisites before invoking Codex.
 
 ### If the worktree is dirty
 
@@ -52,8 +55,8 @@ The wrapper needs a clean tree so Codex's diff can be attributed. Never stash si
 2. The Codex slice is independent of the pending edits → run it in a separate worktree from `HEAD`:
    ```bash
    git worktree add ../"$(basename "$PWD")"-TASK-<id> -b vibe/TASK-<id>
-   mkdir -p ../"$(basename "$PWD")"-TASK-<id>/.claude/handoffs
-   cp .claude/handoffs/TASK-<id>.md ../"$(basename "$PWD")"-TASK-<id>/.claude/handoffs/
+   mkdir -p ../"$(basename "$PWD")"-TASK-<id>/.workflow/handoffs
+   cp .workflow/handoffs/TASK-<id>.md ../"$(basename "$PWD")"-TASK-<id>/.workflow/handoffs/
    (cd ../"$(basename "$PWD")"-TASK-<id> && bash scripts/codex-delegate.sh TASK-<id>)
    ```
    Review that worktree's diff, then let the user decide how to bring it back (merge/cherry-pick) and remove the worktree.

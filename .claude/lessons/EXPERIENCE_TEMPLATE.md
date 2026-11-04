@@ -1,6 +1,6 @@
 # Evidence-backed Experience Record — Template
 
-> Copy only for meaningful recurring errors or critical blind spots. The record is project-local. Drafts generated from real runs remain under ignored `.claude/experience-drafts/` until reviewed. **Never copy raw prompts, logs or secrets into Git.**
+> Copy only for meaningful recurring errors or critical blind spots. The record is project-local. Drafts generated from real runs remain under ignored `.workflow/experience-drafts/` until reviewed. **Never copy raw prompts, logs or secrets into Git.**
 
 ## Identity and retrieval cue
 
@@ -24,7 +24,7 @@
 | Acceptance criterion | [criterion + report] | PASS / FAIL / UNVERIFIED |
 | Worktree diff / issue | [commit or issue URL] | [specific observation] |
 
-Do not invent metrics. Local ignored `.claude/handoffs/` logs are **not portable**. Include a short redacted result and a durable CI/commit/issue reference when possible.
+Do not invent metrics. Local ignored `.workflow/handoffs/` logs are **not portable**. Include a short redacted result and a durable CI/commit/issue reference when possible.
 
 ## Harness/workflow delta
 

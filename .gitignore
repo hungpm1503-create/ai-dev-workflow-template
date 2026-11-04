@@ -8,6 +8,10 @@
 *.pfx
 
 # Local agent/runtime scratch (handoffs, completions, logs and draft experiences)
+.workflow/handoffs/
+.workflow/experience-drafts/
+.workflow/work-memory/
+.workflow/instinct-candidates/
 .claude/handoffs/
 .claude/experience-drafts/
 .claude/work-memory/

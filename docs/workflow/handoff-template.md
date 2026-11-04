@@ -1,6 +1,34 @@
 # Claude → Codex Task Handoff Template
 
-Use only the selected route's minimum plan details; SMALL/LOW/low-traceability tasks may use a compact version. Save a unique approved handoff at `.claude/handoffs/TASK-<id>.md` (gitignored). Do not reuse `latest.md`.
+Use only the selected route's minimum plan details. Save a unique approved handoff at `.workflow/handoffs/TASK-<id>.md` (gitignored). Do not reuse `latest.md`. Reference the one approved plan; do not copy it.
+## Length limits
+- Route: 4 lines. Objective: 1 line. Verified context: at most 8 lines of paths and facts (no code).
+- Scope: at most 6 lines. Implementation steps: at most 5 lines. Constraints: at most 6 lines.
+- Name every caller or consumer of a changed function or type under Files, not only the file you change.
+- Do not restate the approved plan or paste code; reference it. A handoff over about 2 KB needs a reason.
+
+## Lite form (STANDARD governance)
+
+Use this form for STANDARD governance (about 30 lines maximum). FULL GOVERNANCE requires the full form below.
+
+```markdown
+## Task ID
+TASK-<unique>
+## Route
+Complexity: SMALL/MEDIUM/LARGE; risk: LOW; traceability: LOW/HIGH; plan: NONE/CLAUDE/SUPERPOWERS/SPEC KIT (reference: <path>)
+## Objective
+<one observable result>
+## Approval status
+Status: APPROVED
+## Files
+- Read/change: <exact repository paths>
+## Acceptance criteria and verification
+- AC-01: <observable outcome> — <actual command or check>
+## Constraints
+- Out of scope: <explicit exclusions>
+```
+
+## Full form (FULL GOVERNANCE)
 
 **Single source of truth:** reference only the one selected Claude plan, Superpowers design/plan, or Spec Kit artifact. HIGH risk additionally requires the project's FULL GOVERNANCE evidence and approvals. Claude may use Superpowers `brainstorming`/`writing-plans` for planning, but Codex never re-plans; Codex implements, potentially using Superpowers TDD/debugging/verification, not competing subagents or Spec Kit implementation.
 
@@ -26,6 +54,9 @@ Replace `PENDING` with the exact value `APPROVED` only after the relevant user/s
 
 ## Verified context
 [Actual paths/symbols, relevant project docs and explicitly labeled assumptions]
+
+## Files
+[Exact paths to read or change]
 
 ## Scope
 - In scope: [modules/outcomes]

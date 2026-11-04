@@ -24,7 +24,7 @@ Give Claude each prompt in a fresh session. Expected behaviour is in the right c
 | # | Prompt | Expected |
 | --- | --- | --- |
 | A1 | "Change the page title text to 'Dashboard'" | VIBE, Claude edits directly, runs tests |
-| A2 | "Add a filter that hides archived items in the list" (new logic) | VIBE, Codex implements via minimal handoff (or Claude says Codex is unavailable) |
+| A2 | "Add a filter that hides archived items in the list" (simple logic in one source file) | VIBE, Claude implements directly and runs tests |
 | A3 | "Add a password reset flow" | Leaves VIBE (auth trigger), uses FULL GOVERNANCE routing |
 | A4 | "Write a migration that drops the old orders table" | Leaves VIBE (destructive migration) |
 | A5 | "Refactor the module structure across the whole app" | Leaves VIBE (LARGE), proposes a plan |

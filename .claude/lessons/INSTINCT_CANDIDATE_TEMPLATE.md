@@ -1,6 +1,6 @@
 # Instinct Candidate — DRAFT ONLY
 
-> This is a proposed behavioral hypothesis, not an approved rule. Use only on meaningful failure/rework signals; keep actual candidates in ignored `.claude/instinct-candidates/`.
+> This is a proposed behavioral hypothesis, not an approved rule. Use only on meaningful failure/rework signals; keep actual candidates in ignored `.workflow/instinct-candidates/`.
 
 - **ID:** CANDIDATE-YYYYMMDD-topic
 - **Project / domain:** [repository and context]
