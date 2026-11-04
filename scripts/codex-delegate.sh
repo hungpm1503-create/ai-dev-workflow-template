@@ -138,19 +138,22 @@ route_field() {
   ' "$handoff"
 }
 difficulty="$(route_field 'Codex difficulty')"
+governance_risk="$(route_field 'Governance risk')"
 if [[ -z "$difficulty" ]]; then
   case "$(route_field 'Complexity')" in
     SMALL) difficulty=EASY ;;
     LARGE) difficulty=HARD ;;
     *) difficulty=STANDARD ;;
   esac
+  # Missing difficulty metadata on an older HIGH-risk handoff must not select EASY.
+  if [[ "$governance_risk" == HIGH && "$difficulty" == EASY ]]; then difficulty=STANDARD; fi
 fi
 case "$difficulty" in
   EASY|STANDARD|HARD) ;;
   *) echo 'ERROR: Codex difficulty must be EASY, STANDARD or HARD.' >&2; exit 2 ;;
 esac
-if [[ "$(route_field 'Governance risk')" == HIGH && "$difficulty" == EASY ]]; then
-  echo 'ERROR: HIGH-risk handoff cannot use EASY Codex tier; use STANDARD or HARD.' >&2
+if [[ "$governance_risk" == HIGH && "$difficulty" == EASY ]]; then
+  echo 'ERROR: HIGH-risk handoff cannot explicitly select EASY Codex tier; use STANDARD or HARD.' >&2
   exit 2
 fi
 case "$difficulty" in
