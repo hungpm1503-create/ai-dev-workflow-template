@@ -93,6 +93,26 @@ grep -Fq 'guard-protected-paths.sh differs from HEAD; review it before trusting 
 python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$tmp/settings-changed.json" || { echo 'FAIL: changed guard decision is invalid JSON' >&2; exit 1; }
 [[ ! -e "$tmp/settings-canary" ]] || { echo 'FAIL: changed guard ran on host' >&2; exit 1; }
 
+# Git comparison errors (e.g., exit 128) must also fail closed, not invoke the hook.
+# Commit a canary hook as the fixture baseline so only the injected Git failure
+# prevents execution. The Git shim delegates every other Git command unchanged.
+(cd "$settings_repo" && git add scripts/hooks/guard-protected-paths.sh && git -c user.name=t -c user.email=t@example.invalid commit -q -m guard-canary)
+mkdir -p "$tmp/git-diff-fail"
+cat > "$tmp/git-diff-fail/git" <<'GIT_SHIM'
+#!/usr/bin/env bash
+if [[ " $* " == *" diff --quiet HEAD -- scripts/hooks/guard-protected-paths.sh "* ]]; then
+  exit 128
+fi
+exec "${GIT_REAL:?}" "$@"
+GIT_SHIM
+chmod +x "$tmp/git-diff-fail/git"
+git_real="$(command -v git)"
+out="$(json_edit Edit "$settings_repo/plain.txt" | PATH="$tmp/git-diff-fail:$PATH" GIT_REAL="$git_real" CANARY="$tmp/git-error-canary" run_settings)"
+grep -Fq '"permissionDecision":"ask"' <<< "$out" || { echo 'FAIL: Git comparison error did not ask' >&2; exit 1; }
+grep -Fq 'guard-protected-paths.sh differs from HEAD' <<< "$out" || { echo 'FAIL: Git comparison error omitted warning' >&2; exit 1; }
+printf '%s' "$out" | python3 -c 'import json,sys; json.load(sys.stdin)' || { echo 'FAIL: Git-error decision is invalid JSON' >&2; exit 1; }
+[[ ! -e "$tmp/git-error-canary" ]] || { echo 'FAIL: Git comparison error executed canary hook' >&2; exit 1; }
+
 no_head_repo="$tmp/no-head-repo"
 mkdir -p "$no_head_repo/scripts/hooks"
 cp "$hook" "$no_head_repo/scripts/hooks/"
