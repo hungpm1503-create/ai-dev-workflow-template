@@ -121,6 +121,12 @@ cp "$root/scripts/codex-standard.sh" "$settings_repo/scripts/codex-standard.sh"
 (cd "$settings_repo" && git add scripts/hooks/guard-protected-paths.sh scripts/codex-standard.sh && git -c user.name=t -c user.email=t"@"example.invalid commit -q -m standard-runner)
 json_bash 'bash scripts/codex-standard.sh TASK-SAFE' | run_settings > "$tmp/standard-trusted.json"
 [[ ! -s "$tmp/standard-trusted.json" ]] || { echo 'FAIL: intact standard runner wrongly required approval' >&2; exit 1; }
+# A prefix allow rule must not permit appended shell commands.
+for command in 'bash scripts/codex-standard.sh TASK-SAFE; echo unsafe' 'bash scripts/codex-standard.sh TASK-SAFE && echo unsafe' 'bash scripts/codex-standard.sh TASK-SAFE --unsafe'; do
+  json_bash "$command" | run_settings > "$tmp/standard-command-injection.json"
+  grep -Fq '"permissionDecision":"ask"' "$tmp/standard-command-injection.json" || { echo "FAIL: unsafe standard-runner command allowed: $command" >&2; exit 1; }
+done
+
 printf '\n# unreviewed edit\n' >> "$settings_repo/scripts/codex-standard.sh"
 json_bash 'bash scripts/codex-standard.sh TASK-SAFE' | run_settings > "$tmp/standard-tampered.json"
 grep -Fq '"permissionDecision":"ask"' "$tmp/standard-tampered.json" || { echo 'FAIL: changed pre-approved runner executed without review' >&2; exit 1; }
