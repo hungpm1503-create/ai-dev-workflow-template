@@ -14,7 +14,7 @@ You are Lead/Planner/Reviewer and implement SMALL, LOW-risk changes directly und
 
 **Implementer rule:** (1) Claude implements directly SMALL, LOW-risk changes — text/copy, styles, config values, or a local fix or small feature with simple logic in at most 3 source files (plus their tests), with no new module, schema, API or dependency. (2) Codex implements MEDIUM or larger work, anything beyond (1), and every HIGH-risk change, when Codex is installed. (3) If Codex is unavailable, Claude implements and says so. (4) Claude always reviews the diff and runs verification. An explicit user choice overrides (1)–(2).
 
-Check Codex with `command -v codex` as a command of its own. A denied or failed combined command is not evidence that Codex is missing. Before implementing a HIGH-risk change yourself, confirm Codex is unavailable and tell the user, because the review is then no longer independent. This includes fixes found in review: on a HIGH-risk task, send every code fix back to Codex (see `codex-delegate`, After delegation) instead of editing it yourself.
+Check Codex with `command -v codex` as a command of its own. A denied or failed combined command is not evidence that Codex is missing. Before implementing a HIGH-risk change yourself, confirm Codex is unavailable and tell the user, because the review is then no longer independent: such a HIGH-risk task is not PASS until a different reviewer or the human has reviewed the diff. This includes fixes found in review: on a HIGH-risk task, send every code fix back to Codex (see `codex-delegate`, After delegation) instead of editing it yourself.
 
 ## 3. Verify, never claim
 

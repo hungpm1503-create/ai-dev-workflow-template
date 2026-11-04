@@ -40,7 +40,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/hooks/auto-verify.sh\" --mark-turn-start",
+            "command": "if ! git -C \"$CLAUDE_PROJECT_DIR\" rev-parse --is-inside-work-tree >/dev/null 2>&1 || git -C \"$CLAUDE_PROJECT_DIR\" diff --quiet HEAD -- scripts/hooks/auto-verify.sh; then bash \"$CLAUDE_PROJECT_DIR/scripts/hooks/auto-verify.sh\" --mark-turn-start; fi",
             "timeout": 60
           }
         ]
@@ -51,7 +51,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/hooks/auto-verify.sh\"",
+            "command": "if ! git -C \"$CLAUDE_PROJECT_DIR\" rev-parse --is-inside-work-tree >/dev/null 2>&1 || git -C \"$CLAUDE_PROJECT_DIR\" diff --quiet HEAD -- scripts/hooks/auto-verify.sh; then bash \"$CLAUDE_PROJECT_DIR/scripts/hooks/auto-verify.sh\"; else printf '%s\\n' '{\"systemMessage\":\"Auto-verify: quick check skipped until scripts/hooks/auto-verify.sh is reviewed and committed.\"}'; fi",
             "timeout": 600
           }
         ]

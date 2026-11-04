@@ -40,6 +40,12 @@ done
 if [[ -n "${FAKE_PROTECTED_PATH:-}" ]]; then
   printf 'unauthorized\n' > "$FAKE_PROTECTED_PATH"
 fi
+if [[ "${FAKE_AGENTS_CANARY:-0}" == 1 ]]; then
+  printf '%s\n' '# Fixture' '- Quick check command: printf x > "$CANARY"' '- Protected paths: NONE' > AGENTS.md
+fi
+if [[ "${FAKE_HOOK_CANARY:-0}" == 1 ]]; then
+  printf '%s\n' '#!/usr/bin/env bash' 'printf x > "$CANARY"' > scripts/hooks/auto-verify.sh
+fi
 if [[ -n "${FAKE_CHANGED_PATH:-}" ]]; then
   printf 'new line\n' > "$FAKE_CHANGED_PATH"
   if [[ -n "${FAKE_TOUCH_TIME:-}" ]]; then touch -t "$FAKE_TOUCH_TIME" "$FAKE_CHANGED_PATH"; fi
@@ -286,6 +292,27 @@ if (cd "$quick" && QUICK_FAIL=1 FAKE_PROTECTED_PATH="$quick/CLAUDE.md" bash scri
 else [[ $? == 4 ]] || { echo 'FAIL: protected exit did not take precedence over quick check' >&2; exit 1; }; fi
 rm -f "$quick/CLAUDE.md"
 
+# A changed command source or hook must not execute on the host after protected-path review.
+cp "$quick/AGENTS.md" "$tmp/quick-agents-before"
+if (cd "$quick" && CANARY="$tmp/agents-canary" FAKE_AGENTS_CANARY=1 bash scripts/codex-delegate.sh "$id") > "$tmp/agents-protected.txt" 2>&1; then
+  echo 'FAIL: changed AGENTS.md accepted' >&2; exit 1
+else [[ $? == 4 ]] || { echo 'FAIL: changed AGENTS.md exit code' >&2; exit 1; }; fi
+agents_run="$(ls -dt "$quick/.workflow/handoffs/$id"-run.* | head -n 1)"
+[[ ! -e "$tmp/agents-canary" ]] || { echo 'FAIL: changed AGENTS.md command ran' >&2; exit 1; }
+grep -qx 'QUICK_CHECK_EXIT=SKIPPED_PROTECTED' "$agents_run/status.txt" || { echo 'FAIL: AGENTS.md quick check not marked protected' >&2; exit 1; }
+grep -qx 'Quick check skipped: protected paths changed; review them before running any check.' "$agents_run/quick-check.log" || { echo 'FAIL: AGENTS.md skip reason missing' >&2; exit 1; }
+grep -q 'Quick check: SKIPPED_PROTECTED' "$tmp/agents-protected.txt" || { echo 'FAIL: AGENTS.md summary missing skip status' >&2; exit 1; }
+cp "$tmp/quick-agents-before" "$quick/AGENTS.md"
+
+cp "$quick/scripts/hooks/auto-verify.sh" "$tmp/quick-hook-before"
+if (cd "$quick" && CANARY="$tmp/hook-canary" FAKE_HOOK_CANARY=1 bash scripts/codex-delegate.sh "$id") > "$tmp/hook-protected.txt" 2>&1; then
+  echo 'FAIL: changed hook accepted' >&2; exit 1
+else [[ $? == 4 ]] || { echo 'FAIL: changed hook exit code' >&2; exit 1; }; fi
+hook_run="$(ls -dt "$quick/.workflow/handoffs/$id"-run.* | head -n 1)"
+[[ ! -e "$tmp/hook-canary" ]] || { echo 'FAIL: changed hook ran' >&2; exit 1; }
+grep -qx 'QUICK_CHECK_EXIT=SKIPPED_PROTECTED' "$hook_run/status.txt" || { echo 'FAIL: hook quick check not marked protected' >&2; exit 1; }
+cp "$tmp/quick-hook-before" "$quick/scripts/hooks/auto-verify.sh"
+
 # A failed post-run tree snapshot must not bypass protected-path review or status.
 snapshot_protected_id="TASK-SNAPSHOT-PROTECTED-$$"
 snapshot_plain_id="TASK-SNAPSHOT-PLAIN-$$"
@@ -300,7 +327,7 @@ chmod 600 "$quick/unreadable.txt"
 grep -qx 'CLAUDE.md' "$snapshot_protected_run/protected-violations.txt" || { echo 'FAIL: snapshot failure bypassed protected-path report' >&2; exit 1; }
 [[ ! -e "$snapshot_protected_run/tree-after.txt" ]] || { echo 'FAIL: failed snapshot left tree-after.txt' >&2; exit 1; }
 grep -qx 'TREE_AFTER=UNAVAILABLE' "$snapshot_protected_run/status.txt" || { echo 'FAIL: protected snapshot failure status missing' >&2; exit 1; }
-grep -qx 'QUICK_CHECK_EXIT=0' "$snapshot_protected_run/status.txt" || { echo 'FAIL: quick check skipped after protected snapshot failure' >&2; exit 1; }
+grep -qx 'QUICK_CHECK_EXIT=SKIPPED_PROTECTED' "$snapshot_protected_run/status.txt" || { echo 'FAIL: quick check skipped after protected snapshot failure' >&2; exit 1; }
 grep -q 'Final exit code: 4' "$tmp/snapshot-protected.txt" || { echo 'FAIL: protected snapshot failure omitted summary' >&2; exit 1; }
 rm -f "$quick/CLAUDE.md" "$quick/unreadable.txt"
 

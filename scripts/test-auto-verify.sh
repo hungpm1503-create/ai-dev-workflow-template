@@ -128,4 +128,44 @@ sleep 1; pgrep -f "$mark" >/dev/null && { pkill -KILL -f "$mark"; fail 'TERM-ign
 # 8. Kill switch.
 echo h > h.txt; [[ -z "$(AUTO_VERIFY_DISABLE=1 run)" ]] || fail 'AUTO_VERIFY_DISABLE ignored'
 
+# Changed command sources must not reach bash -c in Stop or immediate mode.
+set_cmd 'printf x > "$CANARY"'
+printf 'changed\n' >> AGENTS.md
+out="$(CANARY="$tmp/agents-canary" run)"
+printf '%s' "$out" | valid_json || fail 'AGENTS.md skip message is not valid JSON'
+grep -q '"systemMessage"' <<<"$out" || fail 'Stop omitted AGENTS.md skip message'
+grep -q 'reviewed and committed' <<<"$out" || fail 'Stop omitted review instruction'
+grep -q '"decision"' <<<"$out" && fail 'Stop blocked changed AGENTS.md'
+out="$(CANARY="$tmp/agents-canary" check_now)"
+[[ "$out" == 'Quick check skipped: AGENTS.md or scripts/hooks/ changed since HEAD.' ]] || fail 'check-now omitted changed AGENTS.md skip message'
+[[ ! -e "$tmp/agents-canary" ]] || fail 'changed AGENTS.md command ran'
+git show HEAD:AGENTS.md > AGENTS.md
+
+mkdir -p scripts/hooks
+printf 'new hook\n' > scripts/hooks/extra.sh
+[[ "$(check_now)" == 'Quick check skipped: AGENTS.md or scripts/hooks/ changed since HEAD.' ]] || fail 'untracked hook did not skip check-now'
+rm scripts/hooks/extra.sh
+printf 'scripts/hooks/ignored.sh\n' >> .gitignore
+printf 'ignored hook\n' > scripts/hooks/ignored.sh
+[[ "$(check_now)" == 'Quick check skipped: AGENTS.md or scripts/hooks/ changed since HEAD.' ]] || fail 'ignored untracked hook did not skip check-now'
+rm scripts/hooks/ignored.sh
+git show HEAD:.gitignore > .gitignore
+
+# Run the actual settings command against both a clean and changed hook.
+cp "$hook" scripts/hooks/auto-verify.sh
+set_cmd "echo run >> '$count'"
+printf 'dirty\n' > settings-dirty.txt
+stop_command="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["hooks"]["Stop"][0]["hooks"][0]["command"])' "$root/.claude/settings.json")"
+prompt_command="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["hooks"]["UserPromptSubmit"][0]["hooks"][0]["command"])' "$root/.claude/settings.json")"
+before="$(runs)"
+printf '{"hook_event_name":"Stop","stop_hook_active":false}' | CLAUDE_PROJECT_DIR="$repo" bash -c "$stop_command" > "$tmp/settings-clean.txt"
+[[ "$(runs)" == $((before + 1)) ]] || fail 'settings Stop command did not run unchanged hook'
+printf '%s\n' '#!/usr/bin/env bash' 'printf x > "$CANARY"' > scripts/hooks/auto-verify.sh
+out="$(printf '{"hook_event_name":"Stop","stop_hook_active":false}' | CLAUDE_PROJECT_DIR="$repo" CANARY="$tmp/settings-canary" bash -c "$stop_command")"
+printf '%s' "$out" | valid_json || fail 'settings Stop skip message is not valid JSON'
+grep -q '"systemMessage"' <<<"$out" || fail 'settings Stop omitted changed-hook skip message'
+[[ ! -e "$tmp/settings-canary" ]] || fail 'settings Stop ran changed hook'
+out="$(printf '{"hook_event_name":"UserPromptSubmit","prompt":"x"}' | CLAUDE_PROJECT_DIR="$repo" CANARY="$tmp/settings-canary" bash -c "$prompt_command")"
+[[ -z "$out" && ! -e "$tmp/settings-canary" ]] || fail 'settings UserPromptSubmit ran changed hook or printed output'
+
 echo 'PASS: auto-verify hook: config gate, per-turn baseline (question-only turns on dirty trees skip), fallback, tail-only JSON, attempt limit, reset, timeout incl. TERM-ignoring children, kill switch'

@@ -24,6 +24,18 @@ if (( ! check_now )); then cat >/dev/null; fi   # hook input is not needed
 cd "$root" 2>/dev/null || exit 0
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
 
+if [[ "${1:-}" != --mark-turn-start ]] && {
+  ! git diff --quiet HEAD -- AGENTS.md scripts/hooks/ ||
+  [[ -n "$(git ls-files --others -- scripts/hooks/)" ]]
+}; then
+  if (( check_now )); then
+    printf '%s\n' 'Quick check skipped: AGENTS.md or scripts/hooks/ changed since HEAD.'
+  else
+    printf '%s\n' '{"systemMessage":"Auto-verify: quick check skipped until changes to AGENTS.md or scripts/hooks/ are reviewed and committed."}'
+  fi
+  exit 0
+fi
+
 cmd=''
 [[ -f AGENTS.md ]] && cmd="$(sed -n 's/^[[:space:]]*-[[:space:]]*Quick check command:[[:space:]]*//p' AGENTS.md | head -n 1)"
 cmd="$(printf '%s' "$cmd" | sed 's/^`//; s/`$//; s/[[:space:]]*$//')"

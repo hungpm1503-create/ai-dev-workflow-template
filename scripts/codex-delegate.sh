@@ -340,10 +340,13 @@ quick_check_exit=SKIPPED
 quick_log="$run_dir/quick-check.log"
 if (( exit_code == 124 || exit_code == 125 )); then
   printf '%s\n' 'Quick check skipped: Codex timed out or left processes; tree state is not final.' > "$quick_log"
+elif [[ -s "$run_dir/protected-violations.txt" ]]; then
+  quick_check_exit=SKIPPED_PROTECTED
+  printf '%s\n' 'Quick check skipped: protected paths changed; review them before running any check.' > "$quick_log"
 elif [[ "${CODEX_QUICK_CHECK:-1}" != 0 ]]; then
   if bash "$root/scripts/hooks/auto-verify.sh" --check-now > "$quick_log" 2>&1; then
     quick_check_exit=0
-    if grep -Fq 'Quick check not configured; skipped.' "$quick_log"; then quick_check_exit=SKIPPED; fi
+    if grep -Fq 'Quick check not configured; skipped.' "$quick_log" || grep -Fq 'Quick check skipped: AGENTS.md or scripts/hooks/ changed since HEAD.' "$quick_log"; then quick_check_exit=SKIPPED; fi
   else
     quick_check_exit=$?
     if (( exit_code == 0 )); then exit_code=7; fi
