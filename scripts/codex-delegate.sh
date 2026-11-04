@@ -131,6 +131,7 @@ route_field() {
       sub(/^[[:space:]]*-[[:space:]]*/, "", line)
       if (index(line, key ":") == 1) {
         line=substr(line, length(key)+2)
+        sub(/;.*/, "", line)
         gsub(/^[[:space:]]+|[[:space:]]+$/, "", line)
         print line; exit
       }
@@ -139,6 +140,14 @@ route_field() {
 }
 difficulty="$(route_field 'Codex difficulty')"
 governance_risk="$(route_field 'Governance risk')"
+# The compact legacy handoff has inline "risk: HIGH" after a semicolon.
+if [[ -z "$governance_risk" ]] && awk '
+  /^## Route[[:space:]]*$/ { in_route=1; next }
+  in_route && /^##[[:space:]]/ { exit }
+  in_route { print }
+' "$handoff" | grep -Eiq '(^|[;[:space:]])risk:[[:space:]]*HIGH([;[:space:]]|$)'; then
+  governance_risk=HIGH
+fi
 if [[ -z "$difficulty" ]]; then
   case "$(route_field 'Complexity')" in
     SMALL) difficulty=EASY ;;
