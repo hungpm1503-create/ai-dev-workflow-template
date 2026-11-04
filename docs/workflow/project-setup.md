@@ -16,7 +16,7 @@ Routing rules live in `docs/workflow/task-routing.md`; don't duplicate them here
 
 ## 2. Configure each project
 
-Fill `AGENTS.md > Project Configuration`: actual stack, build/test/lint commands and protected paths. Protected paths are **literal repository-relative paths**, comma-separated, e.g. `src/config/, infrastructure/`. Directories end in `/`. The wrapper also protects `CLAUDE.md`, `AGENTS.md`, `scripts/codex-delegate.sh`, `scripts/codex-standard.sh`, `scripts/workflow-memory.sh`, `scripts/hooks/`, `.claude/settings.json`, `.claude/skills/` and `.github/workflows/` by default. For Codex this is a **post-run detector**; for Claude Code the hook in `.claude/settings.json` asks *before* Edit/Write tool calls (best-effort for Bash). Neither is a file-system access control boundary.
+Fill `AGENTS.md > Project Configuration`: actual stack, build/test/lint commands and protected paths. Protected paths are **literal repository-relative paths**, comma-separated, e.g. `src/config/, infrastructure/`. Directories end in `/`. The wrapper also protects `CLAUDE.md`, `AGENTS.md`, `scripts/codex-delegate.sh`, `scripts/workflow-memory.sh`, `scripts/hooks/`, `.claude/settings.json`, `.claude/skills/` and `.github/workflows/` by default. For Codex this is a **post-run detector**; for Claude Code the hook in `.claude/settings.json` asks *before* Edit/Write tool calls (best-effort for Bash). Neither is a file-system access control boundary.
 
 Set **Quick check command** to something fast (lint + affected tests, ideally under 60 seconds). The Claude Code Stop hook runs it automatically after a turn that changed not-yet-passing files and sends Claude back to fix failures, so a slow command slows every turn.
 
@@ -43,10 +43,6 @@ bash scripts/test-workflow-memory.sh
 ```
 
 The simulated `codex` tests do not use tokens or modify application code. They check approval, dry-run, dirty tree, early stdin close (SIGPIPE regression), exit codes, timeout, protected paths and concurrency.
-
-## Fewer routine permissions
-
-`.claude/settings.json` uses `acceptEdits` for normal file edits, retaining protected-path prompts. `bash scripts/codex-standard.sh TASK-ID` is narrowly pre-approved for ordinary LOW-risk and LOW-traceability first runs only; HIGH-risk and follow-up runs keep the normal `codex-delegate.sh` authorization. The standard runner forces network off and Quick check on; never use blanket bypass permissions.
 
 ## 4. Run an approved task
 
