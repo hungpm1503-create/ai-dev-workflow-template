@@ -14,8 +14,8 @@ cleanup() {
   rm -f "$handoff" "$legacy_handoff" "$probe" "$handoffs/TASK-MODEL-$.md"
   rm -rf "$root/.workflow/work-memory/$id"
   find "$handoffs" -maxdepth 1 -type d -name "$id-run.*" -exec rm -rf {} +
-  find "$handoffs" -maxdepth 1 -type d -name "TASK-MODEL-$-run.*" -exec rm -rf {} +
-  rm -rf "$root/.workflow/work-memory/TASK-MODEL-$"
+  find "$handoffs" -maxdepth 1 -type d -name "TASK-MODEL-${id##*-}-run.*" -exec rm -rf {} +
+  rm -rf "$root/.workflow/work-memory/TASK-MODEL-${id##*-}"
   rmdir "$handoffs/.codex-delegate.lock" 2>/dev/null || :
   rm -rf "$tmp"
 }
