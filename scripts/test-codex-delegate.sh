@@ -11,7 +11,7 @@ legacy_handoff="$root/.claude/handoffs/$id.md"
 probe="$root/.github/workflows/.protected-probe-$$"
 mkdir -p "$handoffs"
 cleanup() {
-  rm -f "$handoff" "$legacy_handoff" "$probe" "$handoffs/TASK-MODEL-$.md"
+  rm -f "$handoff" "$legacy_handoff" "$probe" "$handoffs/TASK-MODEL-${id##*-}.md"
   rm -rf "$root/.workflow/work-memory/$id"
   find "$handoffs" -maxdepth 1 -type d -name "$id-run.*" -exec rm -rf {} +
   find "$handoffs" -maxdepth 1 -type d -name "TASK-MODEL-${id##*-}-run.*" -exec rm -rf {} +
