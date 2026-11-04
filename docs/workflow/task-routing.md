@@ -18,6 +18,24 @@ Assess **three independent dimensions**:
 | ANY | LOW | HIGH | **SPEC KIT preferred** | Traceable plan → implementation → review |
 | ANY | HIGH | ANY | **FULL GOVERNANCE + one project-allowed planning path** | Independent review, human gates, verification, acceptance |
 
+## Codex implementation difficulty (independent fourth dimension)
+
+Classify implementation difficulty **only for delegated Codex work**, without a second model or classifier call:
+
+| Difficulty | Signals | Default Codex |
+| --- | --- | --- |
+| EASY | Mechanical edits, simple local changes with known tests, straightforward data wiring | `gpt-6-luna`, medium reasoning |
+| STANDARD | Multi-file changes, moderate integration, well-understood .NET/API logic and moderate debugging | `gpt-6-sol`, medium reasoning |
+| HARD | Complex concurrency/PIT/revisions, difficult root cause, architectural dependencies, large cross-module constraints | `gpt-6-sol`, high reasoning |
+
+Claude writes `- Codex difficulty: EASY / STANDARD / HARD` in the handoff's `## Route`. The wrapper uses deterministic mapping (no additional LLM). HIGH governance risk requires **at least STANDARD difficulty**, even for a short diff; HIGH does not automatically force HARD. If evidence reveals complexity beyond the chosen tier, stop and re-delegate using the appropriate tier rather than looping many times on an underpowered model. Verify exact model IDs available in your Codex account; use documented environment overrides for local alternatives.
+
+## Permission and approval economy
+
+A user's explicit instruction to implement a clearly scoped task is already authorization for its routine LOW-risk steps. For FULL GOVERNANCE, an explicit user decision covering consequential scope also counts as approval; cite it rather than asking again. If a material decision or HIGH-risk scope **has not** been authorized, gather related decisions into **one** approval request. Never infer approval from a handoff's editable `Status: APPROVED` marker.
+
+Run low-risk/low-traceability first Codex delegations via `scripts/codex-standard.sh` under a narrow pre-approved permission rule. It rejects HIGH risk, disables network and enforces Quick check. For HIGH-risk use `scripts/codex-delegate.sh` with explicit authorization and independent review. `acceptEdits` removes routine editor prompts while protected path hooks and sensitive Bash operations retain permission requirements. No blanket bypass or unrestricted Codex-wrapper allowlist.
+
 ## VIBE mode
 
 For SMALL or clear-path MEDIUM, LOW risk, LOW traceability. No formal plan or approval artifact is required; a Codex delegation uses the short handoff. Real verification (tests/lint/build with exit codes, PASS/FAIL/UNVERIFIED) is still mandatory.
