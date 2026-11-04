@@ -189,9 +189,7 @@ if CODEX_MODEL='bad model' bash scripts/codex-delegate.sh --dry-run "$tier_id" >
  echo 'FAIL: invalid model identifier accepted' >&2; exit 1
 else [[ $? == 2 ]] || exit 1; fi
 # Only ordinary LOW/LOW first rounds may use the narrow low-prompt entrypoint.
-if bash scripts/codex-standard.sh "$tier_id" > "$tmp/standard-run.txt" 2>&1; then
- grep -Fq 'Final exit code: 0' "$tmp/standard-run.txt" || exit 1
-else echo 'FAIL: standard LOW/LOW runner rejected its approved task' >&2; cat "$tmp/standard-run.txt"; exit 1; fi
+# The LOW-risk executable path is tested in the isolated quick-repo below.
 sed -i.bak 's/Governance risk: LOW/Governance risk: HIGH/' "$tier"; rm -f "$tier.bak"
 if bash scripts/codex-standard.sh "$tier_id" > "$tmp/standard-high.txt" 2>&1; then
  echo 'FAIL: standard runner accepted HIGH-risk task' >&2; exit 1
@@ -287,6 +285,7 @@ done
 quick="$(cd "$tmp" && pwd -P)/quick-repo"
 mkdir -p "$quick/scripts/hooks" "$quick/docs/workflow" "$quick/.workflow/handoffs"
 cp scripts/codex-delegate.sh "$quick/scripts/"
+cp scripts/codex-standard.sh "$quick/scripts/"
 cp scripts/hooks/auto-verify.sh "$quick/scripts/hooks/"
 cp scripts/workflow-memory.sh "$quick/scripts/"
 cp docs/workflow/codex-rules.md "$quick/docs/workflow/"
@@ -305,6 +304,26 @@ fi
 CHECK
 (cd "$quick" && git init -q && git config core.trustctime false && git add -A && git -c user.name=t -c user.email=t@example.invalid commit -q -m fixture)
 export QUICK_COUNT="$tmp/quick-count"
+# STANDARD/LOW trusted entrypoint must execute without an app-specific host build
+# and must override attempts to enable network or skip its own Quick check.
+standard_id="TASK-STANDARD-${id##*-}"
+cat > "$quick/.workflow/handoffs/$standard_id.md" <<'STANDARD_HANDOFF'
+## Route
+- Complexity: MEDIUM
+- Governance risk: LOW
+- Traceability: LOW
+- Codex difficulty: STANDARD
+## Approval status
+Status: APPROVED
+## Objective
+Fake low risk task
+STANDARD_HANDOFF
+if (cd "$quick" && CODEX_NETWORK=1 CODEX_QUICK_CHECK=0 FAKE_CONFIG_FILE="$tmp/standard-network.txt" bash scripts/codex-standard.sh "$standard_id") > "$tmp/standard-run.txt" 2>&1; then
+  grep -Fq 'Final exit code: 0' "$tmp/standard-run.txt" || exit 1
+else echo 'FAIL: standard LOW/LOW runner rejected isolated approved task' >&2; cat "$tmp/standard-run.txt"; exit 1; fi
+grep -qx 'sandbox_workspace_write.network_access=false' "$tmp/standard-network.txt" || { echo 'FAIL: standard runner did not force network off' >&2; exit 1; }
+[[ -f "$QUICK_COUNT" ]] || { echo 'FAIL: standard runner skipped its quick check' >&2; exit 1; }
+
 stale_id="TASK-STALE-STAT-$$"
 cp "$handoff" "$quick/.workflow/handoffs/$stale_id.md"
 cp "$quick/.git/index" "$tmp/stale-index-before"
