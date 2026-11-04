@@ -16,7 +16,7 @@ Routing rules live in `docs/workflow/task-routing.md`; don't duplicate them here
 
 ## 2. Configure each project
 
-Fill `AGENTS.md > Project Configuration`: actual stack, build/test/lint commands and protected paths. Protected paths are **literal repository-relative paths**, comma-separated, e.g. `src/config/, infrastructure/`. Directories end in `/`. The wrapper also protects `CLAUDE.md`, `AGENTS.md`, `scripts/codex-delegate.sh`, `scripts/workflow-memory.sh`, `scripts/hooks/`, `.claude/settings.json`, `.claude/skills/` and `.github/workflows/` by default. For Codex this is a **post-run detector**; for Claude Code the hook in `.claude/settings.json` asks *before* Edit/Write tool calls (best-effort for Bash). Neither is a file-system access control boundary.
+Fill `AGENTS.md > Project Configuration`: actual stack, build/test/lint commands and protected paths. Protected paths are **literal repository-relative paths**, comma-separated, e.g. `src/config/, infrastructure/`. Directories end in `/`. The wrapper also protects `CLAUDE.md`, `AGENTS.md`, `scripts/codex-delegate.sh`, `scripts/codex-standard.sh`, `scripts/workflow-memory.sh`, `scripts/hooks/`, `.claude/settings.json`, `.claude/skills/` and `.github/workflows/` by default. For Codex this is a **post-run detector**; for Claude Code the hook in `.claude/settings.json` asks *before* Edit/Write tool calls (best-effort for Bash). Neither is a file-system access control boundary.
 
 Set **Quick check command** to something fast (lint + affected tests, ideally under 60 seconds). The Claude Code Stop hook runs it automatically after a turn that changed not-yet-passing files and sends Claude back to fix failures, so a slow command slows every turn.
 
