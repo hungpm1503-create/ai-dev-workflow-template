@@ -118,9 +118,54 @@ if [[ "$approval_status" != 'APPROVED' ]]; then
   exit 3
 fi
 
-reasoning_effort="${CODEX_REASONING_EFFORT:-}"
+# Select a Codex implementation tier without an extra model/router call.
+# Governance risk is independent from difficulty; HIGH risk sets a minimum tier.
+# New handoffs declare "- Codex difficulty: EASY|STANDARD|HARD" in ## Route.
+# Legacy handoffs fall back to Complexity; if absent, use STANDARD.
+route_field() {
+  awk -v key="$1" '
+    /^## Route[[:space:]]*$/ { in_route=1; next }
+    in_route && /^##[[:space:]]/ { exit }
+    in_route {
+      line=$0
+      sub(/^[[:space:]]*-[[:space:]]*/, "", line)
+      if (index(line, key ":") == 1) {
+        line=substr(line, length(key)+2)
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", line)
+        print line; exit
+      }
+    }
+  ' "$handoff"
+}
+difficulty="$(route_field 'Codex difficulty')"
+if [[ -z "$difficulty" ]]; then
+  case "$(route_field 'Complexity')" in
+    SMALL) difficulty=EASY ;;
+    LARGE) difficulty=HARD ;;
+    *) difficulty=STANDARD ;;
+  esac
+fi
+case "$difficulty" in
+  EASY|STANDARD|HARD) ;;
+  *) echo 'ERROR: Codex difficulty must be EASY, STANDARD or HARD.' >&2; exit 2 ;;
+esac
+if [[ "$(route_field 'Governance risk')" == HIGH && "$difficulty" == EASY ]]; then
+  echo 'ERROR: HIGH-risk handoff cannot use EASY Codex tier; use STANDARD or HARD.' >&2
+  exit 2
+fi
+case "$difficulty" in
+  EASY) default_model="${CODEX_MODEL_EASY:-gpt-6-luna}"; default_effort=medium ;;
+  STANDARD) default_model="${CODEX_MODEL_STANDARD:-gpt-6-sol}"; default_effort=medium ;;
+  HARD) default_model="${CODEX_MODEL_HARD:-gpt-6-sol}"; default_effort=high ;;
+esac
+selected_model="${CODEX_MODEL:-$default_model}"
+if [[ -z "$selected_model" || "$selected_model" == *[!a-zA-Z0-9._-]* ]]; then
+  echo 'ERROR: invalid Codex model name; use an installed/authorized model ID.' >&2
+  exit 2
+fi
+reasoning_effort="${CODEX_REASONING_EFFORT:-$default_effort}"
 case "$reasoning_effort" in
-  ''|minimal|low|medium|high|xhigh) ;;
+  minimal|low|medium|high|xhigh) ;;
   *) echo 'ERROR: CODEX_REASONING_EFFORT must be minimal, low, medium, high or xhigh.' >&2; exit 2 ;;
 esac
 
@@ -129,8 +174,10 @@ if (( dry_run )); then
   echo "DRY RUN: approved handoff ${handoff#"$root/"}"
   if [[ -n "$follow_up_of" ]]; then echo "Follow-up of: $follow_up_of"; fi
   dry_network=false; if [[ "${CODEX_NETWORK:-0}" == 1 ]]; then dry_network=true; fi
-  echo "Reasoning effort: ${reasoning_effort:-default}"
-  echo "Would invoke: codex exec --sandbox workspace-write -c sandbox_workspace_write.network_access=$dry_network${reasoning_effort:+ -c model_reasoning_effort=\"$reasoning_effort\"} --output-last-message <run>/completion.md -"
+  echo "Codex difficulty: $difficulty"
+  echo "Model: $selected_model"
+  echo "Reasoning effort: $reasoning_effort"
+  echo "Would invoke: codex exec --sandbox workspace-write -m $selected_model -c sandbox_workspace_write.network_access=$dry_network -c model_reasoning_effort=\"$reasoning_effort\" --output-last-message <run>/completion.md -"
   echo 'No Codex invocation or worktree modification performed.'
   exit 0
 fi
@@ -217,7 +264,9 @@ prompt="$run_dir/prompt.md"
 before="$run_dir/status-before.txt"
 head_sha="$(git rev-parse HEAD)"
 printf '%s\n' "$head_sha" > "$run_dir/head-before.txt"
-printf '%s\n' "${reasoning_effort:-default}" > "$run_dir/effort.txt"
+printf '%s\n' "$difficulty" > "$run_dir/difficulty.txt"
+printf '%s\n' "$selected_model" > "$run_dir/model.txt"
+printf '%s\n' "$reasoning_effort" > "$run_dir/effort.txt"
 git status --porcelain=v1 --untracked-files=all > "$before"
 if [[ -n "$follow_up_of" ]]; then
   check_follow_up || exit $?
@@ -260,8 +309,7 @@ fi
 # Opt in per run with CODEX_NETWORK=1 (e.g. dependency installs); sandbox stays workspace-write.
 network_access=false
 if [[ "${CODEX_NETWORK:-0}" == 1 ]]; then network_access=true; fi
-codex_args=(exec --sandbox workspace-write -c "sandbox_workspace_write.network_access=$network_access")
-if [[ -n "$reasoning_effort" ]]; then codex_args+=(-c "model_reasoning_effort=\"$reasoning_effort\""); fi
+codex_args=(exec --sandbox workspace-write -m "$selected_model" -c "sandbox_workspace_write.network_access=$network_access" -c "model_reasoning_effort=\"$reasoning_effort\"")
 printf 'NETWORK_ACCESS=%s\n' "$network_access" > "$run_dir/network.txt"
 # Launch Codex in a dedicated process group (Bash job control also works on macOS Bash 3.2).
 # This lets the watchdog terminate child tools, not just the Codex parent.
