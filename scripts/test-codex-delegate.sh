@@ -42,6 +42,7 @@ if [[ -n "${FAKE_PROTECTED_PATH:-}" ]]; then
 fi
 if [[ -n "${FAKE_CHANGED_PATH:-}" ]]; then
   printf 'new line\n' > "$FAKE_CHANGED_PATH"
+  if [[ -n "${FAKE_TOUCH_TIME:-}" ]]; then touch -t "$FAKE_TOUCH_TIME" "$FAKE_CHANGED_PATH"; fi
 fi
 if [[ -n "${FAKE_UNREADABLE_PATH:-}" ]]; then
   printf 'unreadable\n' > "$FAKE_UNREADABLE_PATH"
@@ -229,6 +230,7 @@ cp "$handoff" "$quick/.workflow/handoffs/$id.md"
 printf '.workflow/\n' > "$quick/.gitignore"
 printf '# Fixture\n- Quick check command: bash scripts/check.sh\n- Protected paths: NONE\n' > "$quick/AGENTS.md"
 printf 'old line\n' > "$quick/tracked.txt"
+touch -t 202001010000 "$quick/tracked.txt"
 cat > "$quick/scripts/check.sh" <<'CHECK'
 #!/usr/bin/env bash
 printf 'x' >> "$QUICK_COUNT"
@@ -237,14 +239,30 @@ if [[ "${QUICK_FAIL:-0}" == 1 ]]; then
   exit 7
 fi
 CHECK
-(cd "$quick" && git init -q && git add -A && git -c user.name=t -c user.email=t@example.invalid commit -q -m fixture)
+(cd "$quick" && git init -q && git config core.trustctime false && git add -A && git -c user.name=t -c user.email=t@example.invalid commit -q -m fixture)
 export QUICK_COUNT="$tmp/quick-count"
-(cd "$quick" && FAKE_CHANGED_PATH=work.txt bash scripts/codex-delegate.sh "$id") > "$tmp/quick-pass.txt"
-grep -q 'work.txt (new)' "$tmp/quick-pass.txt" || { echo 'FAIL: new-file summary missing' >&2; exit 1; }
+stale_id="TASK-STALE-STAT-$$"
+cp "$handoff" "$quick/.workflow/handoffs/$stale_id.md"
+cp "$quick/.git/index" "$tmp/stale-index-before"
+(cd "$quick" && CODEX_QUICK_CHECK=0 FAKE_CHANGED_PATH=tracked.txt FAKE_TOUCH_TIME=202001010000 bash scripts/codex-delegate.sh "$stale_id") > "$tmp/stale-parent.txt"
+stale_run="$(ls -dt "$quick/.workflow/handoffs/$stale_id"-run.* | head -n 1)"
+[[ "$(cd "$quick" && git show "$(cat "$stale_run/tree-after.txt"):tracked.txt")" == 'new line' ]] || { echo 'FAIL: stale-stat tree retained old tracked content' >&2; exit 1; }
+grep -q '^+new line$' "$stale_run/diff.patch" || { echo 'FAIL: stale-stat snapshot omitted new tracked content' >&2; exit 1; }
+cmp -s "$tmp/stale-index-before" "$quick/.git/index" || { echo 'FAIL: stale-stat snapshot changed real index' >&2; exit 1; }
+(cd "$quick" && CODEX_QUICK_CHECK=0 bash scripts/codex-delegate.sh --dry-run --follow-up "$stale_id" "$id") > "$tmp/stale-follow.txt"
+grep -q "Follow-up of: $stale_id" "$tmp/stale-follow.txt" || { echo 'FAIL: stale-stat follow-up not accepted' >&2; exit 1; }
+printf 'old line\n' > "$quick/tracked.txt"
+touch -t 202001010000 "$quick/tracked.txt"
+(cd "$quick" && FAKE_CHANGED_PATH=new-file.txt bash scripts/codex-delegate.sh "$id") > "$tmp/quick-pass.txt"
+quick_run="$(ls -dt "$quick/.workflow/handoffs/$id"-run.* | head -n 1)"
+grep -Fq 'diff --git a/new-file.txt b/new-file.txt' "$quick_run/diff.patch" || { echo 'FAIL: new-file patch omitted new-file.txt' >&2; exit 1; }
+grep -q '^+new line$' "$quick_run/diff.patch" || { echo 'FAIL: new-file patch omitted known content' >&2; exit 1; }
+grep -qx 'DIFF_COMPLETE=1' "$quick_run/status.txt" || { echo 'FAIL: complete patch status missing' >&2; exit 1; }
+grep -q 'new-file.txt (new)' "$tmp/quick-pass.txt" || { echo 'FAIL: new-file summary missing' >&2; exit 1; }
 grep -q 'AC-01: PASS' "$tmp/quick-pass.txt" || { echo 'FAIL: acceptance summary missing' >&2; exit 1; }
 [[ "$(wc -c < "$QUICK_COUNT" | tr -d ' ')" == 1 ]] || { echo 'FAIL: quick check not run' >&2; exit 1; }
 grep -q '^QUICK_CHECK_EXIT=0$' "$quick"/.workflow/handoffs/"$id"-run.*/status.txt || { echo 'FAIL: quick check pass status missing' >&2; exit 1; }
-rm -f "$quick/work.txt"
+rm -f "$quick/new-file.txt"
 if (cd "$quick" && QUICK_FAIL=1 FAKE_CHANGED_PATH=work.txt bash scripts/codex-delegate.sh "$id") > "$tmp/quick-fail.txt" 2>&1; then
   echo 'FAIL: failed quick check accepted' >&2; exit 1
 else [[ $? == 7 ]] || { echo 'FAIL: quick check failure exit code' >&2; exit 1; }; fi
@@ -293,6 +311,9 @@ snapshot_plain_run="$(ls -dt "$quick/.workflow/handoffs/$snapshot_plain_id"-run.
 chmod 600 "$quick/unreadable.txt"
 grep -q '^WARNING:.*snapshot' "$tmp/snapshot-plain.txt" || { echo 'FAIL: snapshot warning missing' >&2; exit 1; }
 grep -qx 'TREE_AFTER=UNAVAILABLE' "$snapshot_plain_run/status.txt" || { echo 'FAIL: snapshot availability status missing' >&2; exit 1; }
+grep -qx 'DIFF_COMPLETE=0' "$snapshot_plain_run/status.txt" || { echo 'FAIL: incomplete patch status missing' >&2; exit 1; }
+[[ "$(head -n 1 "$snapshot_plain_run/diff.patch")" == '# INCOMPLETE: untracked files are not included; read them from changed-paths.txt' ]] || { echo 'FAIL: incomplete patch marker missing' >&2; exit 1; }
+grep -q 'Diff for review (one read):.*INCOMPLETE' "$tmp/snapshot-plain.txt" || { echo 'FAIL: incomplete patch summary missing' >&2; exit 1; }
 grep -qx 'FINAL_EXIT_CODE=1' "$snapshot_plain_run/status.txt" || { echo 'FAIL: snapshot failure final status missing' >&2; exit 1; }
 grep -qx 'QUICK_CHECK_EXIT=0' "$snapshot_plain_run/status.txt" || { echo 'FAIL: quick check skipped after snapshot failure' >&2; exit 1; }
 [[ ! -e "$snapshot_plain_run/tree-after.txt" ]] || { echo 'FAIL: failed snapshot left tree-after.txt' >&2; exit 1; }
@@ -325,6 +346,10 @@ if (cd "$quick" && CODEX_QUICK_CHECK=0 bash scripts/codex-delegate.sh --follow-u
   echo 'FAIL: follow-up accepted an intervening tracked edit' >&2; exit 1
 else [[ $? == 6 ]] || { echo 'FAIL: tracked mismatch exit code' >&2; exit 1; }; fi
 grep -q 'tracked.txt' "$tmp/follow-tracked.txt" || { echo 'FAIL: tracked mismatch path omitted' >&2; exit 1; }
+grep -Fq "tree: expected $(cat "$parent_run/tree-after.txt"), found " "$tmp/follow-tracked.txt" || { echo 'FAIL: mismatch omitted parent tree SHA' >&2; exit 1; }
+grep -Eq 'tree: expected [0-9a-f]+, found [0-9a-f]+' "$tmp/follow-tracked.txt" || { echo 'FAIL: mismatch omitted current tree SHA' >&2; exit 1; }
+grep -Eq 'HEAD: expected [0-9a-f]+, found [0-9a-f]+' "$tmp/follow-tracked.txt" || { echo 'FAIL: mismatch omitted HEAD SHAs' >&2; exit 1; }
+grep -Eq 'tracked.txt[[:space:]]+\|' "$tmp/follow-tracked.txt" || { echo 'FAIL: mismatch omitted diff stat' >&2; exit 1; }
 printf 'new line\n' > "$quick/tracked.txt"
 printf 'intruder\n' > "$quick/intruder.txt"
 if (cd "$quick" && CODEX_QUICK_CHECK=0 bash scripts/codex-delegate.sh --follow-up "$parent_id" "$fix_id") > "$tmp/follow-untracked.txt" 2>&1; then

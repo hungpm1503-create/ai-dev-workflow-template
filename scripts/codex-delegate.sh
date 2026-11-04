@@ -40,16 +40,13 @@ fi
 
 handoff_dir="$root/.workflow/handoffs"
 # Build a complete worktree tree in a disposable index. Git respects .gitignore;
-# the real index is read only and must not acquire staged entries or changed bytes.
+# the real index stays untouched and must not acquire staged entries or changed bytes.
 worktree_tree() {
-  local temp_index index_path tree
+  local temp_index tree
   temp_index="$(mktemp "${TMPDIR:-/tmp}/codex-index.XXXXXX")"
-  index_path="$(git rev-parse --git-path index)"
-  if [[ -f "$index_path" ]]; then
-    cp "$index_path" "$temp_index"
-  else
+  if ! GIT_INDEX_FILE="$temp_index" git read-tree HEAD; then
     rm -f "$temp_index"
-    GIT_INDEX_FILE="$temp_index" git read-tree --empty
+    return 1
   fi
   if ! GIT_INDEX_FILE="$temp_index" git add -A || ! tree="$(GIT_INDEX_FILE="$temp_index" git write-tree)"; then
     rm -f "$temp_index"
@@ -87,10 +84,10 @@ check_follow_up() {
   current_tree="$(worktree_tree)"
   if [[ "$current_head" == "$parent_head" && "$current_tree" == "$parent_tree" ]]; then return 0; fi
   echo 'ERROR: follow-up worktree or HEAD differs from the parent run.' >&2
-  if [[ "$current_head" != "$parent_head" ]]; then
-    printf '  HEAD: expected %s, found %s\n' "$parent_head" "$current_head" >&2
-  fi
+  printf '  HEAD: expected %s, found %s\n' "$parent_head" "$current_head" >&2
+  printf '  tree: expected %s, found %s\n' "$parent_tree" "$current_tree" >&2
   git diff --name-only "$parent_tree" "$current_tree" | sed -n '1,10p' | sed 's/^/  /' >&2
+  git diff --stat "$parent_tree" "$current_tree" | sed -n '1,10p' | sed 's/^/  /' >&2
   if [[ -n "${status:-}" ]]; then printf 'RESULT=BLOCKED_FOLLOW_UP_MISMATCH\n' > "$status"; fi
   return 6
 }
@@ -314,8 +311,11 @@ if [[ -n "$follow_up_of" && -f "$run_dir/tree-after.txt" ]]; then
   tree_after="$(cat "$run_dir/tree-after.txt")"
   git diff --name-only "$parent_tree" "$tree_after" > "$run_dir/delta-paths.txt"
   git diff "$parent_tree" "$tree_after" > "$run_dir/diff.patch"
+elif [[ -f "$run_dir/tree-after.txt" ]]; then
+  tree_after="$(cat "$run_dir/tree-after.txt")"
+  git diff HEAD "$tree_after" > "$run_dir/diff.patch"
 else
-  git diff HEAD > "$run_dir/diff.patch" 2>/dev/null || :
+  { printf '%s\n' '# INCOMPLETE: untracked files are not included; read them from changed-paths.txt'; git diff HEAD 2>/dev/null || :; } > "$run_dir/diff.patch"
 fi
 : > "$run_dir/protected-violations.txt"
 while IFS= read -r changed; do
@@ -357,6 +357,7 @@ if (( snapshot_failed && exit_code == 0 )); then
 fi
 printf 'CODEX_EXIT_CODE=%s\nQUICK_CHECK_EXIT=%s\nFINAL_EXIT_CODE=%s\nHEAD_BEFORE=%s\n' "$codex_exit_code" "$quick_check_exit" "$exit_code" "$head_sha" > "$status"
 if (( snapshot_failed )); then printf 'TREE_AFTER=UNAVAILABLE\n' >> "$status"; fi
+if [[ -f "$run_dir/tree-after.txt" ]]; then printf 'DIFF_COMPLETE=1\n' >> "$status"; else printf 'DIFF_COMPLETE=0\n' >> "$status"; fi
 if [[ -n "$follow_up_of" ]]; then
   printf 'FOLLOW_UP_OF=%s\nTREE_BEFORE=%s\n' "$follow_up_of" "$parent_tree" >> "$status"
 fi
@@ -384,7 +385,9 @@ if [[ -s "$run_dir/protected-violations.txt" ]]; then
   printf 'Protected violations:\n'
   head -n 3 "$run_dir/protected-violations.txt" | sed 's/^/  /'
 fi
-printf 'Diff for review (one read): %s (%s lines)\n' "${run_dir#"$root/"}/diff.patch" "$(wc -l < "$run_dir/diff.patch" | tr -d ' ')"
+diff_note=''
+if [[ ! -f "$run_dir/tree-after.txt" ]]; then diff_note=' INCOMPLETE'; fi
+printf 'Diff for review (one read): %s (%s lines)%s\n' "${run_dir#"$root/"}/diff.patch" "$(wc -l < "$run_dir/diff.patch" | tr -d ' ')" "$diff_note"
 printf 'Quick check: %s\n' "$quick_check_exit"
 if [[ "$quick_check_exit" != SKIPPED && "$quick_check_exit" != 0 ]]; then
   tail -n 8 "$quick_log" | sed 's/^/  /'

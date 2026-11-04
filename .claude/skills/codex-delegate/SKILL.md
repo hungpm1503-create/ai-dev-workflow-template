@@ -17,7 +17,7 @@ description: Delegate an approved task to Codex CLI using a unique ignored hando
 4. Verify `AGENTS.md > Protected paths` is configured for this project, if applicable.
 5. Dry run: mandatory for FULL GOVERNANCE (except `--follow-up` fix rounds), optional for STANDARD: `bash scripts/codex-delegate.sh --dry-run TASK-ID` (no model invocation). The real run performs the same pre-invocation validation.
 6. Execute only when permitted: `bash scripts/codex-delegate.sh TASK-ID`.
-7. Read the wrapper summary, then `diff.patch` once; that is the independent diff review. Open `completion.md`, `quick-check.log` or `codex.log` only when the summary shows a non-zero exit, a failed quick check, a protected violation or missing acceptance-criteria lines.
+7. Read the wrapper summary, then `diff.patch` once; that is the independent diff review. If the summary marks the diff `INCOMPLETE` (`DIFF_COMPLETE=0`), the patch lacks new files: read every new path listed in `changed-paths.txt` before mapping any criterion. Open `completion.md`, `quick-check.log` or `codex.log` only when the summary shows a non-zero exit, a failed quick check, a protected violation or missing acceptance-criteria lines.
 
 The wrapper uses `codex exec --sandbox workspace-write --output-last-message ... -`. Handoffs and logs are gitignored, saved separately for every run. The wrapper blocks dirty worktrees and overlapping invocations, uses a portable time limit (default 1800 seconds; configure `CODEX_TIMEOUT_SECONDS`), passes `network_access=false` explicitly unless `CODEX_NETWORK=1`, and post-checks protected paths. Do not bypass the sandbox.
 
