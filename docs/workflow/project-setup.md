@@ -44,6 +44,12 @@ bash scripts/test-workflow-memory.sh
 
 The simulated `codex` tests do not use tokens or modify application code. They check approval, dry-run, dirty tree, early stdin close (SIGPIPE regression), exit codes, timeout, protected paths and concurrency.
 
+## Model tiers and permission economy
+
+Claude must record an implementation-difficulty tier `Codex difficulty: EASY / STANDARD / HARD` in the handoff's Route section. Model defaults are `gpt-6-luna/medium`, `gpt-6-sol/medium`, `gpt-6-sol/high`. Difficulty is independent of governance risk. HIGH-risk always requires FULL GOVERNANCE and at least STANDARD, and does not become safe just because code is short. Model overrides are supported through `CODEX_MODEL_EASY`, `CODEX_MODEL_STANDARD`, `CODEX_MODEL_HARD`, `CODEX_MODEL`, and `CODEX_REASONING_EFFORT`; verify availability on your local CLI.
+
+For LOW-risk, LOW-traceability initial delegations, `bash scripts/codex-standard.sh TASK-ID` is the narrow pre-approved tool command: it refuses HIGH risk and forces network off. Do not auto-allow the unrestricted delegate wrapper. The default project permission mode is `acceptEdits`, which avoids routine edit prompts but **does not** override protected-path hook checks or explicit high-risk authorization. Prefer scoped permission allowlists; do not enable blanket bypass mode. An initial HIGH-risk Codex run continues using `bash scripts/codex-delegate.sh` with genuine human approval. 
+
 ## 4. Run an approved task
 
 Create `.workflow/handoffs/TASK-DEMO-001.md` with `## Approval status` followed by `Status: APPROVED` **only after approval**. The wrapper rejects pending/non-approved tasks. This line is a process reminder, not proof of human authorization.
