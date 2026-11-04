@@ -41,7 +41,7 @@ for parser in "${parsers[@]}"; do
   # --- Protected: direct, relative, normalised, case, symlinks ---
   for p in "$root/CLAUDE.md" 'AGENTS.md' './CLAUDE.md' "$root/src/../CLAUDE.md" 'src/../../'"$(basename "$root")"'/AGENTS.md' \
            "$root/.github/workflows/ci.yml" "$root/.claude/skills/vibe/SKILL.md" "$root/scripts/hooks/x.sh" \
-           "$root/.claude/settings.json" "$root/scripts/workflow-memory.sh" "$root/scripts/codex-standard.sh" "$root/claude.md" "$root/.GITHUB/workflows/a.yml" \
+           "$root/.claude/settings.json" "$root/scripts/workflow-memory.sh" "$root/claude.md" "$root/.GITHUB/workflows/a.yml" \
            "$root/.hook-test-link-$$/settings.json" "$root/.hook-test-filelink-$$.md" "$root//CLAUDE.md" "$root/./.claude/skills/"; do
     json_edit Edit "$p" | expect_ask "$p"
   done
@@ -112,20 +112,6 @@ grep -Fq '"permissionDecision":"ask"' <<< "$out" || { echo 'FAIL: Git comparison
 grep -Fq 'guard-protected-paths.sh differs from HEAD' <<< "$out" || { echo 'FAIL: Git comparison error omitted warning' >&2; exit 1; }
 printf '%s' "$out" | python3 -c 'import json,sys; json.load(sys.stdin)' || { echo 'FAIL: Git-error decision is invalid JSON' >&2; exit 1; }
 [[ ! -e "$tmp/git-error-canary" ]] || { echo 'FAIL: Git comparison error executed canary hook' >&2; exit 1; }
-
-# The low-risk entrypoint has an allow rule: its content must match HEAD before use.
-# Restore the original trusted guard before testing runner integrity.
-mkdir -p "$settings_repo/scripts"
-cp "$hook" "$settings_repo/scripts/hooks/guard-protected-paths.sh"
-cp "$root/scripts/codex-standard.sh" "$settings_repo/scripts/codex-standard.sh"
-(cd "$settings_repo" && git add scripts/hooks/guard-protected-paths.sh scripts/codex-standard.sh && git -c user.name=t -c user.email=t"@"example.invalid commit -q -m standard-runner)
-json_bash 'bash scripts/codex-standard.sh TASK-SAFE' | run_settings > "$tmp/standard-trusted.json"
-[[ ! -s "$tmp/standard-trusted.json" ]] || { echo 'FAIL: intact standard runner wrongly required approval' >&2; exit 1; }
-printf '\n# unreviewed edit\n' >> "$settings_repo/scripts/codex-standard.sh"
-json_bash 'bash scripts/codex-standard.sh TASK-SAFE' | run_settings > "$tmp/standard-tampered.json"
-grep -Fq '"permissionDecision":"ask"' "$tmp/standard-tampered.json" || { echo 'FAIL: changed pre-approved runner executed without review' >&2; exit 1; }
-grep -Fq 'codex-standard.sh differs from HEAD' "$tmp/standard-tampered.json" || { echo 'FAIL: missing standard-runner integrity reason' >&2; exit 1; }
-
 
 no_head_repo="$tmp/no-head-repo"
 mkdir -p "$no_head_repo/scripts/hooks"

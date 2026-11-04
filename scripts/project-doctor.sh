@@ -76,7 +76,7 @@ if [[ -f .claude/settings.json ]]; then
 else
   fail '.claude/settings.json missing.'
 fi
-for path in scripts/hooks/guard-protected-paths.sh scripts/hooks/auto-verify.sh scripts/codex-delegate.sh scripts/codex-standard.sh; do
+for path in scripts/hooks/guard-protected-paths.sh scripts/hooks/auto-verify.sh scripts/codex-delegate.sh; do
   [[ -f "$path" ]] || fail "Required workflow script missing: $path"
 done
 command -v claude >/dev/null 2>&1 || warn 'Claude CLI missing: live behavior UNVERIFIED.'

@@ -24,7 +24,6 @@ files=(
   docs/workflow/task-routing-notes.md
   docs/workflow/codex-rules.md
   scripts/codex-delegate.sh
-  scripts/codex-standard.sh
   scripts/test-codex-delegate.sh
   scripts/test-secret-scan.sh
   scripts/capture-experience.sh
