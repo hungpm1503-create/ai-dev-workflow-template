@@ -27,6 +27,20 @@ The wrapper runs the configured quick check after Codex unless `CODEX_QUICK_CHEC
 
 Never auto-commit, push, merge or deploy. Never claim unrun tests passed.
 
+## Model selection (owned by this skill)
+
+When preparing a Codex handoff, classify **implementation difficulty** independently of task size, governance risk and traceability. Do this as part of normal handoff preparation; do not call a separate model or read an additional framework.
+
+| Tier | Choose when | Default model / effort |
+| --- | --- | --- |
+| EASY | Narrow, mechanical or well-understood change with a straightforward verification path | `gpt-6-luna` / `medium` |
+| STANDARD | Moderate multi-file implementation, clear application integration, routine debugging | `gpt-6-sol` / `medium` |
+| HARD | Cross-module or architecture-sensitive change, complex concurrency, ambiguous root cause, subtle financial/PIT edge cases | `gpt-6-sol` / `high` |
+
+Write exactly one `- Codex difficulty: EASY|STANDARD|HARD` field under the handoff's `## Route`. The shell wrapper translates that tier to `--model` and reasoning effort, records both for review, and validates any override. HIGH governance risk has a minimum STANDARD tier (even when implementation is short), but does not automatically require HARD. If model availability differs on the user's Codex CLI, use `CODEX_MODEL_EASY`, `CODEX_MODEL_STANDARD`, `CODEX_MODEL_HARD`, or a deliberate `CODEX_MODEL` override rather than guessing a supported identifier. Changing the tier after poor results should be based on observed complexity, not repeated speculative retries.
+
+Keep this selection logic in **this skill**, not in always-loaded `CLAUDE.md`. That core file only directs Claude to invoke `codex-delegate` when delegation is needed.
+
 ## Before delegation
 
 1. Inspect relevant files and confirm exact paths, types, APIs and project commands where practical.
