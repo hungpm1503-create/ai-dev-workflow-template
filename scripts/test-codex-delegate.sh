@@ -14,6 +14,8 @@ cleanup() {
   rm -f "$handoff" "$legacy_handoff" "$probe" "$handoffs/TASK-MODEL-$.md"
   rm -rf "$root/.workflow/work-memory/$id"
   find "$handoffs" -maxdepth 1 -type d -name "$id-run.*" -exec rm -rf {} +
+  find "$handoffs" -maxdepth 1 -type d -name "TASK-MODEL-$-run.*" -exec rm -rf {} +
+  rm -rf "$root/.workflow/work-memory/TASK-MODEL-$"
   rmdir "$handoffs/.codex-delegate.lock" 2>/dev/null || :
   rm -rf "$tmp"
 }
@@ -220,6 +222,8 @@ ls "$handoffs"/"$id"-run.*/diff.patch >/dev/null || { echo 'FAIL: diff.patch not
 grep -qx 'medium' "$handoffs"/"$id"-run.*/effort.txt || { echo 'FAIL: default STANDARD effort record missing' >&2; exit 1; }
 grep -qx 'STANDARD' "$handoffs"/"$id"-run.*/difficulty.txt || { echo 'FAIL: default difficulty record missing' >&2; exit 1; }
 grep -qx 'gpt-6-sol' "$handoffs"/"$id"-run.*/model.txt || { echo 'FAIL: default model record missing' >&2; exit 1; }
+FAKE_MODEL_FILE="$tmp/forwarded-model.txt" bash scripts/codex-delegate.sh "$id" > /dev/null
+grep -qx 'gpt-6-sol' "$tmp/forwarded-model.txt" || { echo 'FAIL: selected model not forwarded via -m' >&2; exit 1; }
 
 # Network is explicitly false by default (overrides ~/.codex/config.toml); CODEX_NETWORK=1 opts in.
 FAKE_CONFIG_FILE="$tmp/config-default.txt" bash scripts/codex-delegate.sh "$id" > /dev/null
