@@ -11,13 +11,13 @@ description: Delegate an approved task to Codex CLI using a unique ignored hando
 - Reference the **one approved planning source** chosen by Claude: concise Claude plan, Superpowers plan or canonical Spec Kit specification/plan. For HIGH risk also follow required independently approved governance artifacts. Do not create duplicate plans.
 - Codex may use Superpowers for **TDD, systematic debugging and verification** when available. Claude may have used its brainstorming/writing-plans for planning; Codex does not repeat them or run competing subagent implementation/`executing-plans`.
 
-1. Verify `codex` is installed and authenticated, and this Git repository has a clean worktree.
+1. Verify `codex` is installed and authenticated, and this Git repository has a clean worktree (a `--follow-up` fix round instead needs the tree the previous round left).
 2. Confirm scope is approved. Material architecture, security, costs and irreversible operations still require explicit user approval.
 3. Review the one canonical plan proportionately when needed; for ANY/HIGH, ensure required independent project review and human approval gates without duplicated reviews. For HIGH risk, send the user a plan of at most about 10 lines plus the approval question first; write the handoff only after approval. Use the skeleton below. Do not open `docs/workflow/handoff-template.md` when this skeleton covers the route; open it only for FULL GOVERNANCE. Write `.workflow/handoffs/TASK-ID.md` with **## Approval status** and exact **Status: APPROVED**, only after appropriate approval. This text is not cryptographic authorization.
 4. Verify `AGENTS.md > Protected paths` is configured for this project, if applicable.
 5. Dry run: mandatory for FULL GOVERNANCE (except `--follow-up` fix rounds), optional for STANDARD: `bash scripts/codex-delegate.sh --dry-run TASK-ID` (no model invocation). The real run performs the same pre-invocation validation.
 6. Execute only when permitted: `bash scripts/codex-delegate.sh TASK-ID`.
-7. Inspect the ignored run directory: `prompt.md`, `completion.md`, `codex.log`, `status.txt`, Git baseline and changed-paths report. Review `git diff` independently.
+7. Read the wrapper summary, then `diff.patch` once; that is the independent diff review. Open `completion.md`, `quick-check.log` or `codex.log` only when the summary shows a non-zero exit, a failed quick check, a protected violation or missing acceptance-criteria lines.
 
 The wrapper uses `codex exec --sandbox workspace-write --output-last-message ... -`. Handoffs and logs are gitignored, saved separately for every run. The wrapper blocks dirty worktrees and overlapping invocations, uses a portable time limit (default 1800 seconds; configure `CODEX_TIMEOUT_SECONDS`), passes `network_access=false` explicitly unless `CODEX_NETWORK=1`, and post-checks protected paths. Do not bypass the sandbox.
 
