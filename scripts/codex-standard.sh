@@ -41,7 +41,19 @@ case "$quick_check" in
     echo 'ERROR: configure AGENTS.md Quick check command before auto-delegation.' >&2
     exit 3 ;;
 esac
+# The codex-delegate skill selects model and effort; this runner only reads,
+# validates and forwards its explicit handoff fields (no model routing here).
+model="$(printf '%s\n' "$route" | sed -n 's/^[[:space:]]*-[[:space:]]*Codex model:[[:space:]]*//p')"
+effort="$(printf '%s\n' "$route" | sed -n 's/^[[:space:]]*-[[:space:]]*Codex reasoning effort:[[:space:]]*//p')"
+if [[ ! "$model" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ || ${#model} -gt 100 ]]; then
+  echo 'ERROR: LOW-risk handoff requires exactly one valid Codex model in ## Route.' >&2; exit 3
+fi
+case "$effort" in
+  minimal|low|medium|high|xhigh) ;;
+  *) echo 'ERROR: LOW-risk handoff requires exactly one valid Codex reasoning effort in ## Route.' >&2; exit 3 ;;
+esac
 # Neither network access nor a test-skip override can be smuggled into the
 # pre-approved low-risk runner through the environment.
-export CODEX_NETWORK=0 CODEX_QUICK_CHECK=1
+export CODEX_NETWORK=0 CODEX_QUICK_CHECK=1 AUTO_VERIFY_DISABLE=0
+export CODEX_MODEL="$model" CODEX_REASONING_EFFORT="$effort"
 exec bash "$root/scripts/codex-delegate.sh" "$id"

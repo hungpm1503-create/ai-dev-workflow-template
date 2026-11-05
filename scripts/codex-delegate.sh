@@ -355,8 +355,13 @@ elif [[ -s "$run_dir/protected-violations.txt" ]]; then
   printf '%s\n' 'Quick check skipped: protected paths changed; review them before running any check.' > "$quick_log"
 elif [[ "${CODEX_QUICK_CHECK:-1}" != 0 ]]; then
   if bash "$root/scripts/hooks/auto-verify.sh" --check-now > "$quick_log" 2>&1; then
-    quick_check_exit=0
-    if grep -Fq 'Quick check not configured; skipped.' "$quick_log" || grep -Fq 'Quick check skipped: AGENTS.md or scripts/hooks/ changed since HEAD.' "$quick_log"; then quick_check_exit=SKIPPED; fi
+    # Exit 0 is not proof of execution: a disabled or skipped hook also exits 0.
+    # Only an explicit success marker can certify that Quick check ran.
+    if grep -Fq 'Quick check PASS (exit 0):' "$quick_log"; then
+      quick_check_exit=0
+    else
+      quick_check_exit=SKIPPED_UNVERIFIED
+    fi
   else
     quick_check_exit=$?
     if (( exit_code == 0 )); then exit_code=7; fi
@@ -404,7 +409,7 @@ diff_note=''
 if [[ ! -f "$run_dir/tree-after.txt" ]]; then diff_note=' INCOMPLETE'; fi
 printf 'Diff for review (one read): %s (%s lines)%s\n' "${run_dir#"$root/"}/diff.patch" "$(wc -l < "$run_dir/diff.patch" | tr -d ' ')" "$diff_note"
 printf 'Quick check: %s\n' "$quick_check_exit"
-if [[ "$quick_check_exit" != SKIPPED && "$quick_check_exit" != 0 ]]; then
+if [[ "$quick_check_exit" != SKIPPED && "$quick_check_exit" != SKIPPED_UNVERIFIED && "$quick_check_exit" != 0 ]]; then
   tail -n 8 "$quick_log" | sed 's/^/  /'
 elif [[ -s "$quick_log" ]]; then
   head -n 4 "$quick_log" | sed 's/^/  /'

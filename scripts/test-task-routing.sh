@@ -59,4 +59,10 @@ need 'docs/workflow/handoff-template.md' '- Governance: STANDARD / FULL GOVERNAN
 need 'docs/workflow/project-setup.md' 'Project-required approvals' 'setup missing project overrides'
 need '.claude/skills/plan-quality/SKILL.md' '**ANY/HIGH risk:**' 'quality skill missing governance'
 need '.claude/skills/codex-delegate/SKILL.md' 'one approved planning source' 'Codex handoff source missing'
+need '.claude/skills/codex-delegate/SKILL.md' '- Traceability: LOW / HIGH' 'skill short handoff must include traceability'
+need '.claude/skills/codex-delegate/SKILL.md' '- Codex model:' 'skill handoff must carry model'
+need '.claude/skills/vibe/SKILL.md' '- Codex reasoning effort:' 'vibe handoff must carry effort'
+need 'scripts/codex-standard.sh' 'export CODEX_MODEL="$model" CODEX_REASONING_EFFORT="$effort"' 'auto-runner must forward skill-selected model'
+need 'CLAUDE.md' 'Reuse that approval instead of asking again' 'do not redundantly ask already approved HIGH-risk scope'
+
 echo 'PASS (doc-contract only; see docs/workflow/pilot-checklist.md for live checks): VIBE mode guardrails, single implementer rule, framework selection, risk gates, traceability and Codex ownership'

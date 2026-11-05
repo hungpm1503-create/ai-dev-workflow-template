@@ -291,12 +291,14 @@ TASK-STANDARD
 - Complexity: MEDIUM
 - Governance risk: LOW
 - Traceability: LOW
+- Codex model: gpt-6-luna
+- Codex reasoning effort: high
 ## Approval status
 Status: APPROVED
 ## Objective
 Small test fixture
 STANDARD
-if (cd "$quick" && CODEX_NETWORK=1 CODEX_QUICK_CHECK=0 FAKE_CONFIG_FILE="$tmp/standard-network.txt" bash scripts/codex-standard.sh "$standard_id") > "$tmp/standard-run.txt" 2>&1; then
+if (cd "$quick" && CODEX_NETWORK=1 CODEX_QUICK_CHECK=0 AUTO_VERIFY_DISABLE=1 CODEX_MODEL=invalid-override CODEX_REASONING_EFFORT=xhigh FAKE_CONFIG_FILE="$tmp/standard-network.txt" FAKE_MODEL_FILE="$tmp/standard-model.txt" bash scripts/codex-standard.sh "$standard_id") > "$tmp/standard-run.txt" 2>&1; then
   grep -Fq 'Final exit code: 0' "$tmp/standard-run.txt" || exit 1
 else
   echo 'FAIL: approved LOW/LOW auto-run failed' >&2
@@ -304,6 +306,21 @@ else
 fi
 grep -qx 'sandbox_workspace_write.network_access=false' "$tmp/standard-network.txt" || { echo 'FAIL: auto-run enabled network' >&2; exit 1; }
 [[ -s "$QUICK_COUNT" ]] || { echo 'FAIL: Quick check skipped during auto-run' >&2; exit 1; }
+grep -qx 'gpt-6-luna' "$tmp/standard-model.txt" || { echo 'FAIL: auto-runner did not forward the skill-selected model' >&2; exit 1; }
+grep -qx 'model_reasoning_effort="high"' "$tmp/standard-network.txt" || { echo 'FAIL: auto-runner did not forward effort' >&2; exit 1; }
+standard_run="$(ls -dt "$quick/.workflow/handoffs/$standard_id"-run.* | head -n 1)"
+grep -qx 'QUICK_CHECK_EXIT=0' "$standard_run/status.txt" || { echo 'FAIL: auto-runner did not suppress AUTO_VERIFY_DISABLE' >&2; exit 1; }
+cp "$quick/.workflow/handoffs/$standard_id.md" "$tmp/standard-good.md"
+sed '/^- Codex model:/d' "$tmp/standard-good.md" > "$quick/.workflow/handoffs/$standard_id.md"
+if (cd "$quick" && bash scripts/codex-standard.sh "$standard_id") > "$tmp/standard-missing-model.txt" 2>&1; then
+ echo 'FAIL: auto-runner accepted handoff without model' >&2; exit 1
+else [[ $? == 3 ]] || { echo 'FAIL: missing model exit status' >&2; exit 1; }; fi
+sed 's/^- Codex reasoning effort: high/- Codex reasoning effort: unsupported/' "$tmp/standard-good.md" > "$quick/.workflow/handoffs/$standard_id.md"
+if (cd "$quick" && bash scripts/codex-standard.sh "$standard_id") > "$tmp/standard-bad-effort.txt" 2>&1; then
+ echo 'FAIL: auto-runner accepted invalid reasoning effort' >&2; exit 1
+else [[ $? == 3 ]] || { echo 'FAIL: invalid effort exit status' >&2; exit 1; }; fi
+cp "$tmp/standard-good.md" "$quick/.workflow/handoffs/$standard_id.md"
+
 : > "$QUICK_COUNT"
 
 # Missing Quick check must fail closed even with an approved LOW/LOW handoff.
@@ -358,6 +375,14 @@ rm -f "$quick/work.txt"
 (cd "$quick" && CODEX_QUICK_CHECK=0 FAKE_CHANGED_PATH=work.txt bash scripts/codex-delegate.sh "$id") > "$tmp/quick-skip.txt"
 grep -q 'QUICK_CHECK_EXIT=SKIPPED' "$quick"/.workflow/handoffs/"$id"-run.*/status.txt || { echo 'FAIL: quick check skip missing' >&2; exit 1; }
 [[ "$(wc -c < "$QUICK_COUNT" | tr -d ' ')" == 2 ]] || { echo 'FAIL: skipped quick check ran' >&2; exit 1; }
+# A disabled verification hook must never be recorded as PASS merely because it
+# returned exit code 0.
+(cd "$quick" && AUTO_VERIFY_DISABLE=1 FAKE_CHANGED_PATH=disabled-test.txt bash scripts/codex-delegate.sh "$id") > "$tmp/auto-disabled.txt"
+disabled_run="$(ls -dt "$quick/.workflow/handoffs/$id"-run.* | head -n 1)"
+grep -qx 'QUICK_CHECK_EXIT=SKIPPED_UNVERIFIED' "$disabled_run/status.txt" || { echo 'FAIL: disabled auto-verify was misreported as PASS' >&2; exit 1; }
+grep -Fq 'Quick check: SKIPPED_UNVERIFIED' "$tmp/auto-disabled.txt" || { echo 'FAIL: skipped verification was hidden' >&2; exit 1; }
+rm -f "$quick/disabled-test.txt"
+
 rm -f "$quick/work.txt"
 (cd "$quick" && FAKE_CHANGED_PATH=tracked.txt bash scripts/codex-delegate.sh "$id") > "$tmp/quick-tracked.txt"
 grep -q 'tracked.txt (+1/-1)' "$tmp/quick-tracked.txt" || { echo 'FAIL: tracked numstat summary missing' >&2; exit 1; }
