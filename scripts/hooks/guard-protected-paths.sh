@@ -229,25 +229,40 @@ case "$tool" in
           ask "This command may modify protected path $p (best-effort Bash check). Confirm it is intended."
         fi
       done
-      # Moving or deleting an ancestor directory also changes protected files.
-      # Compare whole path arguments so writes to unrelated siblings stay quiet.
-      scan="$(printf '%s' "$lcmd" | sed "s/[[:space:];|&()<>\"']/ /g")"
-      scan="${scan//$'\n'/ }"
-      read -ra words <<< "$scan"
-      for word in "${words[@]}"; do
-        word="${word#./}"; word="${word%/}"
-        for p in "${protected[@]}"; do
-          needle="$(lower "$p")"
-          parent="${needle%/*}"
-          while [[ "$parent" != "$needle" ]]; do
-            if [[ "$word" == "$parent" ]]; then
-              ask "This command may modify protected path $p through $parent (best-effort Bash check). Confirm it is intended."
-            fi
-            [[ "$parent" == */* ]] || break
-            parent="${parent%/*}"
+      # A move/removal of an ancestor changes its protected descendants. A copy
+      # only writes at its destination; reading a protected directory is fine.
+      ancestor_mode=''
+      if printf '%s' "$lcmd" | grep -Eq '(^|[[:space:];|&(])(rm|mv)([[:space:]]|$)|git[[:space:]]+(checkout|restore|rm|mv|clean)([[:space:]]|$)'; then
+        ancestor_mode=all
+      elif printf '%s' "$lcmd" | grep -Eq '(^|[[:space:];|&(])(cp|install)([[:space:]]|$)'; then
+        ancestor_mode=destination
+      fi
+      if [[ -n "$ancestor_mode" ]]; then
+        scan="$(printf '%s' "$lcmd" | sed "s/[[:space:];|&()<>\"']/ /g")"
+        scan="${scan//$'\n'/ }"
+        read -ra words <<< "$scan"
+        root_lex_lower="$(lower "$root_lex")"
+        root_phys_lower="$(lower "$root_phys")"
+        for ((i=0; i<${#words[@]}; i++)); do
+          if [[ "$ancestor_mode" == destination ]] && (( i != ${#words[@]} - 1 )); then continue; fi
+          word="${words[i]}"
+          word="${word#./}"; word="${word%/}"
+          for base in "$root_lex_lower" "$root_phys_lower"; do
+            if [[ "$word" == "$base/"* ]]; then word="${word#"$base/"}"; break; fi
+          done
+          for p in "${protected[@]}"; do
+            needle="$(lower "$p")"
+            parent="${needle%/*}"
+            while [[ "$parent" != "$needle" ]]; do
+              if [[ "$word" == "$parent" ]]; then
+                ask "This command may modify protected path $p through $parent (best-effort Bash check). Confirm it is intended."
+              fi
+              [[ "$parent" == */* ]] || break
+              parent="${parent%/*}"
+            done
           done
         done
-      done
+      fi
     fi
     ;;
 esac
