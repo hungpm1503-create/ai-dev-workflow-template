@@ -33,6 +33,8 @@ TASK-<short-id>
 - Complexity: SMALL
 - Governance risk: LOW
 - Traceability: LOW
+- Codex model: <selected by codex-delegate skill>
+- Codex reasoning effort: <selected by codex-delegate skill>
 - Selected planning path: NONE (VIBE)
 ## Objective
 <one observable result>
@@ -44,7 +46,7 @@ Status: APPROVED
 - AC-01: <outcome> — <command>
 ```
 
-`Status: APPROVED` here only records that the user asked for this LOW-risk change in the chat. Run `bash scripts/codex-standard.sh TASK-<short-id>` for LOW-risk, LOW-traceability initial delegations without another confirmation; it refuses HIGH risk. The standard runner always disables network. For dependency installation or another network-dependent task, use the normal `codex-delegate.sh` path with explicit approval; do not use the auto-approved runner.
+`Status: APPROVED` here only records that the user asked for this LOW-risk change in the chat. Use the `codex-delegate` skill for model/effort selection and then run `bash scripts/codex-standard.sh TASK-<short-id>` for LOW-risk, LOW-traceability initial delegations without another confirmation; it refuses HIGH risk and missing model fields. The standard runner always disables network. For dependency installation or another network-dependent task, use the normal `codex-delegate.sh` path with explicit approval; do not use the auto-approved runner.
 For STANDARD governance, a dry-run is optional; the real wrapper validates the same prerequisites before invoking Codex.
 
 ### If the worktree is dirty

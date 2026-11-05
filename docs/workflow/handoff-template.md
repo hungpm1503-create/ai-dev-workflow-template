@@ -16,6 +16,8 @@ Use this form for STANDARD governance (about 30 lines maximum). FULL GOVERNANCE 
 TASK-<unique>
 ## Route
 Complexity: SMALL/MEDIUM/LARGE; risk: LOW; traceability: LOW/HIGH; plan: NONE/CLAUDE/SUPERPOWERS/SPEC KIT (reference: <path>)
+- Codex model: <selected by codex-delegate skill for low-risk auto-delegation>
+- Codex reasoning effort: <selected by codex-delegate skill for low-risk auto-delegation>
 ## Objective
 <one observable result>
 ## Approval status

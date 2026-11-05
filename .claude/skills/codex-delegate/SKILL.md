@@ -38,7 +38,7 @@ When delegating, choose the model and reasoning effort from the task's actual co
 | SMALL FIX — Minor follow-up fixes or test corrections | `gpt-6-luna` | `medium` |
 | INDEPENDENT REVIEW — Separate, read-only review | `gpt-6-sol` | `medium` |
 
-For implementation, choose a supported model ID and invoke the wrapper as `CODEX_MODEL=<model-id> CODEX_REASONING_EFFORT=<effort> bash scripts/codex-delegate.sh TASK-ID`; insert `--dry-run` before TASK-ID when required. For independent Codex review, use a separate read-only session with `gpt-6-sol` and `medium` effort; do not use the implementation wrapper or allow the reviewer to modify code. The skill owns the selection, while the wrapper only validates and forwards the two optional environment variables (unset values preserve legacy CLI defaults). HIGH-risk data/PIT work, including its fixes, uses the HARD profile regardless of diff size. Other HIGH-governance tasks must follow their required approvals and independent review gates; never downgrade them just because the change is small.
+For implementation, choose a supported model ID. For **LOW-risk / LOW-traceability initial runs**, record `Codex model` and `Codex reasoning effort` in the handoff's `## Route`, then invoke `bash scripts/codex-standard.sh TASK-ID`; it validates and forwards the selected model/effort. For other runs invoke `CODEX_MODEL=<model-id> CODEX_REASONING_EFFORT=<effort> bash scripts/codex-delegate.sh TASK-ID`; insert `--dry-run` before TASK-ID when required. For independent Codex review, use a separate read-only session with `gpt-6-sol` and `medium` effort; do not use the implementation wrapper or allow the reviewer to modify code. The skill owns the selection, while the wrapper only validates and forwards the two optional environment variables (unset values preserve legacy CLI defaults). HIGH-risk data/PIT work, including its fixes, uses the HARD profile regardless of diff size. Other HIGH-governance tasks must follow their required approvals and independent review gates; never downgrade them just because the change is small.
 
 ## Before delegation
 
@@ -56,6 +56,9 @@ TASK-<id>
 ## Route
 - Complexity: SMALL / MEDIUM / LARGE
 - Governance risk: LOW / HIGH
+- Traceability: LOW / HIGH
+- Codex model: <supported model ID selected by this skill>
+- Codex reasoning effort: <minimal / low / medium / high / xhigh>
 - Selected planning path: NONE / CLAUDE / SUPERPOWERS / SPEC KIT
 - Governance: STANDARD / FULL GOVERNANCE
 ## Objective
