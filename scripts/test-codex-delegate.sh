@@ -283,7 +283,7 @@ CHECK
 (cd "$quick" && git init -q && git config core.trustctime false && git add -A && git -c user.name=t -c user.email=t@example.invalid commit -q -m fixture)
 export QUICK_COUNT="$tmp/quick-count"
 # Real LOW/LOW wrapper executed in the isolated fake-Codex fixture.
-standard_id="TASK-STANDARD-$"
+standard_id="TASK-STANDARD-${id##*-}"
 cat > "$quick/.workflow/handoffs/$standard_id.md" <<'STANDARD'
 ## Task ID
 TASK-STANDARD
