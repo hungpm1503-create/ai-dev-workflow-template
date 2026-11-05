@@ -31,12 +31,12 @@ Never auto-commit, push, merge or deploy. Never claim unrun tests passed.
 
 When delegating, choose the model and reasoning effort from the task's actual complexity and risk, without a separate classifier call:
 
-| Task type | Examples | Model | Reasoning effort |
-| --- | --- | --- | --- |
-| HARD / HIGH DATA OR PIT RISK | Difficult or high-risk data/PIT work: decoders, verified-set timelines, S4, operations runs | `gpt-6-sol` | `high` |
-| STANDARD / EXISTING PATTERN | Moderate tasks with established patterns: S2 helpers, S3b context, wiring, documentation, test changes | `gpt-6-luna` | `high` |
-| SMALL FIX | Small follow-up fixes and test repairs that do not change high-risk behavior | `gpt-6-luna` | `medium` |
-| INDEPENDENT REVIEW | Separate, read-only code review | `gpt-6-sol` | `medium` |
+| Task type | Model | Reasoning effort |
+| --- | --- | --- |
+| HARD — Complex tasks or high data/PIT risk | `gpt-6-sol` | `high` |
+| STANDARD — Moderate tasks with established patterns | `gpt-6-luna` | `high` |
+| SMALL FIX — Minor follow-up fixes or test corrections | `gpt-6-luna` | `medium` |
+| INDEPENDENT REVIEW — Separate, read-only review | `gpt-6-sol` | `medium` |
 
 For implementation, choose a supported model ID and invoke the wrapper as `CODEX_MODEL=<model-id> CODEX_REASONING_EFFORT=<effort> bash scripts/codex-delegate.sh TASK-ID`; insert `--dry-run` before TASK-ID when required. For independent Codex review, use a separate read-only session with `gpt-6-sol` and `medium` effort; do not use the implementation wrapper or allow the reviewer to modify code. The skill owns the selection, while the wrapper only validates and forwards the two optional environment variables (unset values preserve legacy CLI defaults). HIGH-risk data/PIT work, including its fixes, uses the HARD profile regardless of diff size. Other HIGH-governance tasks must follow their required approvals and independent review gates; never downgrade them just because the change is small.
 
