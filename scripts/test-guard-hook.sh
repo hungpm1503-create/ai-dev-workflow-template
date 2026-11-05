@@ -25,6 +25,18 @@ json_edit() { # tool, path  → JSON with the path safely encoded
   python3 -c 'import json,sys; print(json.dumps({"tool_name":sys.argv[1],"tool_input":{"file_path":sys.argv[2],"old_string":"a","new_string":"b"}}))' "$1" "$2" 2>/dev/null \
     || node -e 'console.log(JSON.stringify({tool_name:process.argv[1],tool_input:{file_path:process.argv[2],old_string:"a",new_string:"b"}}))' "$1" "$2"
 }
+json_noop_edit() {
+  python3 -c 'import json,sys; print(json.dumps({"tool_name":"Edit","tool_input":{"file_path":sys.argv[1],"old_string":"same\n","new_string":"same\n"}}))' "$1" 2>/dev/null \
+    || node -e 'console.log(JSON.stringify({tool_name:"Edit",tool_input:{file_path:process.argv[1],old_string:"same\n",new_string:"same\n"}}))' "$1"
+}
+json_write_file() {
+  python3 -c 'import json,sys; print(json.dumps({"tool_name":"Write","tool_input":{"file_path":sys.argv[1],"content":open(sys.argv[1],encoding="utf-8").read()}}))' "$1" 2>/dev/null \
+    || node -e 'const fs=require("fs"); console.log(JSON.stringify({tool_name:"Write",tool_input:{file_path:process.argv[1],content:fs.readFileSync(process.argv[1],"utf8")}}))' "$1"
+}
+json_write_changed() {
+  python3 -c 'import json,sys; print(json.dumps({"tool_name":"Write","tool_input":{"file_path":sys.argv[1],"content":"changed content\n"}}))' "$1" 2>/dev/null \
+    || node -e 'console.log(JSON.stringify({tool_name:"Write",tool_input:{file_path:process.argv[1],content:"changed content\n"}}))' "$1"
+}
 json_bash() {
   python3 -c 'import json,sys; print(json.dumps({"tool_name":"Bash","tool_input":{"command":sys.argv[1]}}))' "$1" 2>/dev/null \
     || node -e 'console.log(JSON.stringify({tool_name:"Bash",tool_input:{command:process.argv[1]}}))' "$1"
@@ -40,29 +52,37 @@ for p in jq python3 node; do command -v "$p" >/dev/null 2>&1 && parsers+=("$p");
 for parser in "${parsers[@]}"; do
   # --- Protected: direct, relative, normalised, case, symlinks ---
   for p in "$root/CLAUDE.md" 'AGENTS.md' './CLAUDE.md' "$root/src/../CLAUDE.md" 'src/../../'"$(basename "$root")"'/AGENTS.md' \
-           "$root/.github/workflows/ci.yml" "$root/.claude/skills/vibe/SKILL.md" "$root/scripts/hooks/x.sh" \
-           "$root/.claude/settings.json" "$root/scripts/workflow-memory.sh" "$root/scripts/codex-standard.sh" "$root/claude.md" "$root/.GITHUB/workflows/a.yml" \
-           "$root/.hook-test-link-$$/settings.json" "$root/.hook-test-filelink-$$.md" "$root//CLAUDE.md" "$root/./.claude/skills/"; do
+           "$root/.claude/skills/codex-delegate/SKILL.md" "$root/scripts/hooks/guard-protected-paths.sh" "$root/scripts/hooks/auto-verify.sh" \
+           "$root/.claude/settings.json" "$root/scripts/workflow-memory.sh" "$root/scripts/codex-standard.sh" "$root/scripts/codex-delegate.sh" "$root/docs/workflow/codex-rules.md" "$root/claude.md" \
+           "$root/.hook-test-link-$$/settings.json" "$root/.hook-test-filelink-$$.md" "$root//CLAUDE.md" "$root/./.claude/skills/codex-delegate/SKILL.md"; do
     json_edit Edit "$p" | expect_ask "$p"
   done
   # Notebook edits use notebook_path.
-  printf '{"tool_name":"NotebookEdit","tool_input":{"notebook_path":"%s/.claude/skills/a.ipynb"}}' "$root" | expect_ask notebook_path
+  printf '{"tool_name":"NotebookEdit","tool_input":{"notebook_path":"%s/AGENTS.md"}}' "$root" | expect_ask notebook_path
 
   # --- Not protected ---
-  for p in "$root/src/app.ts" '/tmp/elsewhere.txt' "$root/README.md" "$root/.github/workflows-old/a.yml" "$root/docs/CLAUDE.md.bak"; do
+  for p in "$root/src/app.ts" '/tmp/elsewhere.txt' "$root/README.md" "$root/.github/workflows/ci.yml" "$root/.claude/skills/vibe/SKILL.md" "$root/scripts/hooks/x.sh" "$root/docs/CLAUDE.md.bak"; do
     json_edit Write "$p" | expect_none "$p"
   done
+  json_noop_edit "$root/CLAUDE.md" | expect_none 'unchanged Edit content'
+  json_write_file "$root/CLAUDE.md" | expect_none 'unchanged Write content'
+  json_write_changed "$root/CLAUDE.md" | expect_ask 'changed Write content'
   # A protected-looking string inside content must not be mistaken for the target path.
   printf '{"tool_name":"Write","tool_input":{"content":"{\\"file_path\\":\\"CLAUDE.md\\"}","file_path":"%s/src/a.md"}}' "$root" | expect_none 'file_path inside content'
   # Escaped quotes in the real path are parsed correctly (path is not protected).
   json_edit Write "$root/src/we\"ird.md" | expect_none 'escaped quote path'
 
   # --- Bash best-effort heuristic ---
-  for c in 'echo hi > CLAUDE.md' "sed -i 's/a/b/' AGENTS.md" 'cat x | tee .claude/settings.json' 'rm -rf .claude/skills' \
-           'mv a .github/workflows/ci.yml' 'git checkout -- CLAUDE.md' 'printf x >> scripts/hooks/guard-protected-paths.sh'; do
+  for c in 'echo hi > CLAUDE.md' "sed -i 's/a/b/' AGENTS.md" 'cat x | tee .claude/settings.json' 'rm -f .claude/skills/codex-delegate/SKILL.md' \
+           'mv a docs/workflow/codex-rules.md' 'git checkout -- CLAUDE.md' 'printf x >> scripts/hooks/guard-protected-paths.sh' \
+           'mv scripts/hooks/ /tmp/hooks-backup' "mv '$root/scripts/hooks/' /tmp/hooks-backup" "rm -r './.claude/skills/codex-delegate/'" $'echo start\nrm -r scripts/hooks/' \
+           'cp -r /tmp/hooks-source scripts/hooks/' 'cp -r /tmp/hooks-source scripts/hooks/ >/dev/null' \
+           'cp -r /tmp/hooks-source scripts/hooks/ 2>&1' 'cp -r /tmp/hooks-source scripts/hooks/ && echo done' \
+           'cp foo bar && cp -r /tmp/hooks-source scripts/hooks/' 'cp -r scripts/hooks/ /tmp/hooks-copy'; do
     json_bash "$c" | expect_ask "bash: $c"
   done
-  for c in 'cat CLAUDE.md' 'grep -n VIBE CLAUDE.md' 'bash scripts/test-guard-hook.sh 2>&1' 'echo hi > src/a.txt' 'git diff CLAUDE.md'; do
+  for c in 'cat CLAUDE.md' 'grep -n VIBE CLAUDE.md' 'bash scripts/test-guard-hook.sh 2>&1' 'echo hi > src/a.txt' 'git diff CLAUDE.md' \
+           'echo hi > scripts/hooks/other.sh' 'mv scripts/hooks/other.sh /tmp/other.sh' 'echo scripts/hooks/ > README.md'; do
     json_bash "$c" | expect_none "bash: $c"
   done
 

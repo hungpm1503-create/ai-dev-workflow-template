@@ -9,6 +9,8 @@ TASK-EXAMPLE-001
 - Complexity: MEDIUM
 - Governance risk: LOW
 - Traceability: LOW
+- Codex model: gpt-6-luna
+- Codex reasoning effort: high
 - Selected planning path: CLAUDE
 - Governance: STANDARD
 - Single canonical source: the plan in "Implementation steps" below

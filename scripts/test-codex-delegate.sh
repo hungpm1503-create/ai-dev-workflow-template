@@ -8,10 +8,9 @@ id="TASK-SMOKE-$$"
 handoffs="$root/.workflow/handoffs"
 handoff="$handoffs/$id.md"
 legacy_handoff="$root/.claude/handoffs/$id.md"
-probe="$root/.github/workflows/.protected-probe-$$"
 mkdir -p "$handoffs"
 cleanup() {
-  rm -f "$handoff" "$legacy_handoff" "$probe"
+  rm -f "$handoff" "$legacy_handoff"
   rm -rf "$root/.workflow/work-memory/$id"
   find "$handoffs" -maxdepth 1 -type d -name "$id-run.*" -exec rm -rf {} +
   rmdir "$handoffs/.codex-delegate.lock" 2>/dev/null || :
@@ -221,12 +220,6 @@ awk 'BEGIN {for (i=0; i<10000; i++) print "0123456789012345678901234567890123456
 FAKE_SKIP_STDIN=1 bash scripts/codex-delegate.sh "$id" > "$tmp/early-exit.txt"
 grep -q 'Final exit code: 0' "$tmp/early-exit.txt"
 
-# Existing default protected directory must trigger FAIL without reverting edits.
-if FAKE_PROTECTED_PATH="$probe" bash scripts/codex-delegate.sh "$id" > "$tmp/protected.txt" 2>&1; then
-  echo 'FAIL: protected-path change accepted' >&2; exit 1
-else [[ $? == 4 ]] || { echo 'FAIL: protected-path error code' >&2; exit 1; }; fi
-rm -f "$probe"
-
 # Concurrent invocations on same tree: second must be blocked by atomic lock.
 FAKE_SLEEP=3 bash scripts/codex-delegate.sh "$id" > "$tmp/background.txt" 2>&1 &
 background_pid=$!
@@ -291,12 +284,14 @@ TASK-STANDARD
 - Complexity: MEDIUM
 - Governance risk: LOW
 - Traceability: LOW
+- Codex model: gpt-6-luna
+- Codex reasoning effort: high
 ## Approval status
 Status: APPROVED
 ## Objective
 Small test fixture
 STANDARD
-if (cd "$quick" && CODEX_NETWORK=1 CODEX_QUICK_CHECK=0 FAKE_CONFIG_FILE="$tmp/standard-network.txt" bash scripts/codex-standard.sh "$standard_id") > "$tmp/standard-run.txt" 2>&1; then
+if (cd "$quick" && CODEX_NETWORK=1 CODEX_QUICK_CHECK=0 AUTO_VERIFY_DISABLE=1 CODEX_MODEL=invalid-override CODEX_REASONING_EFFORT=xhigh FAKE_CONFIG_FILE="$tmp/standard-network.txt" FAKE_MODEL_FILE="$tmp/standard-model.txt" bash scripts/codex-standard.sh "$standard_id") > "$tmp/standard-run.txt" 2>&1; then
   grep -Fq 'Final exit code: 0' "$tmp/standard-run.txt" || exit 1
 else
   echo 'FAIL: approved LOW/LOW auto-run failed' >&2
@@ -304,6 +299,21 @@ else
 fi
 grep -qx 'sandbox_workspace_write.network_access=false' "$tmp/standard-network.txt" || { echo 'FAIL: auto-run enabled network' >&2; exit 1; }
 [[ -s "$QUICK_COUNT" ]] || { echo 'FAIL: Quick check skipped during auto-run' >&2; exit 1; }
+grep -qx 'gpt-6-luna' "$tmp/standard-model.txt" || { echo 'FAIL: auto-runner did not forward the skill-selected model' >&2; exit 1; }
+grep -qx 'model_reasoning_effort="high"' "$tmp/standard-network.txt" || { echo 'FAIL: auto-runner did not forward effort' >&2; exit 1; }
+standard_run="$(ls -dt "$quick/.workflow/handoffs/$standard_id"-run.* | head -n 1)"
+grep -qx 'QUICK_CHECK_EXIT=0' "$standard_run/status.txt" || { echo 'FAIL: auto-runner did not suppress AUTO_VERIFY_DISABLE' >&2; exit 1; }
+cp "$quick/.workflow/handoffs/$standard_id.md" "$tmp/standard-good.md"
+sed '/^- Codex model:/d' "$tmp/standard-good.md" > "$quick/.workflow/handoffs/$standard_id.md"
+if (cd "$quick" && bash scripts/codex-standard.sh "$standard_id") > "$tmp/standard-missing-model.txt" 2>&1; then
+ echo 'FAIL: auto-runner accepted handoff without model' >&2; exit 1
+else [[ $? == 3 ]] || { echo 'FAIL: missing model exit status' >&2; exit 1; }; fi
+sed 's/^- Codex reasoning effort: high/- Codex reasoning effort: unsupported/' "$tmp/standard-good.md" > "$quick/.workflow/handoffs/$standard_id.md"
+if (cd "$quick" && bash scripts/codex-standard.sh "$standard_id") > "$tmp/standard-bad-effort.txt" 2>&1; then
+ echo 'FAIL: auto-runner accepted invalid reasoning effort' >&2; exit 1
+else [[ $? == 3 ]] || { echo 'FAIL: invalid effort exit status' >&2; exit 1; }; fi
+cp "$tmp/standard-good.md" "$quick/.workflow/handoffs/$standard_id.md"
+
 : > "$QUICK_COUNT"
 
 # Missing Quick check must fail closed even with an approved LOW/LOW handoff.
@@ -359,6 +369,15 @@ rm -f "$quick/work.txt"
 grep -q 'QUICK_CHECK_EXIT=SKIPPED' "$quick"/.workflow/handoffs/"$id"-run.*/status.txt || { echo 'FAIL: quick check skip missing' >&2; exit 1; }
 [[ "$(wc -c < "$QUICK_COUNT" | tr -d ' ')" == 2 ]] || { echo 'FAIL: skipped quick check ran' >&2; exit 1; }
 rm -f "$quick/work.txt"
+# A disabled verification hook must never be recorded as PASS merely because it
+# returned exit code 0.
+(cd "$quick" && AUTO_VERIFY_DISABLE=1 FAKE_CHANGED_PATH=disabled-test.txt bash scripts/codex-delegate.sh "$id") > "$tmp/auto-disabled.txt"
+disabled_run="$(ls -dt "$quick/.workflow/handoffs/$id"-run.* | head -n 1)"
+grep -qx 'QUICK_CHECK_EXIT=SKIPPED_UNVERIFIED' "$disabled_run/status.txt" || { echo 'FAIL: disabled auto-verify was misreported as PASS' >&2; exit 1; }
+grep -Fq 'Quick check: SKIPPED_UNVERIFIED' "$tmp/auto-disabled.txt" || { echo 'FAIL: skipped verification was hidden' >&2; exit 1; }
+rm -f "$quick/disabled-test.txt"
+
+rm -f "$quick/work.txt"
 (cd "$quick" && FAKE_CHANGED_PATH=tracked.txt bash scripts/codex-delegate.sh "$id") > "$tmp/quick-tracked.txt"
 grep -q 'tracked.txt (+1/-1)' "$tmp/quick-tracked.txt" || { echo 'FAIL: tracked numstat summary missing' >&2; exit 1; }
 printf 'old line\n' > "$quick/tracked.txt"
@@ -402,6 +421,16 @@ grep -qx 'scripts/workflow-memory.sh' "$memory_run/protected-violations.txt" || 
 grep -qx 'Working-memory checkpoint skipped: protected paths changed.' "$memory_run/codex.log" || { echo 'FAIL: protected checkpoint skip missing from run log' >&2; exit 1; }
 [[ ! -e "$quick/.workflow/work-memory/$id/RUN-$(basename "$memory_run").md" ]] || { echo 'FAIL: protected run recorded checkpoint' >&2; exit 1; }
 cp "$tmp/quick-memory-before" "$quick/scripts/workflow-memory.sh"
+
+# A changed prompt rule must be reported before any quick check runs.
+cp "$quick/docs/workflow/codex-rules.md" "$tmp/quick-rules-before"
+if (cd "$quick" && FAKE_PROTECTED_PATH="$quick/docs/workflow/codex-rules.md" bash scripts/codex-delegate.sh "$id") > "$tmp/rules-protected.txt" 2>&1; then
+  echo 'FAIL: changed Codex rules accepted' >&2; exit 1
+else [[ $? == 4 ]] || { echo 'FAIL: changed Codex rules exit code' >&2; exit 1; }; fi
+rules_run="$(ls -dt "$quick/.workflow/handoffs/$id"-run.* | head -n 1)"
+grep -qx 'docs/workflow/codex-rules.md' "$rules_run/protected-violations.txt" || { echo 'FAIL: Codex rules not reported as protected' >&2; exit 1; }
+grep -qx 'QUICK_CHECK_EXIT=SKIPPED_PROTECTED' "$rules_run/status.txt" || { echo 'FAIL: quick check ran after Codex rules changed' >&2; exit 1; }
+cp "$tmp/quick-rules-before" "$quick/docs/workflow/codex-rules.md"
 
 # A failed post-run tree snapshot must not bypass protected-path review or status.
 snapshot_protected_id="TASK-SNAPSHOT-PROTECTED-$$"

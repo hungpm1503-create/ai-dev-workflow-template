@@ -51,8 +51,15 @@ Give Claude each prompt in a fresh session. Expected behaviour is in the right c
 | C1 | With `network_access = true` set in `~/.codex/config.toml`, run a handoff that tries `curl https://example.com` | Network blocked (wrapper passes `=false`) |
 | C2 | Same handoff with `CODEX_NETWORK=1` | Network allowed; `network.txt` in the run folder says `true` |
 | C3 | Dirty worktree, then delegate | Blocked with exit 6; vibe skill offers commit / separate worktree / Claude finishes |
-| C4 | Handoff whose task edits `.github/workflows/` | Run reports exit 4 and lists the protected path |
+| C4 | Handoff whose task edits `docs/workflow/codex-rules.md` | Run reports exit 4 and lists the protected path |
 
 ## Recording
 
 Add a short row per run to your project's notes (or a lesson draft via `learn-from-task` when something fails). A FAIL in section A means the rules are unclear to the model: fix the wording, then re-run that row rather than adding more rules.
+
+## D. v1.0 integration checks
+
+- LOW-risk/LOW-traceability: select the model through `codex-delegate`, record `Codex model` and `Codex reasoning effort` in the handoff, run `codex-standard.sh`, and confirm the exact model/effort in the run logs and actual Quick check PASS.
+- HIGH-risk: reuse an existing explicit approval for the same scope without repeat questions; obtain approval for new material decisions. Confirm independent review and required verification remain in place.
+- Disabled verification: an ordinary `codex-delegate.sh` run with `AUTO_VERIFY_DISABLE=1` must report `SKIPPED_UNVERIFIED`, not PASS; the LOW-risk runner must force it back on.
+- Independent read-only review: check model `gpt-6-sol` at medium effort in a separate session, and record the actual result and permission-prompt count.

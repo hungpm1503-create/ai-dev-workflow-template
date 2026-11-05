@@ -12,6 +12,7 @@
 .workflow/experience-drafts/
 .workflow/work-memory/
 .workflow/instinct-candidates/
+.workflow/benchmark-runs/
 .claude/handoffs/
 .claude/experience-drafts/
 .claude/work-memory/
