@@ -15,7 +15,7 @@ fi
 route="$(awk '/^## Route[[:space:]]*$/ {on=1; next} on && /^## / {exit} on {print}' "$handoff")"
 if ! printf '%s\n' "$route" | grep -Eiq '(^|[;[:space:]])(Governance risk|risk):[[:space:]]*LOW([;[:space:]]|$)' ||
    ! printf '%s\n' "$route" | grep -Eiq '(^|[;[:space:]])Traceability:[[:space:]]*LOW([;[:space:]]|$)' ||
-   printf '%s\n' "$route" | grep -Eiq '(HIGH|FULL GOVERNANCE)' ; then
+   printf '%s\n' "$route" | grep -Eiq '(^|[;[:space:]])(Governance risk|risk|Traceability):[[:space:]]*HIGH([;[:space:]]|$)|Governance:[[:space:]]*FULL[[:space:]]+GOVERNANCE' ; then
   echo 'ERROR: standard auto-delegation requires explicit LOW risk and LOW traceability; HIGH-risk must use the normal approved Codex path.' >&2
   exit 3
 fi
