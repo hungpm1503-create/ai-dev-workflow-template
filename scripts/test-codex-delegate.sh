@@ -151,7 +151,7 @@ if bash scripts/codex-delegate.sh '../escape' >/dev/null 2>&1; then
 fi
 echo 'PASS: handoff precedence, legacy warning, approval, symlink and traversal dry-run checks'
 # The pre-approved runner must not execute HIGH-risk work.
-gate_id="TASK-GATE-$"
+gate_id="TASK-GATE-${id##*-}"
 cat > "$handoffs/$gate_id.md" <<'GATE'
 ## Task ID
 TASK-GATE
