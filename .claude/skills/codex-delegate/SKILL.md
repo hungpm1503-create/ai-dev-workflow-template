@@ -81,7 +81,6 @@ Status: APPROVED
 
 ```markdown
 ## Route (add to the lines above)
-- Traceability: LOW / HIGH
 - Single canonical source: <approved plan path or concise in-handoff plan>
 - Required independent reviews and human approval evidence: <actual records or PENDING; never infer authorization>
 ## Verified context
