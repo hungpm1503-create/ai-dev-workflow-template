@@ -74,10 +74,12 @@ for parser in "${parsers[@]}"; do
 
   # --- Bash best-effort heuristic ---
   for c in 'echo hi > CLAUDE.md' "sed -i 's/a/b/' AGENTS.md" 'cat x | tee .claude/settings.json' 'rm -f .claude/skills/codex-delegate/SKILL.md' \
-           'mv a docs/workflow/codex-rules.md' 'git checkout -- CLAUDE.md' 'printf x >> scripts/hooks/guard-protected-paths.sh'; do
+           'mv a docs/workflow/codex-rules.md' 'git checkout -- CLAUDE.md' 'printf x >> scripts/hooks/guard-protected-paths.sh' \
+           'mv scripts/hooks/ /tmp/hooks-backup' "rm -r './.claude/skills/codex-delegate/'" $'echo start\nrm -r scripts/hooks/'; do
     json_bash "$c" | expect_ask "bash: $c"
   done
-  for c in 'cat CLAUDE.md' 'grep -n VIBE CLAUDE.md' 'bash scripts/test-guard-hook.sh 2>&1' 'echo hi > src/a.txt' 'git diff CLAUDE.md'; do
+  for c in 'cat CLAUDE.md' 'grep -n VIBE CLAUDE.md' 'bash scripts/test-guard-hook.sh 2>&1' 'echo hi > src/a.txt' 'git diff CLAUDE.md' \
+           'echo hi > scripts/hooks/other.sh' 'mv scripts/hooks/other.sh /tmp/other.sh'; do
     json_bash "$c" | expect_none "bash: $c"
   done
 

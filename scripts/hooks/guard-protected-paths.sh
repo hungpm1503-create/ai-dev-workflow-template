@@ -229,6 +229,25 @@ case "$tool" in
           ask "This command may modify protected path $p (best-effort Bash check). Confirm it is intended."
         fi
       done
+      # Moving or deleting an ancestor directory also changes protected files.
+      # Compare whole path arguments so writes to unrelated siblings stay quiet.
+      scan="$(printf '%s' "$lcmd" | sed "s/[[:space:];|&()<>\"']/ /g")"
+      scan="${scan//$'\n'/ }"
+      read -ra words <<< "$scan"
+      for word in "${words[@]}"; do
+        word="${word#./}"; word="${word%/}"
+        for p in "${protected[@]}"; do
+          needle="$(lower "$p")"
+          parent="${needle%/*}"
+          while [[ "$parent" != "$needle" ]]; do
+            if [[ "$word" == "$parent" ]]; then
+              ask "This command may modify protected path $p through $parent (best-effort Bash check). Confirm it is intended."
+            fi
+            [[ "$parent" == */* ]] || break
+            parent="${parent%/*}"
+          done
+        done
+      done
     fi
     ;;
 esac
