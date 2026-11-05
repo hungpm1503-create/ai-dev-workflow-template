@@ -76,12 +76,13 @@ for parser in "${parsers[@]}"; do
   for c in 'echo hi > CLAUDE.md' "sed -i 's/a/b/' AGENTS.md" 'cat x | tee .claude/settings.json' 'rm -f .claude/skills/codex-delegate/SKILL.md' \
            'mv a docs/workflow/codex-rules.md' 'git checkout -- CLAUDE.md' 'printf x >> scripts/hooks/guard-protected-paths.sh' \
            'mv scripts/hooks/ /tmp/hooks-backup' "mv '$root/scripts/hooks/' /tmp/hooks-backup" "rm -r './.claude/skills/codex-delegate/'" $'echo start\nrm -r scripts/hooks/' \
-           'cp -r /tmp/hooks-source scripts/hooks/'; do
+           'cp -r /tmp/hooks-source scripts/hooks/' 'cp -r /tmp/hooks-source scripts/hooks/ >/dev/null' \
+           'cp -r /tmp/hooks-source scripts/hooks/ 2>&1' 'cp -r /tmp/hooks-source scripts/hooks/ && echo done' \
+           'cp foo bar && cp -r /tmp/hooks-source scripts/hooks/' 'cp -r scripts/hooks/ /tmp/hooks-copy'; do
     json_bash "$c" | expect_ask "bash: $c"
   done
   for c in 'cat CLAUDE.md' 'grep -n VIBE CLAUDE.md' 'bash scripts/test-guard-hook.sh 2>&1' 'echo hi > src/a.txt' 'git diff CLAUDE.md' \
-           'echo hi > scripts/hooks/other.sh' 'mv scripts/hooks/other.sh /tmp/other.sh' \
-           'cp -r scripts/hooks/ /tmp/hooks-copy' 'echo scripts/hooks/ > README.md'; do
+           'echo hi > scripts/hooks/other.sh' 'mv scripts/hooks/other.sh /tmp/other.sh' 'echo scripts/hooks/ > README.md'; do
     json_bash "$c" | expect_none "bash: $c"
   done
 

@@ -229,22 +229,15 @@ case "$tool" in
           ask "This command may modify protected path $p (best-effort Bash check). Confirm it is intended."
         fi
       done
-      # A move/removal of an ancestor changes its protected descendants. A copy
-      # only writes at its destination; reading a protected directory is fine.
-      ancestor_mode=''
-      if printf '%s' "$lcmd" | grep -Eq '(^|[[:space:];|&(])(rm|mv)([[:space:]]|$)|git[[:space:]]+(checkout|restore|rm|mv|clean)([[:space:]]|$)'; then
-        ancestor_mode=all
-      elif printf '%s' "$lcmd" | grep -Eq '(^|[[:space:];|&(])(cp|install)([[:space:]]|$)'; then
-        ancestor_mode=destination
-      fi
-      if [[ -n "$ancestor_mode" ]]; then
+      # A command naming an ancestor directory may replace or remove protected
+      # descendants. Bash is best-effort: copies out of that directory may ask.
+      if printf '%s' "$lcmd" | grep -Eq '(^|[[:space:];|&(])(rm|mv|cp|install)([[:space:]]|$)|git[[:space:]]+(checkout|restore|rm|mv|clean)([[:space:]]|$)'; then
         scan="$(printf '%s' "$lcmd" | sed "s/[[:space:];|&()<>\"']/ /g")"
         scan="${scan//$'\n'/ }"
         read -ra words <<< "$scan"
         root_lex_lower="$(lower "$root_lex")"
         root_phys_lower="$(lower "$root_phys")"
         for ((i=0; i<${#words[@]}; i++)); do
-          if [[ "$ancestor_mode" == destination ]] && (( i != ${#words[@]} - 1 )); then continue; fi
           word="${words[i]}"
           word="${word#./}"; word="${word%/}"
           for base in "$root_lex_lower" "$root_phys_lower"; do
