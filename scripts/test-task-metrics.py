@@ -88,6 +88,13 @@ class MetricsTests(unittest.TestCase):
         self.assertEqual(task["quick_checks_passed"], "0")
         self.assertEqual(task["accepted"], "UNVERIFIED")
 
+    def test_partial_turn_usage_is_unknown(self):
+        good = json.dumps({"type":"turn.completed","usage":{"input_tokens":10,"output_tokens":3}})
+        bad = json.dumps({"type":"turn.completed","usage":{"input_tokens":-1,"output_tokens":3}})
+        self.fixture("TASK-PARTIAL", "m1", status="FINAL_EXIT_CODE=0\n", jsonl=good + "\n" + bad + "\n")
+        self.run_report()
+        self.assertEqual(read_csv(self.output / "tasks.csv")[0]["input_tokens"], "N/A")
+
     def test_incomplete_and_bad_usage_fail_closed(self):
         d = self.fixture("TASK-INCOMPLETE", "run1", status="", complete=False,
                          jsonl=json.dumps({"type":"turn.completed","usage":{"input_tokens":-1,"output_tokens":4}}))
