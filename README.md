@@ -86,6 +86,10 @@ A zero exit code is **not** acceptance: Claude must inspect Git diff, verificati
 Existing repositories created from a GitHub template do not automatically receive changes from this source repository. See `docs/workflow/project-setup.md`.
 
 
+## Offline task metrics (zero additional model calls)
+
+Run `python3 scripts/task-metrics.py` to summarize local Codex delegation metadata into ignored `.workflow/metrics/` Markdown and CSV reports. Existing runs show model, verification status and follow-ups; token usage is available only for future runs explicitly launched with `CODEX_METRICS_JSON=1`. Unknown acceptance stays `UNVERIFIED`; the reporter does **not** perform reviews or score code quality. See [low-cost task metrics](docs/workflow/task-metrics.md) for interpretation and optional human-review evidence.
+
 ## Evidence-based Experience Library
 
 After meaningful failures, rework, or a critical workflow gap, Claude can use the existing `learn-from-task` skill to capture evidence and propose a reusable improvement. No task-by-task auto-learning or model retraining is implied.
