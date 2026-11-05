@@ -21,6 +21,8 @@ jobs:
         run: bash scripts/test-secret-scan.sh
       - name: Validate adaptive Spec Kit routing and high-risk safeguards (offline)
         run: bash scripts/test-task-routing.sh
+      - name: Test offline task metrics (no API calls)
+        run: python3 scripts/test-task-metrics.py
       - name: Regression test delegation (fake Codex, no API calls)
         run: bash scripts/test-codex-delegate.sh
       - name: Test protected-path hook for Claude Code (offline)
@@ -55,3 +57,4 @@ jobs:
           /bin/bash scripts/test-guard-hook.sh
           /bin/bash scripts/test-auto-verify.sh
           /bin/bash scripts/test-codex-delegate.sh
+          python3 scripts/test-task-metrics.py
