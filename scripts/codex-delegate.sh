@@ -272,6 +272,8 @@ if [[ "${CODEX_NETWORK:-0}" == 1 ]]; then network_access=true; fi
 codex_args=(exec --sandbox workspace-write -c "sandbox_workspace_write.network_access=$network_access")
 if [[ -n "$selected_model" ]]; then codex_args+=(-m "$selected_model"); fi
 if [[ -n "$reasoning_effort" ]]; then codex_args+=(-c "model_reasoning_effort=\"$reasoning_effort\""); fi
+# Optional structured usage events; no extra model call and no change to safety gates.
+if [[ "${CODEX_METRICS_JSON:-0}" == 1 ]]; then codex_args+=(--json); fi
 printf 'NETWORK_ACCESS=%s\n' "$network_access" > "$run_dir/network.txt"
 # Launch Codex in a dedicated process group (Bash job control also works on macOS Bash 3.2).
 # This lets the watchdog terminate child tools, not just the Codex parent.
