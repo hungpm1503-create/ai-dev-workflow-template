@@ -39,6 +39,9 @@ files=(
   docs/workflow/benchmark-workflow-resume.md
   scripts/benchmark-workflow-resume.sh
   scripts/benchmark-codex-ab.sh
+  scripts/task-metrics.py
+  scripts/test-task-metrics.py
+  docs/workflow/task-metrics.md
   docs/workflow/codex-ab-pilot.md
   .claude/lessons/EXPERIENCE_TEMPLATE.md
   .claude/skills/vibe/SKILL.md
