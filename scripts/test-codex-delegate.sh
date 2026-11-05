@@ -29,6 +29,7 @@ out=''; sandbox=''; stdin_flag=''
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --sandbox) sandbox="$2"; shift 2;;
+    --json) printf "json\n" >> "${FAKE_JSON_FILE:-/dev/null}"; shift;;
     --output-last-message) out="$2"; shift 2;;
     -c) printf '%s\n' "$2" >> "${FAKE_CONFIG_FILE:-/dev/null}"; shift 2;;
     -m) printf '%s\n' "$2" >> "${FAKE_MODEL_FILE:-/dev/null}"; shift 2;;
@@ -196,6 +197,9 @@ grep -q 'Diff for review (one read)' "$tmp/success.txt" || { echo 'FAIL: summary
 ls "$handoffs"/"$id"-run.*/diff.patch >/dev/null || { echo 'FAIL: diff.patch not written' >&2; exit 1; }
 grep -qx 'default' "$handoffs"/"$id"-run.*/effort.txt || { echo 'FAIL: default effort record missing' >&2; exit 1; }
 grep -qx 'CLI default' "$handoffs"/"$id"-run.*/model.txt || { echo 'FAIL: default model record missing' >&2; exit 1; }
+# Structured-event logging is explicit opt-in; fake Codex must receive --json.
+FAKE_JSON_FILE="$tmp/json-flag.txt" CODEX_METRICS_JSON=1 bash scripts/codex-delegate.sh "$id" > "$tmp/json-opt-in.txt"
+grep -qx "json" "$tmp/json-flag.txt" || { echo "FAIL: metrics flag did not reach Codex" >&2; exit 1; }
 CODEX_MODEL=gpt-6-luna CODEX_REASONING_EFFORT=medium FAKE_MODEL_FILE="$tmp/forwarded-model.txt" bash scripts/codex-delegate.sh "$id" > /dev/null
 grep -qx 'gpt-6-luna' "$tmp/forwarded-model.txt" || { echo 'FAIL: skill-selected model not forwarded via -m' >&2; exit 1; }
 grep -qx 'gpt-6-luna' "$handoffs"/"$id"-run.*/model.txt || { echo 'FAIL: model not recorded' >&2; exit 1; }
