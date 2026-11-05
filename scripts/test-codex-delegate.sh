@@ -375,6 +375,7 @@ rm -f "$quick/work.txt"
 (cd "$quick" && CODEX_QUICK_CHECK=0 FAKE_CHANGED_PATH=work.txt bash scripts/codex-delegate.sh "$id") > "$tmp/quick-skip.txt"
 grep -q 'QUICK_CHECK_EXIT=SKIPPED' "$quick"/.workflow/handoffs/"$id"-run.*/status.txt || { echo 'FAIL: quick check skip missing' >&2; exit 1; }
 [[ "$(wc -c < "$QUICK_COUNT" | tr -d ' ')" == 2 ]] || { echo 'FAIL: skipped quick check ran' >&2; exit 1; }
+rm -f "$quick/work.txt"
 # A disabled verification hook must never be recorded as PASS merely because it
 # returned exit code 0.
 (cd "$quick" && AUTO_VERIFY_DISABLE=1 FAKE_CHANGED_PATH=disabled-test.txt bash scripts/codex-delegate.sh "$id") > "$tmp/auto-disabled.txt"
