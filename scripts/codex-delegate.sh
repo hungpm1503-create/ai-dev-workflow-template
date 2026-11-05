@@ -118,6 +118,13 @@ if [[ "$approval_status" != 'APPROVED' ]]; then
   exit 3
 fi
 
+# Skill chooses the model and effort. Wrapper only validates and forwards them.
+# Empty values preserve backward compatibility with Codex CLI defaults.
+selected_model="${CODEX_MODEL:-}"
+if [[ -n "$selected_model" && "$selected_model" == *[!a-zA-Z0-9._-]* ]]; then
+  echo 'ERROR: CODEX_MODEL must be a valid Codex model identifier.' >&2
+  exit 2
+fi
 reasoning_effort="${CODEX_REASONING_EFFORT:-}"
 case "$reasoning_effort" in
   ''|minimal|low|medium|high|xhigh) ;;
@@ -129,8 +136,9 @@ if (( dry_run )); then
   echo "DRY RUN: approved handoff ${handoff#"$root/"}"
   if [[ -n "$follow_up_of" ]]; then echo "Follow-up of: $follow_up_of"; fi
   dry_network=false; if [[ "${CODEX_NETWORK:-0}" == 1 ]]; then dry_network=true; fi
-  echo "Reasoning effort: ${reasoning_effort:-default}"
-  echo "Would invoke: codex exec --sandbox workspace-write -c sandbox_workspace_write.network_access=$dry_network${reasoning_effort:+ -c model_reasoning_effort=\"$reasoning_effort\"} --output-last-message <run>/completion.md -"
+  echo "Model: ${selected_model:-CLI default}"
+  echo "Reasoning effort: ${reasoning_effort:-CLI default}"
+  echo "Would invoke: codex exec --sandbox workspace-write${selected_model:+ -m $selected_model} -c sandbox_workspace_write.network_access=$dry_network${reasoning_effort:+ -c model_reasoning_effort=\"$reasoning_effort\"} --output-last-message <run>/completion.md -"
   echo 'No Codex invocation or worktree modification performed.'
   exit 0
 fi
@@ -217,6 +225,7 @@ prompt="$run_dir/prompt.md"
 before="$run_dir/status-before.txt"
 head_sha="$(git rev-parse HEAD)"
 printf '%s\n' "$head_sha" > "$run_dir/head-before.txt"
+printf '%s\n' "${selected_model:-CLI default}" > "$run_dir/model.txt"
 printf '%s\n' "${reasoning_effort:-default}" > "$run_dir/effort.txt"
 git status --porcelain=v1 --untracked-files=all > "$before"
 if [[ -n "$follow_up_of" ]]; then
@@ -230,7 +239,7 @@ fi
 
 # Snapshot protected paths before Codex can change AGENTS.md.
 {
-  printf '%s\n' 'CLAUDE.md' 'AGENTS.md' 'scripts/codex-delegate.sh' 'scripts/codex-standard.sh' 'scripts/workflow-memory.sh' 'scripts/hooks/' '.claude/settings.json' '.claude/skills/' '.github/workflows/'
+  printf '%s\n' 'CLAUDE.md' 'AGENTS.md' 'scripts/codex-delegate.sh' 'scripts/workflow-memory.sh' 'scripts/hooks/' '.claude/settings.json' '.claude/skills/' '.github/workflows/'
   sed -n 's/^[[:space:]]*-[[:space:]]*Protected paths:[[:space:]]*//p' AGENTS.md | head -n 1 | tr ',' '\n'
 } | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | grep -v -E '^$|^\[NOT CONFIGURED\]$' > "$run_dir/protected-paths.txt" || :
 
@@ -261,6 +270,7 @@ fi
 network_access=false
 if [[ "${CODEX_NETWORK:-0}" == 1 ]]; then network_access=true; fi
 codex_args=(exec --sandbox workspace-write -c "sandbox_workspace_write.network_access=$network_access")
+if [[ -n "$selected_model" ]]; then codex_args+=(-m "$selected_model"); fi
 if [[ -n "$reasoning_effort" ]]; then codex_args+=(-c "model_reasoning_effort=\"$reasoning_effort\""); fi
 printf 'NETWORK_ACCESS=%s\n' "$network_access" > "$run_dir/network.txt"
 # Launch Codex in a dedicated process group (Bash job control also works on macOS Bash 3.2).

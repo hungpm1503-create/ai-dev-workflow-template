@@ -13,19 +13,32 @@ description: Delegate an approved task to Codex CLI using a unique ignored hando
 
 1. Verify `codex` is installed and authenticated, and this Git repository has a clean worktree (a `--follow-up` fix round instead needs the tree the previous round left).
 2. Confirm scope is approved. Material architecture, security, costs and irreversible operations still require explicit user approval.
-3. Review the one canonical plan proportionately when needed; for ANY/HIGH, ensure required independent project review and human approval gates without duplicated reviews. For HIGH risk, check if an explicit user instruction in the conversation already authorized the precise scope and consequential decisions; if yes, record that evidence and do not ask again. Otherwise present one concise (at most about 10 lines) plan with related approval decisions batched into a single question; write the handoff only after genuine approval. Use the skeleton below. Do not open `docs/workflow/handoff-template.md` when this skeleton covers the route; open it only for FULL GOVERNANCE. Write `.workflow/handoffs/TASK-ID.md` with **## Approval status** and exact **Status: APPROVED**, only after appropriate approval. This text is not cryptographic authorization.
+3. Review the one canonical plan proportionately when needed; for ANY/HIGH, ensure required independent project review and human approval gates without duplicated reviews. For HIGH risk, send the user a plan of at most about 10 lines plus the approval question first; write the handoff only after approval. Use the skeleton below. Do not open `docs/workflow/handoff-template.md` when this skeleton covers the route; open it only for FULL GOVERNANCE. Write `.workflow/handoffs/TASK-ID.md` with **## Approval status** and exact **Status: APPROVED**, only after appropriate approval. This text is not cryptographic authorization.
 4. Verify `AGENTS.md > Protected paths` is configured for this project, if applicable.
 5. Dry run: mandatory for FULL GOVERNANCE (except `--follow-up` fix rounds), optional for STANDARD: `bash scripts/codex-delegate.sh --dry-run TASK-ID` (no model invocation). The real run performs the same pre-invocation validation.
-6. Execute only when permitted: for LOW-risk/LOW-traceability ordinary first runs, `bash scripts/codex-standard.sh TASK-ID` (auto-approved with a narrow rule); otherwise `bash scripts/codex-delegate.sh TASK-ID` with the applicable human approval.
+6. Execute only when permitted: `bash scripts/codex-delegate.sh TASK-ID`.
 7. Read the wrapper summary, then `diff.patch` once; that is the independent diff review. If the summary marks the diff `INCOMPLETE` (`DIFF_COMPLETE=0`), the patch lacks new files: read every new path listed in `changed-paths.txt` before mapping any criterion. Open `completion.md`, `quick-check.log` or `codex.log` only when the summary shows a non-zero exit, a failed quick check, a protected violation or missing acceptance-criteria lines.
 
 The wrapper uses `codex exec --sandbox workspace-write --output-last-message ... -`. Handoffs and logs are gitignored, saved separately for every run. The wrapper blocks dirty worktrees and overlapping invocations, uses a portable time limit (default 1800 seconds; configure `CODEX_TIMEOUT_SECONDS`), passes `network_access=false` explicitly unless `CODEX_NETWORK=1`, and post-checks protected paths. Do not bypass the sandbox.
 
-The wrapper runs the configured quick check after Codex unless `CODEX_QUICK_CHECK=0`; inspect its compact summary and `quick-check.log`. `CODEX_REASONING_EFFORT=medium` may be tried for MEDIUM, LOW-risk delegations to measure token savings later; HIGH-risk tasks keep the default/high effort. This is an option to measure, not a routing rule.
+The wrapper runs the configured quick check after Codex unless `CODEX_QUICK_CHECK=0`; inspect its compact summary and `quick-check.log`. Model choice is handled in **Model selection** below, not in this wrapper.
 
 **Important:** A protected-path postcheck detects changes **after** they happen and cannot prevent their creation; it never auto-reverts user files. The text approval marker can be edited and is not an independently verified user authorization. The secret scanner is heuristic. A timed-out Codex child may require manual inspection. If Codex cannot run, return the handoff and mark execution UNVERIFIED.
 
 Never auto-commit, push, merge or deploy. Never claim unrun tests passed.
+
+## Model selection (owned by this skill)
+
+When delegating, choose the model and reasoning effort from the task's actual complexity and risk, without a separate classifier call:
+
+| Task type | Model | Reasoning effort |
+| --- | --- | --- |
+| HARD — Complex tasks or high data/PIT risk | `gpt-6-sol` | `high` |
+| STANDARD — Moderate tasks with established patterns | `gpt-6-luna` | `high` |
+| SMALL FIX — Minor follow-up fixes or test corrections | `gpt-6-luna` | `medium` |
+| INDEPENDENT REVIEW — Separate, read-only review | `gpt-6-sol` | `medium` |
+
+For implementation, choose a supported model ID and invoke the wrapper as `CODEX_MODEL=<model-id> CODEX_REASONING_EFFORT=<effort> bash scripts/codex-delegate.sh TASK-ID`; insert `--dry-run` before TASK-ID when required. For independent Codex review, use a separate read-only session with `gpt-6-sol` and `medium` effort; do not use the implementation wrapper or allow the reviewer to modify code. The skill owns the selection, while the wrapper only validates and forwards the two optional environment variables (unset values preserve legacy CLI defaults). HIGH-risk data/PIT work, including its fixes, uses the HARD profile regardless of diff size. Other HIGH-governance tasks must follow their required approvals and independent review gates; never downgrade them just because the change is small.
 
 ## Before delegation
 

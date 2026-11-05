@@ -32,6 +32,7 @@ while [[ $# -gt 0 ]]; do
     --sandbox) sandbox="$2"; shift 2;;
     --output-last-message) out="$2"; shift 2;;
     -c) printf '%s\n' "$2" >> "${FAKE_CONFIG_FILE:-/dev/null}"; shift 2;;
+    -m) printf '%s\n' "$2" >> "${FAKE_MODEL_FILE:-/dev/null}"; shift 2;;
     -) stdin_flag='-'; shift;;
     *) exit 42;;
   esac
@@ -149,25 +150,15 @@ if bash scripts/codex-delegate.sh '../escape' >/dev/null 2>&1; then
   echo 'FAIL: path traversal accepted' >&2; exit 1
 fi
 echo 'PASS: handoff precedence, legacy warning, approval, symlink and traversal dry-run checks'
-# A privileged low-risk entrypoint may never run HIGH-risk work.
-gate_id="TASK-GATE-$$"
-gate="$handoffs/$gate_id.md"
-cat > "$gate" <<'GATE'
-## Task ID
-TASK-GATE
-## Route
-- Complexity: MEDIUM
-- Governance risk: HIGH
-- Traceability: LOW
-## Approval status
-Status: APPROVED
-GATE
-if bash scripts/codex-standard.sh "$gate_id" > "$tmp/standard-high.txt" 2>&1; then
-  echo 'FAIL: standard runner accepted HIGH-risk task' >&2; exit 1
-else [[ $? == 3 ]] || { echo 'FAIL: standard runner HIGH-risk exit code' >&2; exit 1; }; fi
-rm -f "$gate"
-echo 'PASS: low-risk preapproved runner blocks HIGH-risk handoffs'
-
+# Skill-provided model and effort are validated and passed through unchanged.
+CODEX_MODEL=gpt-6-luna CODEX_REASONING_EFFORT=medium bash scripts/codex-delegate.sh --dry-run "$id" > "$tmp/model-dry.txt"
+grep -Fq 'Model: gpt-6-luna' "$tmp/model-dry.txt" || { echo 'FAIL: dry-run does not report selected model' >&2; exit 1; }
+grep -Fq 'Reasoning effort: medium' "$tmp/model-dry.txt" || { echo 'FAIL: dry-run does not report selected effort' >&2; exit 1; }
+if CODEX_MODEL='bad model' bash scripts/codex-delegate.sh --dry-run "$id" >/dev/null 2>&1; then
+ echo 'FAIL: invalid model identifier accepted' >&2; exit 1
+else [[ $? == 2 ]] || exit 1; fi
+echo 'PASS: skill-provided model and effort validated'
+ 
 # Repository must be clean (handoff and run logs are ignored).
 printf 'dirty\n' > ".dirty-worktree-probe-$$"
 if bash scripts/codex-delegate.sh "$id" > "$tmp/dirty.txt" 2>&1; then
@@ -188,10 +179,14 @@ grep -q 'AC-01: PASS' "$handoffs"/"$id"-run.*/completion.md
 grep -q 'Diff for review (one read)' "$tmp/success.txt" || { echo 'FAIL: summary does not point to diff.patch' >&2; exit 1; }
 ls "$handoffs"/"$id"-run.*/diff.patch >/dev/null || { echo 'FAIL: diff.patch not written' >&2; exit 1; }
 grep -qx 'default' "$handoffs"/"$id"-run.*/effort.txt || { echo 'FAIL: default effort record missing' >&2; exit 1; }
+grep -qx 'CLI default' "$handoffs"/"$id"-run.*/model.txt || { echo 'FAIL: default model record missing' >&2; exit 1; }
+CODEX_MODEL=gpt-6-luna CODEX_REASONING_EFFORT=medium FAKE_MODEL_FILE="$tmp/forwarded-model.txt" bash scripts/codex-delegate.sh "$id" > /dev/null
+grep -qx 'gpt-6-luna' "$tmp/forwarded-model.txt" || { echo 'FAIL: skill-selected model not forwarded via -m' >&2; exit 1; }
+grep -qx 'gpt-6-luna' "$handoffs"/"$id"-run.*/model.txt || { echo 'FAIL: model not recorded' >&2; exit 1; }
 
 # Network is explicitly false by default (overrides ~/.codex/config.toml); CODEX_NETWORK=1 opts in.
 FAKE_CONFIG_FILE="$tmp/config-default.txt" bash scripts/codex-delegate.sh "$id" > /dev/null
-[[ "$(cat "$tmp/config-default.txt")" == 'sandbox_workspace_write.network_access=false' ]] || { echo 'FAIL: network not explicitly disabled by default' >&2; exit 1; }
+grep -qx 'sandbox_workspace_write.network_access=false' "$tmp/config-default.txt" || { echo 'FAIL: network not explicitly disabled by default' >&2; exit 1; }
 CODEX_NETWORK=yes FAKE_CONFIG_FILE="$tmp/config-typo.txt" bash scripts/codex-delegate.sh "$id" > /dev/null
 grep -qx 'sandbox_workspace_write.network_access=false' "$tmp/config-typo.txt" || { echo 'FAIL: only CODEX_NETWORK=1 may enable network' >&2; exit 1; }
 CODEX_NETWORK=1 FAKE_CONFIG_FILE="$tmp/config-net.txt" bash scripts/codex-delegate.sh "$id" > /dev/null
@@ -251,7 +246,6 @@ done
 quick="$(cd "$tmp" && pwd -P)/quick-repo"
 mkdir -p "$quick/scripts/hooks" "$quick/docs/workflow" "$quick/.workflow/handoffs"
 cp scripts/codex-delegate.sh "$quick/scripts/"
-cp scripts/codex-standard.sh "$quick/scripts/"
 cp scripts/hooks/auto-verify.sh "$quick/scripts/hooks/"
 cp scripts/workflow-memory.sh "$quick/scripts/"
 cp docs/workflow/codex-rules.md "$quick/docs/workflow/"
@@ -270,30 +264,6 @@ fi
 CHECK
 (cd "$quick" && git init -q && git config core.trustctime false && git add -A && git -c user.name=t -c user.email=t@example.invalid commit -q -m fixture)
 export QUICK_COUNT="$tmp/quick-count"
-# Check the real LOW-risk runner inside the isolated fixture, not the host app.
-standard_id="TASK-STANDARD-$$"
-cat > "$quick/.workflow/handoffs/$standard_id.md" <<'STANDARD'
-## Task ID
-TASK-STANDARD
-## Route
-- Complexity: MEDIUM
-- Governance risk: LOW
-- Traceability: LOW
-## Approval status
-Status: APPROVED
-## Objective
-Test fixture
-STANDARD
-if (cd "$quick" && CODEX_NETWORK=1 CODEX_QUICK_CHECK=0 FAKE_CONFIG_FILE="$tmp/standard-network.txt" bash scripts/codex-standard.sh "$standard_id") > "$tmp/standard-run.txt" 2>&1; then
-  grep -Fq 'Final exit code: 0' "$tmp/standard-run.txt" || exit 1
-else
-  echo 'FAIL: standard runner rejected approved LOW-risk task' >&2
-  cat "$tmp/standard-run.txt" >&2
-  exit 1
-fi
-grep -qx 'sandbox_workspace_write.network_access=false' "$tmp/standard-network.txt" || { echo 'FAIL: standard runner enabled network' >&2; exit 1; }
-[[ -s "$QUICK_COUNT" ]] || { echo 'FAIL: standard runner skipped Quick check' >&2; exit 1; }
-: > "$QUICK_COUNT"
 stale_id="TASK-STALE-STAT-$$"
 cp "$handoff" "$quick/.workflow/handoffs/$stale_id.md"
 cp "$quick/.git/index" "$tmp/stale-index-before"
