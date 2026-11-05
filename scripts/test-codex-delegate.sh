@@ -184,7 +184,8 @@ else [[ $? == 6 ]] || { echo 'FAIL: dirty worktree error code' >&2; exit 1; }; f
 rm -f ".dirty-worktree-probe-$$"
 grep -q "dirty-worktree-probe-$$" "$tmp/dirty.txt" || { echo 'FAIL: dirty-tree error does not list the dirty path' >&2; exit 1; }
 
-bash scripts/codex-delegate.sh "$id" > "$tmp/success.txt"
+FAKE_JSON_FILE="$tmp/json-default.txt" bash scripts/codex-delegate.sh "$id" > "$tmp/success.txt"
+[[ ! -e "$tmp/json-default.txt" ]] || { echo "FAIL: JSON metrics enabled by default" >&2; exit 1; }
 grep -q 'BEGIN APPROVED HANDOFF' "$FAKE_PROMPT_FILE"
 grep -q 'Start from the files listed in the handoff' "$FAKE_PROMPT_FILE" || { echo 'FAIL: prompt file-first guidance missing' >&2; exit 1; }
 grep -q 'BEGIN CODEX RULES' "$FAKE_PROMPT_FILE" || { echo 'FAIL: Codex rules opening marker missing' >&2; exit 1; }
