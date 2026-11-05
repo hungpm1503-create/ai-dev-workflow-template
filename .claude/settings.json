@@ -9,7 +9,11 @@
       "Bash(bash scripts/test-*.sh)",
       "Bash(bash scripts/workflow-memory.sh:*)",
       "Bash(bash scripts/codex-delegate.sh --dry-run:*)",
-      "Edit(./.workflow/**)"
+      "Edit(./.workflow/**)",
+      "Bash(bash scripts/codex-standard.sh:*)",
+      "Bash(bash scripts/project-doctor.sh)",
+      "Bash(bash scripts/validate-workflow.sh --project)",
+      "Bash(git diff --check:*)"
     ],
     "ask": [
       "Bash(git push:*)",
@@ -21,7 +25,8 @@
       "Read(./.env.*)",
       "Read(./**/*.pem)",
       "Read(./**/*.key)"
-    ]
+    ],
+    "defaultMode": "acceptEdits"
   },
   "hooks": {
     "PreToolUse": [

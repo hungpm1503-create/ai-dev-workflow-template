@@ -41,7 +41,7 @@ for parser in "${parsers[@]}"; do
   # --- Protected: direct, relative, normalised, case, symlinks ---
   for p in "$root/CLAUDE.md" 'AGENTS.md' './CLAUDE.md' "$root/src/../CLAUDE.md" 'src/../../'"$(basename "$root")"'/AGENTS.md' \
            "$root/.github/workflows/ci.yml" "$root/.claude/skills/vibe/SKILL.md" "$root/scripts/hooks/x.sh" \
-           "$root/.claude/settings.json" "$root/scripts/workflow-memory.sh" "$root/claude.md" "$root/.GITHUB/workflows/a.yml" \
+           "$root/.claude/settings.json" "$root/scripts/workflow-memory.sh" "$root/scripts/codex-standard.sh" "$root/claude.md" "$root/.GITHUB/workflows/a.yml" \
            "$root/.hook-test-link-$$/settings.json" "$root/.hook-test-filelink-$$.md" "$root//CLAUDE.md" "$root/./.claude/skills/"; do
     json_edit Edit "$p" | expect_ask "$p"
   done
@@ -112,6 +112,34 @@ grep -Fq '"permissionDecision":"ask"' <<< "$out" || { echo 'FAIL: Git comparison
 grep -Fq 'guard-protected-paths.sh differs from HEAD' <<< "$out" || { echo 'FAIL: Git comparison error omitted warning' >&2; exit 1; }
 printf '%s' "$out" | python3 -c 'import json,sys; json.load(sys.stdin)' || { echo 'FAIL: Git-error decision is invalid JSON' >&2; exit 1; }
 [[ ! -e "$tmp/git-error-canary" ]] || { echo 'FAIL: Git comparison error executed canary hook' >&2; exit 1; }
+
+# The low-risk entrypoint has an allow rule: its content must match HEAD before use.
+# Restore the original trusted guard before testing runner integrity.
+mkdir -p "$settings_repo/scripts"
+cp "$hook" "$settings_repo/scripts/hooks/guard-protected-paths.sh"
+cp "$root/scripts/codex-standard.sh" "$settings_repo/scripts/codex-standard.sh"
+cp "$root/scripts/codex-delegate.sh" "$settings_repo/scripts/codex-delegate.sh"
+(cd "$settings_repo" && git add scripts/hooks/guard-protected-paths.sh scripts/codex-standard.sh scripts/codex-delegate.sh && git -c user.name=t -c user.email=t"@"example.invalid commit -q -m standard-runner)
+json_bash 'bash scripts/codex-standard.sh TASK-SAFE' | run_settings > "$tmp/standard-trusted.json"
+[[ ! -s "$tmp/standard-trusted.json" ]] || { echo 'FAIL: intact standard runner wrongly required approval' >&2; exit 1; }
+# A prefix allow rule must not permit appended shell commands.
+for command in 'bash scripts/codex-standard.sh TASK-SAFE; echo unsafe' 'bash scripts/codex-standard.sh TASK-SAFE && echo unsafe' 'bash scripts/codex-standard.sh TASK-SAFE --unsafe'; do
+  json_bash "$command" | run_settings > "$tmp/standard-command-injection.json"
+  grep -Fq '"permissionDecision":"ask"' "$tmp/standard-command-injection.json" || { echo "FAIL: unsafe standard-runner command allowed: $command" >&2; exit 1; }
+done
+
+printf '\n# unreviewed edit\n' >> "$settings_repo/scripts/codex-standard.sh"
+json_bash 'bash scripts/codex-standard.sh TASK-SAFE' | run_settings > "$tmp/standard-tampered.json"
+grep -Fq '"permissionDecision":"ask"' "$tmp/standard-tampered.json" || { echo 'FAIL: changed pre-approved runner executed without review' >&2; exit 1; }
+grep -Fq 'codex-standard.sh differs from HEAD' "$tmp/standard-tampered.json" || { echo 'FAIL: missing standard-runner integrity reason' >&2; exit 1; }
+
+
+# Modifying the delegated executable must also trigger a permission request.
+git -C "$settings_repo" checkout -- scripts/codex-standard.sh
+printf '\n# unreviewed delegated runner change\n' >> "$settings_repo/scripts/codex-delegate.sh"
+json_bash 'bash scripts/codex-standard.sh TASK-SAFE' | run_settings > "$tmp/delegate-tampered.json"
+grep -Fq '"permissionDecision":"ask"' "$tmp/delegate-tampered.json" || { echo 'FAIL: modified delegated executable auto-approved' >&2; exit 1; }
+grep -Fq 'scripts/codex-delegate.sh differs from HEAD' "$tmp/delegate-tampered.json" || { echo 'FAIL: missing delegated runner review reason' >&2; exit 1; }
 
 no_head_repo="$tmp/no-head-repo"
 mkdir -p "$no_head_repo/scripts/hooks"

@@ -150,6 +150,23 @@ if bash scripts/codex-delegate.sh '../escape' >/dev/null 2>&1; then
   echo 'FAIL: path traversal accepted' >&2; exit 1
 fi
 echo 'PASS: handoff precedence, legacy warning, approval, symlink and traversal dry-run checks'
+# The pre-approved runner must not execute HIGH-risk work.
+gate_id="TASK-GATE-${id##*-}"
+cat > "$handoffs/$gate_id.md" <<'GATE'
+## Task ID
+TASK-GATE
+## Route
+- Complexity: MEDIUM
+- Governance risk: HIGH
+- Traceability: LOW
+## Approval status
+Status: APPROVED
+GATE
+if bash scripts/codex-standard.sh "$gate_id" > "$tmp/gate.txt" 2>&1; then
+  echo 'FAIL: auto-runner accepted HIGH-risk task' >&2; exit 1
+else [[ $? == 3 ]] || { echo 'FAIL: wrong high-risk refusal code' >&2; exit 1; }; fi
+rm -f "$handoffs/$gate_id.md"
+
 # Skill-provided model and effort are validated and passed through unchanged.
 CODEX_MODEL=gpt-6-luna CODEX_REASONING_EFFORT=medium bash scripts/codex-delegate.sh --dry-run "$id" > "$tmp/model-dry.txt"
 grep -Fq 'Model: gpt-6-luna' "$tmp/model-dry.txt" || { echo 'FAIL: dry-run does not report selected model' >&2; exit 1; }
@@ -246,6 +263,7 @@ done
 quick="$(cd "$tmp" && pwd -P)/quick-repo"
 mkdir -p "$quick/scripts/hooks" "$quick/docs/workflow" "$quick/.workflow/handoffs"
 cp scripts/codex-delegate.sh "$quick/scripts/"
+cp scripts/codex-standard.sh "$quick/scripts/"
 cp scripts/hooks/auto-verify.sh "$quick/scripts/hooks/"
 cp scripts/workflow-memory.sh "$quick/scripts/"
 cp docs/workflow/codex-rules.md "$quick/docs/workflow/"
@@ -264,6 +282,48 @@ fi
 CHECK
 (cd "$quick" && git init -q && git config core.trustctime false && git add -A && git -c user.name=t -c user.email=t@example.invalid commit -q -m fixture)
 export QUICK_COUNT="$tmp/quick-count"
+# Real LOW/LOW wrapper executed in the isolated fake-Codex fixture.
+standard_id="TASK-STANDARD-${id##*-}"
+cat > "$quick/.workflow/handoffs/$standard_id.md" <<'STANDARD'
+## Task ID
+TASK-STANDARD
+## Route
+- Complexity: MEDIUM
+- Governance risk: LOW
+- Traceability: LOW
+## Approval status
+Status: APPROVED
+## Objective
+Small test fixture
+STANDARD
+if (cd "$quick" && CODEX_NETWORK=1 CODEX_QUICK_CHECK=0 FAKE_CONFIG_FILE="$tmp/standard-network.txt" bash scripts/codex-standard.sh "$standard_id") > "$tmp/standard-run.txt" 2>&1; then
+  grep -Fq 'Final exit code: 0' "$tmp/standard-run.txt" || exit 1
+else
+  echo 'FAIL: approved LOW/LOW auto-run failed' >&2
+  cat "$tmp/standard-run.txt" >&2; exit 1
+fi
+grep -qx 'sandbox_workspace_write.network_access=false' "$tmp/standard-network.txt" || { echo 'FAIL: auto-run enabled network' >&2; exit 1; }
+[[ -s "$QUICK_COUNT" ]] || { echo 'FAIL: Quick check skipped during auto-run' >&2; exit 1; }
+: > "$QUICK_COUNT"
+
+# Missing Quick check must fail closed even with an approved LOW/LOW handoff.
+sed 's/Quick check command: bash scripts\/check.sh/Quick check command: [NOT CONFIGURED]/' "$quick/AGENTS.md" > "$tmp/missing-check-AGENTS"
+cp "$quick/AGENTS.md" "$tmp/valid-check-AGENTS"
+cp "$tmp/missing-check-AGENTS" "$quick/AGENTS.md"
+(cd "$quick" && git add AGENTS.md && git -c user.name=t -c user.email=t"@"example.invalid commit -q -m unset-quick)
+if (cd "$quick" && bash scripts/codex-standard.sh "$standard_id") > "$tmp/missing-quick.txt" 2>&1; then
+  echo 'FAIL: auto-run accepted unconfigured Quick check' >&2; exit 1
+else [[ $? == 3 ]] || { echo 'FAIL: wrong missing-quick exit' >&2; exit 1; }; fi
+cp "$tmp/valid-check-AGENTS" "$quick/AGENTS.md"
+(cd "$quick" && git add AGENTS.md && git -c user.name=t -c user.email=t"@"example.invalid commit -q -m restore-quick)
+
+# A modified delegated script must never be launched by the auto-allowed runner.
+printf '\n# unauthorized edit\n' >> "$quick/scripts/codex-delegate.sh"
+if (cd "$quick" && bash scripts/codex-standard.sh "$standard_id") > "$tmp/tampered-delegate.txt" 2>&1; then
+  echo 'FAIL: auto-run executed altered delegate' >&2; exit 1
+else [[ $? == 3 ]] || { echo 'FAIL: wrong integrity error code' >&2; exit 1; }; fi
+git -C "$quick" checkout -- scripts/codex-delegate.sh
+
 stale_id="TASK-STALE-STAT-$$"
 cp "$handoff" "$quick/.workflow/handoffs/$stale_id.md"
 cp "$quick/.git/index" "$tmp/stale-index-before"

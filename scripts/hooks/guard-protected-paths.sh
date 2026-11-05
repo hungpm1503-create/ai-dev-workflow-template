@@ -72,7 +72,7 @@ tool="$(field tool_name)" || ask 'Protected-path hook could not parse the tool i
 
 # ---------- Protected path list ----------
 protected_list() {
-  printf '%s\n' 'CLAUDE.md' 'AGENTS.md' 'scripts/codex-delegate.sh' 'scripts/workflow-memory.sh' 'scripts/hooks/' '.claude/settings.json' '.claude/skills/' '.github/workflows/'
+  printf '%s\n' 'CLAUDE.md' 'AGENTS.md' 'scripts/codex-delegate.sh' 'scripts/codex-standard.sh' 'scripts/workflow-memory.sh' 'scripts/hooks/' '.claude/settings.json' '.claude/skills/' '.github/workflows/'
   if [[ -f "$root/AGENTS.md" ]]; then
     sed -n 's/^[[:space:]]*-[[:space:]]*Protected paths:[[:space:]]*//p' "$root/AGENTS.md" | head -n 1 | tr ',' '\n'
   fi
@@ -157,6 +157,23 @@ case "$tool" in
   Bash)
     cmd="$(field tool_input.command)" || ask 'Protected-path hook could not parse the Bash command; confirm it manually.'
     [[ -n "$cmd" ]] || exit 0
+    # The LOW-risk entrypoint is pre-approved by command name: never execute a
+    # Codex-modified or unverifiable copy of that executable on the host.
+    if [[ "$cmd" == *"scripts/codex-standard.sh"* ]]; then
+      # Avoid allowing shell chaining or arbitrary flags through a Bash prefix rule.
+      if [[ ! "$cmd" =~ ^bash[[:space:]]+scripts/codex-standard[.]sh[[:space:]]+TASK-[A-Za-z0-9][A-Za-z0-9_-]*$ ]]; then
+        ask 'Auto-approved Codex command must be exactly: bash scripts/codex-standard.sh TASK-ID.'
+      fi
+      if ! git -C "$root" rev-parse --verify HEAD >/dev/null 2>&1; then
+        ask 'Cannot verify committed runner scripts; review before execution.'
+      fi
+      for script in scripts/codex-standard.sh scripts/codex-delegate.sh; do
+        if ! git -C "$root" ls-files --error-unmatch -- "$script" >/dev/null 2>&1 ||
+           ! git -C "$root" diff --quiet HEAD -- "$script"; then
+          ask "$script differs from HEAD or integrity cannot be checked; review it before execution."
+        fi
+      done
+    fi
     write_re='(^|[^<0-9&>])>{1,2}[^&]|(^|[[:space:];|&(])(tee|mv|cp|rm|truncate|install|ln|dd|chmod|chown)([[:space:]]|$)|sed[[:space:]]+(-[a-zA-Z]*i|--in-place)|perl[[:space:]]+-[a-zA-Z]*i|git[[:space:]]+(checkout|restore|apply|am|reset|stash|rm|mv|clean)'
     if printf '%s' "$cmd" | grep -Eq -- "$write_re"; then
       lcmd="$(lower "$cmd")"
