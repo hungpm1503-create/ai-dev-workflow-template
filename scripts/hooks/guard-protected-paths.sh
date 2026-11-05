@@ -72,7 +72,7 @@ tool="$(field tool_name)" || ask 'Protected-path hook could not parse the tool i
 
 # ---------- Protected path list ----------
 protected_list() {
-  printf '%s\n' 'CLAUDE.md' 'AGENTS.md' 'scripts/codex-delegate.sh' 'scripts/codex-standard.sh' 'scripts/workflow-memory.sh' 'scripts/hooks/' '.claude/settings.json' '.claude/skills/' '.github/workflows/'
+  printf '%s\n' 'CLAUDE.md' 'AGENTS.md' 'docs/workflow/codex-rules.md' 'scripts/codex-delegate.sh' 'scripts/codex-standard.sh' 'scripts/workflow-memory.sh' 'scripts/hooks/guard-protected-paths.sh' 'scripts/hooks/auto-verify.sh' '.claude/settings.json' '.claude/skills/codex-delegate/SKILL.md'
   if [[ -f "$root/AGENTS.md" ]]; then
     sed -n 's/^[[:space:]]*-[[:space:]]*Protected paths:[[:space:]]*//p' "$root/AGENTS.md" | head -n 1 | tr ',' '\n'
   fi
@@ -148,10 +148,56 @@ check_path() {
   done
 }
 
+# Direct file tools expose the proposed text. Skip a prompt only when an
+# existing regular file would retain exactly the same bytes.
+content_unchanged() {
+  local raw="$1" path
+  [[ "$raw" == /* ]] && path="$raw" || path="$root/$raw"
+  [[ -f "$path" && ! -L "$path" ]] || return 1
+  case "$parser:$tool" in
+    jq:Edit)
+      printf '%s' "$input" | jq -e '.tool_input | (.old_string | type == "string") and (.new_string | type == "string") and (.old_string == .new_string)' >/dev/null 2>&1
+      ;;
+    jq:Write)
+      printf '%s' "$input" | jq -e '.tool_input.content | type == "string"' >/dev/null 2>&1 || return 1
+      cmp -s "$path" <(printf '%s' "$input" | jq -j '.tool_input.content')
+      ;;
+    python3:Edit|python3:Write)
+      printf '%s' "$input" | python3 -c '
+import json, sys
+d = json.load(sys.stdin).get("tool_input", {})
+if sys.argv[2] == "Edit":
+    old, new = d.get("old_string"), d.get("new_string")
+    unchanged = isinstance(old, str) and isinstance(new, str) and old == new
+else:
+    content = d.get("content")
+    unchanged = isinstance(content, str) and content.encode("utf-8") == open(sys.argv[1], "rb").read()
+sys.exit(0 if unchanged else 1)
+' "$path" "$tool" 2>/dev/null
+      ;;
+    node:Edit|node:Write)
+      printf '%s' "$input" | node -e '
+const fs = require("fs");
+let input = "";
+process.stdin.on("data", chunk => input += chunk).on("end", () => {
+  try {
+    const d = JSON.parse(input).tool_input || {};
+    const unchanged = process.argv[2] === "Edit"
+      ? typeof d.old_string === "string" && d.old_string === d.new_string
+      : typeof d.content === "string" && Buffer.from(d.content).equals(fs.readFileSync(process.argv[1]));
+    process.exit(unchanged ? 0 : 1);
+  } catch { process.exit(1); }
+});' "$path" "$tool" 2>/dev/null
+      ;;
+    *) return 1 ;;
+  esac
+}
+
 case "$tool" in
   Edit|Write|MultiEdit|NotebookEdit)
     path="$(field tool_input.file_path tool_input.notebook_path)" || ask 'Protected-path hook could not parse the tool input; confirm this edit manually.'
     [[ -n "$path" ]] || exit 0
+    if [[ "$tool" == Edit || "$tool" == Write ]] && content_unchanged "$path"; then exit 0; fi
     check_path "$path"
     ;;
   Bash)

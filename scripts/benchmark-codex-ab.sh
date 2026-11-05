@@ -19,7 +19,7 @@ if [[ "$mode" == '--run' ]]; then
   }
 fi
 
-outbase="$root/.claude/benchmark-runs"
+outbase="$root/.workflow/benchmark-runs"
 [[ ! -L "$outbase" ]] || { echo 'ERROR: output directory cannot be a symlink' >&2; exit 2; }
 mkdir -p "$outbase"
 run_dir="$(mktemp -d "$outbase/ab.XXXXXX")"

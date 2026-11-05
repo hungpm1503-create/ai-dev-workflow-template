@@ -26,7 +26,7 @@ bash scripts/benchmark-codex-ab.sh --run
 
 Optionally set `CODEX_AB_MODEL` to the **same available model** for both arms. The runner uses `codex exec --ephemeral --json --sandbox workspace-write` in **two independent local fixture repositories**. It does not require external packages or network in the model's coding workspace, and never modifies the application source.
 
-Outputs live in ignored `.claude/benchmark-runs/ab.XXXXXX/`:
+Outputs live in ignored `.workflow/benchmark-runs/ab.XXXXXX/`:
 
 - `RESULTS.md`: per-arm CLI exit, local test exit, pass count, actual usage fields, elapsed seconds, input bytes.
 - `baseline.events.jsonl`, `memory.events.jsonl`: private raw event traces (not committed).
