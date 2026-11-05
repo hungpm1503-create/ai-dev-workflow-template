@@ -118,7 +118,8 @@ printf '%s' "$out" | python3 -c 'import json,sys; json.load(sys.stdin)' || { ech
 mkdir -p "$settings_repo/scripts"
 cp "$hook" "$settings_repo/scripts/hooks/guard-protected-paths.sh"
 cp "$root/scripts/codex-standard.sh" "$settings_repo/scripts/codex-standard.sh"
-(cd "$settings_repo" && git add scripts/hooks/guard-protected-paths.sh scripts/codex-standard.sh && git -c user.name=t -c user.email=t"@"example.invalid commit -q -m standard-runner)
+cp "$root/scripts/codex-delegate.sh" "$settings_repo/scripts/codex-delegate.sh"
+(cd "$settings_repo" && git add scripts/hooks/guard-protected-paths.sh scripts/codex-standard.sh scripts/codex-delegate.sh && git -c user.name=t -c user.email=t"@"example.invalid commit -q -m standard-runner)
 json_bash 'bash scripts/codex-standard.sh TASK-SAFE' | run_settings > "$tmp/standard-trusted.json"
 [[ ! -s "$tmp/standard-trusted.json" ]] || { echo 'FAIL: intact standard runner wrongly required approval' >&2; exit 1; }
 # A prefix allow rule must not permit appended shell commands.
@@ -132,6 +133,13 @@ json_bash 'bash scripts/codex-standard.sh TASK-SAFE' | run_settings > "$tmp/stan
 grep -Fq '"permissionDecision":"ask"' "$tmp/standard-tampered.json" || { echo 'FAIL: changed pre-approved runner executed without review' >&2; exit 1; }
 grep -Fq 'codex-standard.sh differs from HEAD' "$tmp/standard-tampered.json" || { echo 'FAIL: missing standard-runner integrity reason' >&2; exit 1; }
 
+
+# Modifying the delegated executable must also trigger a permission request.
+git -C "$settings_repo" checkout -- scripts/codex-standard.sh
+printf '\n# unreviewed delegated runner change\n' >> "$settings_repo/scripts/codex-delegate.sh"
+json_bash 'bash scripts/codex-standard.sh TASK-SAFE' | run_settings > "$tmp/delegate-tampered.json"
+grep -Fq '"permissionDecision":"ask"' "$tmp/delegate-tampered.json" || { echo 'FAIL: modified delegated executable auto-approved' >&2; exit 1; }
+grep -Fq 'scripts/codex-delegate.sh differs from HEAD' "$tmp/delegate-tampered.json" || { echo 'FAIL: missing delegated runner review reason' >&2; exit 1; }
 
 no_head_repo="$tmp/no-head-repo"
 mkdir -p "$no_head_repo/scripts/hooks"
