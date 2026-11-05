@@ -21,7 +21,7 @@ description: Delegate an approved task to Codex CLI using a unique ignored hando
 
 The wrapper uses `codex exec --sandbox workspace-write --output-last-message ... -`. Handoffs and logs are gitignored, saved separately for every run. The wrapper blocks dirty worktrees and overlapping invocations, uses a portable time limit (default 1800 seconds; configure `CODEX_TIMEOUT_SECONDS`), passes `network_access=false` explicitly unless `CODEX_NETWORK=1`, and post-checks protected paths. Do not bypass the sandbox.
 
-The wrapper runs the configured quick check after Codex unless `CODEX_QUICK_CHECK=0`; inspect its compact summary and `quick-check.log`. Model choice is handled in **Model selection** above, not in this wrapper.
+The wrapper runs the configured quick check after Codex unless `CODEX_QUICK_CHECK=0`; inspect its compact summary and `quick-check.log`. Model choice is handled in **Model selection** below, not in this wrapper.
 
 **Important:** A protected-path postcheck detects changes **after** they happen and cannot prevent their creation; it never auto-reverts user files. The text approval marker can be edited and is not an independently verified user authorization. The secret scanner is heuristic. A timed-out Codex child may require manual inspection. If Codex cannot run, return the handoff and mark execution UNVERIFIED.
 
@@ -29,15 +29,16 @@ Never auto-commit, push, merge or deploy. Never claim unrun tests passed.
 
 ## Model selection (owned by this skill)
 
-When delegating, independently assess implementation difficulty without invoking another classifier:
+When delegating, choose the model and reasoning effort from the task's actual complexity and risk, without a separate classifier call:
 
-| Difficulty | Criteria | Codex |
-| --- | --- | --- |
-| EASY | Mechanical, well-defined local change | `gpt-6-luna`, medium effort |
-| STANDARD | Moderate multi-file work or routine debugging | `gpt-6-sol`, medium effort |
-| HARD | Complex architecture, concurrency, uncertain debugging or PIT edge cases | `gpt-6-sol`, high effort |
+| Task type | Examples | Model | Reasoning effort |
+| --- | --- | --- | --- |
+| HARD / HIGH DATA OR PIT RISK | Difficult or high-risk data/PIT work: decoders, verified-set timelines, S4, operations runs | `gpt-6-sol` | `high` |
+| STANDARD / EXISTING PATTERN | Moderate tasks with established patterns: S2 helpers, S3b context, wiring, documentation, test changes | `gpt-6-luna` | `high` |
+| SMALL FIX | Small follow-up fixes and test repairs that do not change high-risk behavior | `gpt-6-luna` | `medium` |
+| INDEPENDENT REVIEW | Separate, read-only code review | `gpt-6-sol` | `medium` |
 
-Choose a supported model ID and invoke the wrapper as `CODEX_MODEL=<model-id> CODEX_REASONING_EFFORT=<effort> bash scripts/codex-delegate.sh TASK-ID`; insert `--dry-run` before TASK-ID when required. The skill owns this mapping; the wrapper only validates and forwards `CODEX_MODEL` and `CODEX_REASONING_EFFORT` (both optional for legacy/default behavior). HIGH governance risk requires at least STANDARD capability regardless of task size. Do not weaken governance approval or review based on a model choice, and do not add another planning path or classifier call.
+For implementation, choose a supported model ID and invoke the wrapper as `CODEX_MODEL=<model-id> CODEX_REASONING_EFFORT=<effort> bash scripts/codex-delegate.sh TASK-ID`; insert `--dry-run` before TASK-ID when required. For independent Codex review, use a separate read-only session with `gpt-6-sol` and `medium` effort; do not use the implementation wrapper or allow the reviewer to modify code. The skill owns the selection, while the wrapper only validates and forwards the two optional environment variables (unset values preserve legacy CLI defaults). HIGH-risk data/PIT work, including its fixes, uses the HARD profile regardless of diff size. Other HIGH-governance tasks must follow their required approvals and independent review gates; never downgrade them just because the change is small.
 
 ## Before delegation
 
