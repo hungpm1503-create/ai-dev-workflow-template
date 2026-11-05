@@ -164,10 +164,15 @@ case "$tool" in
       if [[ ! "$cmd" =~ ^bash[[:space:]]+scripts/codex-standard[.]sh[[:space:]]+TASK-[A-Za-z0-9][A-Za-z0-9_-]*$ ]]; then
         ask 'Auto-approved Codex command must be exactly: bash scripts/codex-standard.sh TASK-ID.'
       fi
-      if ! git -C "$root" rev-parse --verify HEAD >/dev/null 2>&1 ||
-         ! git -C "$root" diff --quiet HEAD -- scripts/codex-standard.sh; then
-        ask 'codex-standard.sh differs from HEAD or integrity cannot be checked; review it before execution.'
+      if ! git -C "$root" rev-parse --verify HEAD >/dev/null 2>&1; then
+        ask 'Cannot verify committed runner scripts; review before execution.'
       fi
+      for script in scripts/codex-standard.sh scripts/codex-delegate.sh; do
+        if ! git -C "$root" ls-files --error-unmatch -- "$script" >/dev/null 2>&1 ||
+           ! git -C "$root" diff --quiet HEAD -- "$script"; then
+          ask "$script differs from HEAD or integrity cannot be checked; review it before execution."
+        fi
+      done
     fi
     write_re='(^|[^<0-9&>])>{1,2}[^&]|(^|[[:space:];|&(])(tee|mv|cp|rm|truncate|install|ln|dd|chmod|chown)([[:space:]]|$)|sed[[:space:]]+(-[a-zA-Z]*i|--in-place)|perl[[:space:]]+-[a-zA-Z]*i|git[[:space:]]+(checkout|restore|apply|am|reset|stash|rm|mv|clean)'
     if printf '%s' "$cmd" | grep -Eq -- "$write_re"; then
