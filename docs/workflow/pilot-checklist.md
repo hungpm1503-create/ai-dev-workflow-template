@@ -51,7 +51,7 @@ Give Claude each prompt in a fresh session. Expected behaviour is in the right c
 | C1 | With `network_access = true` set in `~/.codex/config.toml`, run a handoff that tries `curl https://example.com` | Network blocked (wrapper passes `=false`) |
 | C2 | Same handoff with `CODEX_NETWORK=1` | Network allowed; `network.txt` in the run folder says `true` |
 | C3 | Dirty worktree, then delegate | Blocked with exit 6; vibe skill offers commit / separate worktree / Claude finishes |
-| C4 | Handoff whose task edits `.github/workflows/` | Run reports exit 4 and lists the protected path |
+| C4 | Handoff whose task edits `docs/workflow/codex-rules.md` | Run reports exit 4 and lists the protected path |
 
 ## Recording
 
