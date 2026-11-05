@@ -32,6 +32,7 @@ while [[ $# -gt 0 ]]; do
     --sandbox) sandbox="$2"; shift 2;;
     --output-last-message) out="$2"; shift 2;;
     -c) printf '%s\n' "$2" >> "${FAKE_CONFIG_FILE:-/dev/null}"; shift 2;;
+    -m) printf '%s\n' "$2" >> "${FAKE_MODEL_FILE:-/dev/null}"; shift 2;;
     -) stdin_flag='-'; shift;;
     *) exit 42;;
   esac
@@ -149,7 +150,15 @@ if bash scripts/codex-delegate.sh '../escape' >/dev/null 2>&1; then
   echo 'FAIL: path traversal accepted' >&2; exit 1
 fi
 echo 'PASS: handoff precedence, legacy warning, approval, symlink and traversal dry-run checks'
-
+# Skill-provided model and effort are validated and passed through unchanged.
+CODEX_MODEL=gpt-6-luna CODEX_REASONING_EFFORT=medium bash scripts/codex-delegate.sh --dry-run "$id" > "$tmp/model-dry.txt"
+grep -Fq 'Model: gpt-6-luna' "$tmp/model-dry.txt" || { echo 'FAIL: dry-run does not report selected model' >&2; exit 1; }
+grep -Fq 'Reasoning effort: medium' "$tmp/model-dry.txt" || { echo 'FAIL: dry-run does not report selected effort' >&2; exit 1; }
+if CODEX_MODEL='bad model' bash scripts/codex-delegate.sh --dry-run "$id" >/dev/null 2>&1; then
+ echo 'FAIL: invalid model identifier accepted' >&2; exit 1
+else [[ $? == 2 ]] || exit 1; fi
+echo 'PASS: skill-provided model and effort validated'
+ 
 # Repository must be clean (handoff and run logs are ignored).
 printf 'dirty\n' > ".dirty-worktree-probe-$$"
 if bash scripts/codex-delegate.sh "$id" > "$tmp/dirty.txt" 2>&1; then
@@ -170,10 +179,14 @@ grep -q 'AC-01: PASS' "$handoffs"/"$id"-run.*/completion.md
 grep -q 'Diff for review (one read)' "$tmp/success.txt" || { echo 'FAIL: summary does not point to diff.patch' >&2; exit 1; }
 ls "$handoffs"/"$id"-run.*/diff.patch >/dev/null || { echo 'FAIL: diff.patch not written' >&2; exit 1; }
 grep -qx 'default' "$handoffs"/"$id"-run.*/effort.txt || { echo 'FAIL: default effort record missing' >&2; exit 1; }
+grep -qx 'CLI default' "$handoffs"/"$id"-run.*/model.txt || { echo 'FAIL: default model record missing' >&2; exit 1; }
+CODEX_MODEL=gpt-6-luna CODEX_REASONING_EFFORT=medium FAKE_MODEL_FILE="$tmp/forwarded-model.txt" bash scripts/codex-delegate.sh "$id" > /dev/null
+grep -qx 'gpt-6-luna' "$tmp/forwarded-model.txt" || { echo 'FAIL: skill-selected model not forwarded via -m' >&2; exit 1; }
+grep -qx 'gpt-6-luna' "$handoffs"/"$id"-run.*/model.txt || { echo 'FAIL: model not recorded' >&2; exit 1; }
 
 # Network is explicitly false by default (overrides ~/.codex/config.toml); CODEX_NETWORK=1 opts in.
 FAKE_CONFIG_FILE="$tmp/config-default.txt" bash scripts/codex-delegate.sh "$id" > /dev/null
-[[ "$(cat "$tmp/config-default.txt")" == 'sandbox_workspace_write.network_access=false' ]] || { echo 'FAIL: network not explicitly disabled by default' >&2; exit 1; }
+grep -qx 'sandbox_workspace_write.network_access=false' "$tmp/config-default.txt" || { echo 'FAIL: network not explicitly disabled by default' >&2; exit 1; }
 CODEX_NETWORK=yes FAKE_CONFIG_FILE="$tmp/config-typo.txt" bash scripts/codex-delegate.sh "$id" > /dev/null
 grep -qx 'sandbox_workspace_write.network_access=false' "$tmp/config-typo.txt" || { echo 'FAIL: only CODEX_NETWORK=1 may enable network' >&2; exit 1; }
 CODEX_NETWORK=1 FAKE_CONFIG_FILE="$tmp/config-net.txt" bash scripts/codex-delegate.sh "$id" > /dev/null
