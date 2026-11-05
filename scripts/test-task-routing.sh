@@ -51,15 +51,14 @@ while IFS= read -r sec; do
   [[ -z "$sec" ]] && continue
   grep -Fq -- "$sec" .claude/skills/codex-delegate/SKILL.md || fail "codex-delegate skeleton is missing full-form section: $sec"
 done <<< "$full_sections"
-for line in '- Traceability: LOW / HIGH' '- Required independent reviews and human approval evidence:'; do
-  grep -Fq -- "$line" .claude/skills/codex-delegate/SKILL.md || fail "codex-delegate skeleton is missing: $line"
-done
+need '.claude/skills/codex-delegate/SKILL.md' '- Required independent reviews and human approval evidence:' 'codex-delegate skeleton is missing independent review evidence'
 need 'docs/workflow/handoff-template.md' '- Selected planning path: NONE / CLAUDE / SUPERPOWERS / SPEC KIT' 'handoff planning choice missing'
 need 'docs/workflow/handoff-template.md' '- Governance: STANDARD / FULL GOVERNANCE' 'handoff governance missing'
 need 'docs/workflow/project-setup.md' 'Project-required approvals' 'setup missing project overrides'
 need '.claude/skills/plan-quality/SKILL.md' '**ANY/HIGH risk:**' 'quality skill missing governance'
 need '.claude/skills/codex-delegate/SKILL.md' 'one approved planning source' 'Codex handoff source missing'
-need '.claude/skills/codex-delegate/SKILL.md' '- Traceability: LOW / HIGH' 'skill short handoff must include traceability'
+skeleton="$(sed -n '/^\*\*Handoff skeleton\*\*/,/^\*\*FULL GOVERNANCE additions\*\*/p' .claude/skills/codex-delegate/SKILL.md)"
+printf '%s\n' "$skeleton" | grep -Fqx -- '- Traceability: LOW / HIGH' || fail 'skill short handoff must include traceability'
 need '.claude/skills/codex-delegate/SKILL.md' '- Codex model:' 'skill handoff must carry model'
 need '.claude/skills/vibe/SKILL.md' '- Codex reasoning effort:' 'vibe handoff must carry effort'
 need 'scripts/codex-standard.sh' 'export CODEX_MODEL="$model" CODEX_REASONING_EFFORT="$effort"' 'auto-runner must forward skill-selected model'
