@@ -52,11 +52,11 @@ def usage_from_jsonl(path):
                     continue
                 usage = event.get("usage")
                 if not isinstance(usage, dict):
-                    continue
+                    return None
                 inp, out, cached = (usage.get("input_tokens"), usage.get("output_tokens"),
                                     usage.get("cached_input_tokens", 0))
                 if not all(type(n) is int and n >= 0 for n in (inp, out, cached)) or cached > inp:
-                    continue
+                    return None
                 for i, n in enumerate((inp, cached, out)):
                     total[i] += n
                 valid += 1
