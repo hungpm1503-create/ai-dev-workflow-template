@@ -31,6 +31,8 @@ jobs:
         run: bash scripts/test-capture-experience.sh
       - name: Test working-memory checkpoints (offline, no API/model)
         run: bash scripts/test-workflow-memory.sh
+      - name: Test optional TokenEconomizer safe profile (fake CLI; no model)
+        run: bash scripts/test-token-economizer-pilot.sh
       - name: Benchmark small coding task and resume-context size (offline)
         run: bash scripts/benchmark-workflow-resume.sh
       - name: Prepare fair real-Codex pilot fixtures (offline, zero model calls)
@@ -55,3 +57,4 @@ jobs:
           /bin/bash scripts/test-guard-hook.sh
           /bin/bash scripts/test-auto-verify.sh
           /bin/bash scripts/test-codex-delegate.sh
+          /bin/bash scripts/test-token-economizer-pilot.sh
