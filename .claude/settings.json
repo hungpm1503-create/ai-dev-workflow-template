@@ -8,6 +8,7 @@
       "Bash(bash scripts/validate-workflow.sh)",
       "Bash(bash scripts/test-*.sh)",
       "Bash(bash scripts/workflow-memory.sh:*)",
+      "Bash(bash scripts/workflow-metrics.sh:*)",
       "Bash(bash scripts/codex-delegate.sh --dry-run:*)",
       "Edit(./.workflow/**)",
       "Bash(bash scripts/codex-standard.sh:*)",
@@ -29,6 +30,16 @@
     "defaultMode": "acceptEdits"
   },
   "hooks": {
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mkdir -p \"$CLAUDE_PROJECT_DIR/.workflow/metrics\" && date -u '+%Y-%m-%dT%H:%M:%SZ' >> \"$CLAUDE_PROJECT_DIR/.workflow/metrics/permission-requests.log\""
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash",

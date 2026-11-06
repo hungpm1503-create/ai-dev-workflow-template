@@ -72,7 +72,7 @@ tool="$(field tool_name)" || ask 'Protected-path hook could not parse the tool i
 
 # ---------- Protected path list ----------
 protected_list() {
-  printf '%s\n' 'CLAUDE.md' 'AGENTS.md' 'docs/workflow/codex-rules.md' 'scripts/codex-delegate.sh' 'scripts/codex-standard.sh' 'scripts/workflow-memory.sh' 'scripts/hooks/guard-protected-paths.sh' 'scripts/hooks/auto-verify.sh' '.claude/settings.json' '.claude/skills/codex-delegate/SKILL.md'
+  printf '%s\n' 'CLAUDE.md' 'AGENTS.md' 'docs/workflow/codex-rules.md' 'scripts/codex-delegate.sh' 'scripts/codex-standard.sh' 'scripts/workflow-memory.sh' 'scripts/workflow-metrics.sh' 'scripts/hooks/guard-protected-paths.sh' 'scripts/hooks/auto-verify.sh' '.claude/settings.json' '.claude/skills/codex-delegate/SKILL.md'
   if [[ -f "$root/AGENTS.md" ]]; then
     sed -n 's/^[[:space:]]*-[[:space:]]*Protected paths:[[:space:]]*//p' "$root/AGENTS.md" | head -n 1 | tr ',' '\n'
   fi
@@ -214,6 +214,18 @@ case "$tool" in
         ask 'Cannot verify committed runner scripts; review before execution.'
       fi
       for script in scripts/codex-standard.sh scripts/codex-delegate.sh; do
+        if ! git -C "$root" ls-files --error-unmatch -- "$script" >/dev/null 2>&1 ||
+           ! git -C "$root" diff --quiet HEAD -- "$script"; then
+          ask "$script differs from HEAD or integrity cannot be checked; review it before execution."
+        fi
+      done
+    fi
+    if [[ "$cmd" == *"scripts/workflow-metrics.sh"* || "$cmd" == *"scripts/workflow-memory.sh"* ]]; then
+      if ! git -C "$root" rev-parse --verify HEAD >/dev/null 2>&1; then
+        ask 'Cannot verify committed workflow scripts; review before execution.'
+      fi
+      for script in scripts/workflow-metrics.sh scripts/workflow-memory.sh; do
+        [[ "$cmd" == *"$script"* ]] || continue
         if ! git -C "$root" ls-files --error-unmatch -- "$script" >/dev/null 2>&1 ||
            ! git -C "$root" diff --quiet HEAD -- "$script"; then
           ask "$script differs from HEAD or integrity cannot be checked; review it before execution."

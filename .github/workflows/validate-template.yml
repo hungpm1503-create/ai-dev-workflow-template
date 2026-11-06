@@ -23,6 +23,8 @@ jobs:
         run: bash scripts/test-task-routing.sh
       - name: Regression test delegation (fake Codex, no API calls)
         run: bash scripts/test-codex-delegate.sh
+      - name: Regression test workflow metrics (offline fixtures)
+        run: bash scripts/test-workflow-metrics.sh
       - name: Test protected-path hook for Claude Code (offline)
         run: bash scripts/test-guard-hook.sh
       - name: Test auto-verify Stop hook (offline, throwaway repo)
@@ -55,3 +57,4 @@ jobs:
           /bin/bash scripts/test-guard-hook.sh
           /bin/bash scripts/test-auto-verify.sh
           /bin/bash scripts/test-codex-delegate.sh
+          /bin/bash scripts/test-workflow-metrics.sh

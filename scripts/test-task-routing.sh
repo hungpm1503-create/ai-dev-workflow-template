@@ -7,6 +7,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 need() { grep -Fq -- "$2" "$1" || fail "$3"; }
+forbid() { ! grep -Fq -- "$2" "$1" || fail "$3"; }
 doc='docs/workflow/task-routing.md'
 need "$doc" 'three independent dimensions' 'classification requires complexity, risk and traceability'
 need "$doc" '| SMALL | LOW | LOW | **NONE**' 'small no-framework route missing'
@@ -60,6 +61,10 @@ need '.claude/skills/codex-delegate/SKILL.md' 'one approved planning source' 'Co
 skeleton="$(sed -n '/^\*\*Handoff skeleton\*\*/,/^\*\*FULL GOVERNANCE additions\*\*/p' .claude/skills/codex-delegate/SKILL.md)"
 printf '%s\n' "$skeleton" | grep -Fqx -- '- Traceability: LOW / HIGH' || fail 'skill short handoff must include traceability'
 need '.claude/skills/codex-delegate/SKILL.md' '- Codex model:' 'skill handoff must carry model'
+forbid '.claude/skills/codex-delegate/SKILL.md' 'gpt-' 'skill must read model IDs from AGENTS.md'
+need 'AGENTS.md' '- Codex model (hard / review): gpt-6-sol' 'hard / review model missing from AGENTS.md'
+need 'AGENTS.md' '- Codex model (standard / small fix): gpt-6-luna' 'standard / small fix model missing from AGENTS.md'
+need '.claude/skills/codex-delegate/SKILL.md' 'if either line is missing or `[NOT CONFIGURED]`, ask the user rather than guessing' 'skill must ask about missing model configuration'
 need '.claude/skills/vibe/SKILL.md' '- Codex reasoning effort:' 'vibe handoff must carry effort'
 need 'scripts/codex-standard.sh' 'export CODEX_MODEL="$model" CODEX_REASONING_EFFORT="$effort"' 'auto-runner must forward skill-selected model'
 need 'CLAUDE.md' 'Reuse that approval instead of asking again' 'do not redundantly ask already approved HIGH-risk scope'

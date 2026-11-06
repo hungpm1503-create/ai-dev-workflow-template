@@ -8,6 +8,8 @@ Only log meaningful tasks or periodic samples. Do not invent metrics. Use `N/A` 
 
 ## Evaluation discipline
 
+Use `bash scripts/workflow-metrics.sh report` for local cost and quality summaries. Keep a workflow change only after at least 5 comparable tasks per version show quality no worse on first-pass quick checks, fix rounds and escaped defects, while cost falls clearly. Never compare across model or reasoning-effort changes. Use `bash scripts/benchmark-codex-ab.sh --run` with at least 3 runs per arm for a controlled check; one pair is insufficient.
+
 - Classify complexity, governance risk and traceability separately; record the single planning source and applicable project-specific approval controls using `docs/workflow/task-routing.md`.
 - Compare comparable tasks; do not attribute all improvement to instruction changes.
 - Always distinguish `UNVERIFIED` from `PASS`.

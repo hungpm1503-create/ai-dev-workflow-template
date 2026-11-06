@@ -26,6 +26,8 @@ files=(
   scripts/codex-delegate.sh
   scripts/codex-standard.sh
   scripts/test-codex-delegate.sh
+  scripts/workflow-metrics.sh
+  scripts/test-workflow-metrics.sh
   scripts/test-secret-scan.sh
   scripts/capture-experience.sh
   scripts/test-capture-experience.sh

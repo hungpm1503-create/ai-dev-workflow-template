@@ -138,7 +138,7 @@ if (( dry_run )); then
   dry_network=false; if [[ "${CODEX_NETWORK:-0}" == 1 ]]; then dry_network=true; fi
   echo "Model: ${selected_model:-CLI default}"
   echo "Reasoning effort: ${reasoning_effort:-CLI default}"
-  echo "Would invoke: codex exec --sandbox workspace-write${selected_model:+ -m $selected_model} -c sandbox_workspace_write.network_access=$dry_network${reasoning_effort:+ -c model_reasoning_effort=\"$reasoning_effort\"} --output-last-message <run>/completion.md -"
+  echo "Would invoke: codex exec --json --sandbox workspace-write${selected_model:+ -m $selected_model} -c sandbox_workspace_write.network_access=$dry_network${reasoning_effort:+ -c model_reasoning_effort=\"$reasoning_effort\"} --output-last-message <run>/completion.md -"
   echo 'No Codex invocation or worktree modification performed.'
   exit 0
 fi
@@ -221,6 +221,9 @@ run_dir="$(mktemp -d "$handoff_dir/$task_id-run.XXXXXX")"
 result="$run_dir/completion.md"
 log="$run_dir/codex.log"
 status="$run_dir/status.txt"
+events="$run_dir/codex-events.jsonl"
+run_start="$(date +%s)"
+workflow_fingerprint="$(bash "$root/scripts/workflow-metrics.sh" fingerprint 2>/dev/null || printf 'N/A')"
 prompt="$run_dir/prompt.md"
 before="$run_dir/status-before.txt"
 head_sha="$(git rev-parse HEAD)"
@@ -239,9 +242,38 @@ fi
 
 # Snapshot protected paths before Codex can change AGENTS.md.
 {
-  printf '%s\n' 'CLAUDE.md' 'AGENTS.md' 'docs/workflow/codex-rules.md' 'scripts/codex-delegate.sh' 'scripts/codex-standard.sh' 'scripts/workflow-memory.sh' 'scripts/hooks/guard-protected-paths.sh' 'scripts/hooks/auto-verify.sh' '.claude/settings.json' '.claude/skills/codex-delegate/SKILL.md'
+  printf '%s\n' 'CLAUDE.md' 'AGENTS.md' 'docs/workflow/codex-rules.md' 'scripts/codex-delegate.sh' 'scripts/codex-standard.sh' 'scripts/workflow-memory.sh' 'scripts/workflow-metrics.sh' 'scripts/hooks/guard-protected-paths.sh' 'scripts/hooks/auto-verify.sh' '.claude/settings.json' '.claude/skills/codex-delegate/SKILL.md' '.claude/' '.github/workflows/' 'scripts/hooks/' '.mcp.json' 'CLAUDE.local.md'
   sed -n 's/^[[:space:]]*-[[:space:]]*Protected paths:[[:space:]]*//p' AGENTS.md | head -n 1 | tr ',' '\n'
 } | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | grep -v -E '^$|^\[NOT CONFIGURED\]$' > "$run_dir/protected-paths.txt" || :
+
+# Git status omits ignored control files. Hash their contents separately without
+# adding them to Git's object store; symlink targets are recorded as link values.
+control_manifest() {
+  local path relative value
+  {
+    if [[ -d .claude && ! -L .claude ]]; then
+      find .claude \( -path .claude/handoffs -o -path .claude/experience-drafts -o -path .claude/work-memory -o -path .claude/instinct-candidates -o -path .claude/benchmark-runs \) -prune -o \( -type f -o -type l \) -print0
+    elif [[ -L .claude ]]; then
+      printf '%s\0' .claude
+    fi
+    for path in .mcp.json CLAUDE.local.md; do
+      if [[ -f "$path" || -L "$path" ]]; then printf '%s\0' "$path"; fi
+    done
+  } | while IFS= read -r -d '' path; do
+    relative="${path#./}"
+    if [[ -L "$path" ]]; then
+      value="L:$(readlink "$path")"
+    else
+      value="F:$(git hash-object --no-filters "$path")" || return 1
+    fi
+    printf '%s\t%s\n' "$relative" "$value"
+  done | LC_ALL=C sort
+}
+if ! control_manifest > "$run_dir/control-manifest-before.txt"; then
+  echo 'ERROR: control-file manifest unavailable; refusing to run Codex.' >&2
+  printf '%s\n' 'RESULT=BLOCKED_CONTROL_MANIFEST' > "$status"
+  exit 6
+fi
 
 # Construct the complete prompt before launching Codex. No producer SIGPIPE if it exits early.
 {
@@ -276,7 +308,7 @@ printf 'NETWORK_ACCESS=%s\n' "$network_access" > "$run_dir/network.txt"
 # Launch Codex in a dedicated process group (Bash job control also works on macOS Bash 3.2).
 # This lets the watchdog terminate child tools, not just the Codex parent.
 set -m
-codex "${codex_args[@]}" --output-last-message "$result" - < "$prompt" > "$log" 2>&1 &
+codex "${codex_args[@]}" --json --output-last-message "$result" - < "$prompt" > "$events" 2> "$log" &
 codex_pid=$!
 set +m
 (
@@ -309,6 +341,11 @@ fi
 
 git status --porcelain=v1 --untracked-files=all > "$run_dir/status-after.txt"
 { git diff --name-only HEAD; git ls-files --others --exclude-standard; } | sort -u > "$run_dir/changed-paths.txt"
+control_manifest_after_failed=0
+if ! control_manifest > "$run_dir/control-manifest-after.txt"; then
+  printf '%s\n' 'UNAVAILABLE' > "$run_dir/control-manifest-after.txt"
+  control_manifest_after_failed=1
+fi
 snapshot_failed=0
 if (( exit_code != 124 && exit_code != 125 )); then
   if ! worktree_tree > "$run_dir/tree-after.txt"; then
@@ -328,6 +365,9 @@ else
   { printf '%s\n' '# INCOMPLETE: untracked files are not included; read them from changed-paths.txt'; git diff HEAD 2>/dev/null || :; } > "$run_dir/diff.patch"
 fi
 : > "$run_dir/protected-violations.txt"
+if (( control_manifest_after_failed )); then
+  printf '%s\n' 'UNAVAILABLE:control-manifest' >> "$run_dir/protected-violations.txt"
+fi
 while IFS= read -r changed; do
   [[ -n "$changed" ]] || continue
   while IFS= read -r protected; do
@@ -335,12 +375,27 @@ while IFS= read -r changed; do
     case "$protected" in
       /*|*'..'*|*'*'*|*'?'*) continue ;; # Only literal repo-relative paths and directory prefixes
     esac
+    if [[ "$protected" == .claude/ ]]; then
+      case "$changed" in
+        .claude/handoffs/*|.claude/experience-drafts/*|.claude/work-memory/*|.claude/instinct-candidates/*|.claude/benchmark-runs/*) continue ;;
+      esac
+    fi
     if [[ "$changed" == "$protected" || ( "$protected" == */ && "$changed" == "$protected"* ) ]]; then
       printf '%s\n' "$changed" >> "$run_dir/protected-violations.txt"
       break
     fi
   done < "$run_dir/protected-paths.txt"
 done < "$run_dir/changed-paths.txt"
+awk -F '\t' '
+  FILENAME == ARGV[1] { before[$1] = substr($0, length($1) + 2); next }
+  { after[$1] = substr($0, length($1) + 2) }
+  END {
+    for (path in before) if (!(path in after) || before[path] != after[path]) print path
+    for (path in after) if (!(path in before)) print path
+  }
+' "$run_dir/control-manifest-before.txt" "$run_dir/control-manifest-after.txt" >> "$run_dir/protected-violations.txt"
+LC_ALL=C sort -u "$run_dir/protected-violations.txt" > "$run_dir/protected-violations-sorted.txt"
+mv "$run_dir/protected-violations-sorted.txt" "$run_dir/protected-violations.txt"
 if [[ -s "$run_dir/protected-violations.txt" ]]; then
   echo 'ERROR: protected paths changed; inspect diff and revert manually if needed.' >&2
   cat "$run_dir/protected-violations.txt" >&2
@@ -374,6 +429,14 @@ if (( snapshot_failed && exit_code == 0 )); then
   exit_code=1
 fi
 printf 'CODEX_EXIT_CODE=%s\nQUICK_CHECK_EXIT=%s\nFINAL_EXIT_CODE=%s\nHEAD_BEFORE=%s\n' "$codex_exit_code" "$quick_check_exit" "$exit_code" "$head_sha" > "$status"
+if [[ -s "$run_dir/protected-violations.txt" ]]; then
+  usage='N/A N/A N/A'
+else
+  usage="$(bash "$root/scripts/workflow-metrics.sh" codex-usage "$events" 2>/dev/null || printf 'N/A N/A N/A')"
+fi
+read -r code_input code_cached code_output <<< "$usage"
+printf 'CODEX_INPUT_TOKENS=%s\nCODEX_CACHED_TOKENS=%s\nCODEX_OUTPUT_TOKENS=%s\nELAPSED_SECONDS=%s\nMODEL=%s\nEFFORT=%s\nWORKFLOW_FINGERPRINT=%s\n' \
+  "${code_input:-N/A}" "${code_cached:-N/A}" "${code_output:-N/A}" "$(( $(date +%s) - run_start ))" "${selected_model:-CLI default}" "${reasoning_effort:-default}" "$workflow_fingerprint" >> "$status"
 if (( snapshot_failed )); then printf 'TREE_AFTER=UNAVAILABLE\n' >> "$status"; fi
 if [[ -f "$run_dir/tree-after.txt" ]]; then printf 'DIFF_COMPLETE=1\n' >> "$status"; else printf 'DIFF_COMPLETE=0\n' >> "$status"; fi
 if [[ -n "$follow_up_of" ]]; then

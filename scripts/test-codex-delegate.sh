@@ -29,6 +29,7 @@ out=''; sandbox=''; stdin_flag=''
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --sandbox) sandbox="$2"; shift 2;;
+    --json) shift;;
     --output-last-message) out="$2"; shift 2;;
     -c) printf '%s\n' "$2" >> "${FAKE_CONFIG_FILE:-/dev/null}"; shift 2;;
     -m) printf '%s\n' "$2" >> "${FAKE_MODEL_FILE:-/dev/null}"; shift 2;;
@@ -49,7 +50,11 @@ fi
 if [[ "${FAKE_MEMORY_CANARY:-0}" == 1 ]]; then
   printf '%s\n' '#!/usr/bin/env bash' 'printf x > "$CANARY"' > scripts/workflow-memory.sh
 fi
+if [[ "${FAKE_METRICS_CANARY:-0}" == 1 ]]; then
+  printf '%s\n' '#!/usr/bin/env bash' 'if [[ "${1:-}" == codex-usage ]]; then printf x > "$CANARY"; fi' > scripts/workflow-metrics.sh
+fi
 if [[ -n "${FAKE_CHANGED_PATH:-}" ]]; then
+  mkdir -p "$(dirname "$FAKE_CHANGED_PATH")"
   printf 'new line\n' > "$FAKE_CHANGED_PATH"
   if [[ -n "${FAKE_TOUCH_TIME:-}" ]]; then touch -t "$FAKE_TOUCH_TIME" "$FAKE_CHANGED_PATH"; fi
 fi
@@ -67,6 +72,10 @@ if [[ "${FAKE_SELF_EDIT:-0}" == 1 ]]; then
   cat "$out.self" > scripts/codex-delegate.sh; rm -f "$out.self"
 fi
 if [[ -n "${FAKE_SLEEP:-}" ]]; then sleep "$FAKE_SLEEP"; fi
+if [[ "${FAKE_USAGE:-0}" == 1 ]]; then
+  printf '%s\n' '{"type":"turn.completed","usage":{"input_tokens":10,"cached_input_tokens":3,"output_tokens":2}}' '{"type":"turn.completed","usage":{"input_tokens":20,"cached_input_tokens":5,"output_tokens":4}}'
+fi
+printf 'fake stderr text\n' >&2
 if [[ "${FAKE_SKIP_STDIN:-0}" != 1 ]]; then cat > "${FAKE_PROMPT_FILE:?}"; fi
 printf 'AC-01: PASS (fake Codex only)\n' > "$out"
 exit "${FAKE_CODEX_EXIT:-0}"
@@ -196,6 +205,15 @@ grep -q 'Diff for review (one read)' "$tmp/success.txt" || { echo 'FAIL: summary
 ls "$handoffs"/"$id"-run.*/diff.patch >/dev/null || { echo 'FAIL: diff.patch not written' >&2; exit 1; }
 grep -qx 'default' "$handoffs"/"$id"-run.*/effort.txt || { echo 'FAIL: default effort record missing' >&2; exit 1; }
 grep -qx 'CLI default' "$handoffs"/"$id"-run.*/model.txt || { echo 'FAIL: default model record missing' >&2; exit 1; }
+first_run="$(ls -dt "$handoffs/$id"-run.* | head -n 1)"
+grep -qx 'CODEX_INPUT_TOKENS=N/A' "$first_run/status.txt" || { echo 'FAIL: missing usage not N/A' >&2; exit 1; }
+grep -Fq 'fake stderr text' "$first_run/codex.log" || { echo 'FAIL: stderr missing from codex.log' >&2; exit 1; }
+FAKE_USAGE=1 bash scripts/codex-delegate.sh "$id" > /dev/null
+usage_run="$(ls -dt "$handoffs/$id"-run.* | head -n 1)"
+grep -qx 'CODEX_INPUT_TOKENS=30' "$usage_run/status.txt" || { echo 'FAIL: input usage sum' >&2; exit 1; }
+grep -qx 'CODEX_CACHED_TOKENS=8' "$usage_run/status.txt" || { echo 'FAIL: cached usage sum' >&2; exit 1; }
+grep -qx 'CODEX_OUTPUT_TOKENS=6' "$usage_run/status.txt" || { echo 'FAIL: output usage sum' >&2; exit 1; }
+grep -Eq '^WORKFLOW_FINGERPRINT=[0-9a-f]{12}$' "$usage_run/status.txt" || { echo 'FAIL: fingerprint missing' >&2; exit 1; }
 CODEX_MODEL=gpt-6-luna CODEX_REASONING_EFFORT=medium FAKE_MODEL_FILE="$tmp/forwarded-model.txt" bash scripts/codex-delegate.sh "$id" > /dev/null
 grep -qx 'gpt-6-luna' "$tmp/forwarded-model.txt" || { echo 'FAIL: skill-selected model not forwarded via -m' >&2; exit 1; }
 grep -qx 'gpt-6-luna' "$handoffs"/"$id"-run.*/model.txt || { echo 'FAIL: model not recorded' >&2; exit 1; }
@@ -256,6 +274,7 @@ done
 quick="$(cd "$tmp" && pwd -P)/quick-repo"
 mkdir -p "$quick/scripts/hooks" "$quick/docs/workflow" "$quick/.workflow/handoffs"
 cp scripts/codex-delegate.sh "$quick/scripts/"
+cp scripts/workflow-metrics.sh "$quick/scripts/"
 cp scripts/codex-standard.sh "$quick/scripts/"
 cp scripts/hooks/auto-verify.sh "$quick/scripts/hooks/"
 cp scripts/workflow-memory.sh "$quick/scripts/"
@@ -264,6 +283,8 @@ cp "$handoff" "$quick/.workflow/handoffs/$id.md"
 printf '.workflow/\n' > "$quick/.gitignore"
 printf '# Fixture\n- Quick check command: bash scripts/check.sh\n- Protected paths: NONE\n' > "$quick/AGENTS.md"
 printf 'old line\n' > "$quick/tracked.txt"
+mkdir -p "$quick/.claude/skills/vibe"
+printf 'original skill\n' > "$quick/.claude/skills/vibe/SKILL.md"
 touch -t 202001010000 "$quick/tracked.txt"
 cat > "$quick/scripts/check.sh" <<'CHECK'
 #!/usr/bin/env bash
@@ -274,6 +295,7 @@ if [[ "${QUICK_FAIL:-0}" == 1 ]]; then
 fi
 CHECK
 (cd "$quick" && git init -q && git config core.trustctime false && git add -A && git -c user.name=t -c user.email=t@example.invalid commit -q -m fixture)
+printf '.claude/settings.local.json\n' >> "$quick/.git/info/exclude"
 export QUICK_COUNT="$tmp/quick-count"
 # Real LOW/LOW wrapper executed in the isolated fake-Codex fixture.
 standard_id="TASK-STANDARD-${id##*-}"
@@ -333,6 +355,69 @@ if (cd "$quick" && bash scripts/codex-standard.sh "$standard_id") > "$tmp/tamper
   echo 'FAIL: auto-run executed altered delegate' >&2; exit 1
 else [[ $? == 3 ]] || { echo 'FAIL: wrong integrity error code' >&2; exit 1; }; fi
 git -C "$quick" checkout -- scripts/codex-delegate.sh
+
+# Agent-control paths must be caught even when Git ignores them.
+for protected_case in .claude/settings.local.json .mcp.json CLAUDE.local.md .github/workflows/x.yml .claude/skills/vibe/SKILL.md scripts/hooks/new-hook.sh scripts/workflow-metrics.sh; do
+  if (cd "$quick" && FAKE_CHANGED_PATH="$protected_case" bash scripts/codex-delegate.sh "$id") > "$tmp/control-path.txt" 2>&1; then
+    echo "FAIL: accepted control path $protected_case" >&2; exit 1
+  else [[ $? == 4 ]] || { echo "FAIL: wrong control-path exit for $protected_case" >&2; exit 1; }; fi
+  control_run="$(ls -dt "$quick/.workflow/handoffs/$id"-run.* | head -n 1)"
+  grep -Fxq "$protected_case" "$control_run/protected-violations.txt" || { echo "FAIL: control violation omitted $protected_case" >&2; exit 1; }
+  [[ "$(grep -Fxc "$protected_case" "$control_run/protected-violations.txt")" == 1 ]] || { echo "FAIL: duplicate control violation $protected_case" >&2; exit 1; }
+  grep -qx 'QUICK_CHECK_EXIT=SKIPPED_PROTECTED' "$control_run/status.txt" || { echo "FAIL: control quick check ran for $protected_case" >&2; exit 1; }
+  [[ ! -e "$quick/.workflow/work-memory/$id/RUN-$(basename "$control_run").md" ]] || { echo "FAIL: control checkpoint recorded for $protected_case" >&2; exit 1; }
+  if [[ "$protected_case" == .claude/settings.local.json ]]; then
+    ! grep -Fxq "$protected_case" "$control_run/changed-paths.txt" || { echo 'FAIL: ignored control path appeared in Git changes' >&2; exit 1; }
+    grep -Fq "$protected_case" "$control_run/control-manifest-after.txt" || { echo 'FAIL: ignored control path missing from manifest' >&2; exit 1; }
+  fi
+  if [[ "$protected_case" == .claude/skills/vibe/SKILL.md ]]; then
+    printf 'original skill\n' > "$quick/$protected_case"
+  elif [[ "$protected_case" == scripts/workflow-metrics.sh ]]; then
+    cp "$root/scripts/workflow-metrics.sh" "$quick/$protected_case"
+  else
+    rm -f "$quick/$protected_case"
+  fi
+done
+for ordinary_case in .claude/handoffs/scratch.md ordinary-source.txt; do
+  (cd "$quick" && CODEX_QUICK_CHECK=0 FAKE_CHANGED_PATH="$ordinary_case" bash scripts/codex-delegate.sh "$id") > "$tmp/ordinary-path.txt"
+  ordinary_run="$(ls -dt "$quick/.workflow/handoffs/$id"-run.* | head -n 1)"
+  grep -qx 'FINAL_EXIT_CODE=0' "$ordinary_run/status.txt" || { echo "FAIL: ordinary path rejected $ordinary_case" >&2; exit 1; }
+  [[ ! -s "$ordinary_run/protected-violations.txt" ]] || { echo "FAIL: ordinary path listed $ordinary_case" >&2; exit 1; }
+  rm -f "$quick/$ordinary_case"
+done
+echo 'PASS: ignored and listed control paths rejected; exempt and ordinary paths accepted'
+
+# A failed control manifest must fail closed before Codex, and become a
+# protected violation after Codex. chmod 000 is not unreadable to root.
+if [[ "$(id -u)" == 0 ]]; then
+  echo 'SKIP: control-manifest chmod cases require a non-root user'
+else
+  manifest_id="TASK-MANIFEST-$$"
+  cp "$handoff" "$quick/.workflow/handoffs/$manifest_id.md"
+  manifest_file="$quick/.claude/settings.local.json"
+  printf 'secret\n' > "$manifest_file"
+  chmod 000 "$manifest_file"
+  manifest_invocations_before="$(wc -l < "$FAKE_INVOKED" | tr -d ' ')"
+  if (cd "$quick" && CODEX_QUICK_CHECK=0 bash scripts/codex-delegate.sh "$manifest_id") > "$tmp/manifest-before.txt" 2>&1; then
+    echo 'FAIL: pre-run manifest failure accepted' >&2; exit 1
+  else [[ $? == 6 ]] || { echo 'FAIL: pre-run manifest failure exit code' >&2; exit 1; }; fi
+  manifest_run="$(ls -dt "$quick/.workflow/handoffs/$manifest_id"-run.* | head -n 1)"
+  grep -qx 'RESULT=BLOCKED_CONTROL_MANIFEST' "$manifest_run/status.txt" || { echo 'FAIL: pre-run manifest status missing' >&2; exit 1; }
+  [[ "$(wc -l < "$FAKE_INVOKED" | tr -d ' ')" == "$manifest_invocations_before" ]] || { echo 'FAIL: pre-run manifest failure invoked Codex' >&2; exit 1; }
+  chmod 600 "$manifest_file"
+  rm -f "$manifest_file"
+
+  if (cd "$quick" && CODEX_QUICK_CHECK=1 FAKE_UNREADABLE_PATH=.claude/skills/vibe/unreadable.txt bash scripts/codex-delegate.sh "$manifest_id") > "$tmp/manifest-after.txt" 2>&1; then
+    echo 'FAIL: post-run manifest failure accepted' >&2; exit 1
+  else [[ $? == 4 ]] || { echo 'FAIL: post-run manifest failure exit code' >&2; exit 1; }; fi
+  manifest_run="$(ls -dt "$quick/.workflow/handoffs/$manifest_id"-run.* | head -n 1)"
+  grep -qx 'UNAVAILABLE' "$manifest_run/control-manifest-after.txt" || { echo 'FAIL: unavailable post-run manifest marker missing' >&2; exit 1; }
+  grep -qx 'UNAVAILABLE:control-manifest' "$manifest_run/protected-violations.txt" || { echo 'FAIL: unavailable manifest violation missing' >&2; exit 1; }
+  grep -qx 'FINAL_EXIT_CODE=4' "$manifest_run/status.txt" || { echo 'FAIL: post-run manifest final status missing' >&2; exit 1; }
+  grep -qx 'QUICK_CHECK_EXIT=SKIPPED_PROTECTED' "$manifest_run/status.txt" || { echo 'FAIL: post-run manifest did not skip quick check' >&2; exit 1; }
+  chmod 600 "$quick/.claude/skills/vibe/unreadable.txt"
+  rm -f "$quick/.claude/skills/vibe/unreadable.txt"
+fi
 
 stale_id="TASK-STALE-STAT-$$"
 cp "$handoff" "$quick/.workflow/handoffs/$stale_id.md"
@@ -421,6 +506,18 @@ grep -qx 'scripts/workflow-memory.sh' "$memory_run/protected-violations.txt" || 
 grep -qx 'Working-memory checkpoint skipped: protected paths changed.' "$memory_run/codex.log" || { echo 'FAIL: protected checkpoint skip missing from run log' >&2; exit 1; }
 [[ ! -e "$quick/.workflow/work-memory/$id/RUN-$(basename "$memory_run").md" ]] || { echo 'FAIL: protected run recorded checkpoint' >&2; exit 1; }
 cp "$tmp/quick-memory-before" "$quick/scripts/workflow-memory.sh"
+
+cp "$quick/scripts/workflow-metrics.sh" "$tmp/quick-metrics-before"
+if (cd "$quick" && CANARY="$tmp/metrics-canary" FAKE_METRICS_CANARY=1 FAKE_USAGE=1 bash scripts/codex-delegate.sh "$id") > "$tmp/metrics-protected.txt" 2>&1; then
+  echo 'FAIL: changed workflow-metrics.sh accepted' >&2; exit 1
+else [[ $? == 4 ]] || { echo 'FAIL: changed workflow-metrics.sh exit code' >&2; exit 1; }; fi
+metrics_run="$(ls -dt "$quick/.workflow/handoffs/$id"-run.* | head -n 1)"
+grep -qx 'scripts/workflow-metrics.sh' "$metrics_run/protected-violations.txt" || { echo 'FAIL: workflow-metrics.sh not reported as protected' >&2; exit 1; }
+[[ ! -e "$tmp/metrics-canary" ]] || { echo 'FAIL: changed workflow-metrics.sh ran on host' >&2; exit 1; }
+for token_field in CODEX_INPUT_TOKENS CODEX_CACHED_TOKENS CODEX_OUTPUT_TOKENS; do
+  grep -qx "$token_field=N/A" "$metrics_run/status.txt" || { echo "FAIL: protected metrics $token_field was not N/A" >&2; exit 1; }
+done
+cp "$tmp/quick-metrics-before" "$quick/scripts/workflow-metrics.sh"
 
 # A changed prompt rule must be reported before any quick check runs.
 cp "$quick/docs/workflow/codex-rules.md" "$tmp/quick-rules-before"
@@ -560,11 +657,26 @@ else [[ $? == 4 ]] || { echo 'FAIL: protected follow-up exit code' >&2; exit 1; 
 rm -f "$quick/CLAUDE.md" "$quick/work.txt"
 echo 'PASS: follow-up tree continuity, delta review, cumulative protection and index isolation'
 
+# Metrics collection is best effort and cannot change a successful Codex verdict.
+broken_metrics="$(cd "$tmp" && pwd -P)/broken-metrics-repo"
+mkdir -p "$broken_metrics/scripts" "$broken_metrics/.workflow/handoffs"
+cp scripts/codex-delegate.sh "$broken_metrics/scripts/"
+printf '#!/usr/bin/env bash\nexit 9\n' > "$broken_metrics/scripts/workflow-metrics.sh"
+printf '# Fixture\n- Protected paths: NONE\n' > "$broken_metrics/AGENTS.md"
+printf '.workflow/\n' > "$broken_metrics/.gitignore"
+cp "$handoff" "$broken_metrics/.workflow/handoffs/$id.md"
+(cd "$broken_metrics" && git init -q && git add -A && git -c user.name=t -c user.email=t@example.invalid commit -q -m fixture)
+(cd "$broken_metrics" && CODEX_QUICK_CHECK=0 bash scripts/codex-delegate.sh "$id") > "$tmp/broken-metrics.txt"
+broken_run="$(ls -dt "$broken_metrics/.workflow/handoffs/$id"-run.* | head -n 1)"
+grep -qx 'FINAL_EXIT_CODE=0' "$broken_run/status.txt" || { echo 'FAIL: metrics failure changed wrapper exit' >&2; exit 1; }
+grep -qx 'CODEX_INPUT_TOKENS=N/A' "$broken_run/status.txt" || { echo 'FAIL: metrics failure did not use N/A' >&2; exit 1; }
+
 # A task that edits the wrapper itself while it runs must not corrupt the post-run checks
 # (Bash reads scripts incrementally). Isolated copy: the real wrapper is never modified.
 self="$(cd "$tmp" && pwd -P)/self-repo"  # physical path: macOS /var is a symlink to /private/var
 mkdir -p "$self/scripts" "$self/.workflow/handoffs"
 cp scripts/codex-delegate.sh "$self/scripts/"
+cp scripts/workflow-metrics.sh "$self/scripts/"
 printf '# Fixture\n- Protected paths: NONE\n' > "$self/AGENTS.md"
 printf '.workflow/\n' > "$self/.gitignore"
 cp "$handoff" "$self/.workflow/handoffs/$id.md"
