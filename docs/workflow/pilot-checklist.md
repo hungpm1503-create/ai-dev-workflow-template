@@ -62,4 +62,4 @@ Add a short row per run to your project's notes (or a lesson draft via `learn-fr
 - LOW-risk/LOW-traceability: select the model through `codex-delegate`, record `Codex model` and `Codex reasoning effort` in the handoff, run `codex-standard.sh`, and confirm the exact model/effort in the run logs and actual Quick check PASS.
 - HIGH-risk: reuse an existing explicit approval for the same scope without repeat questions; obtain approval for new material decisions. Confirm independent review and required verification remain in place.
 - Disabled verification: an ordinary `codex-delegate.sh` run with `AUTO_VERIFY_DISABLE=1` must report `SKIPPED_UNVERIFIED`, not PASS; the LOW-risk runner must force it back on.
-- Independent read-only review: check model `gpt-6-sol` at medium effort in a separate session, and record the actual result and permission-prompt count.
+- Independent read-only review: check the `AGENTS.md` hard / review model at medium effort in a separate session, and record the actual result and permission-prompt count.

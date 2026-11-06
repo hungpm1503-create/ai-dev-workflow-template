@@ -50,6 +50,7 @@ if [[ "${FAKE_MEMORY_CANARY:-0}" == 1 ]]; then
   printf '%s\n' '#!/usr/bin/env bash' 'printf x > "$CANARY"' > scripts/workflow-memory.sh
 fi
 if [[ -n "${FAKE_CHANGED_PATH:-}" ]]; then
+  mkdir -p "$(dirname "$FAKE_CHANGED_PATH")"
   printf 'new line\n' > "$FAKE_CHANGED_PATH"
   if [[ -n "${FAKE_TOUCH_TIME:-}" ]]; then touch -t "$FAKE_TOUCH_TIME" "$FAKE_CHANGED_PATH"; fi
 fi
@@ -264,6 +265,8 @@ cp "$handoff" "$quick/.workflow/handoffs/$id.md"
 printf '.workflow/\n' > "$quick/.gitignore"
 printf '# Fixture\n- Quick check command: bash scripts/check.sh\n- Protected paths: NONE\n' > "$quick/AGENTS.md"
 printf 'old line\n' > "$quick/tracked.txt"
+mkdir -p "$quick/.claude/skills/vibe"
+printf 'original skill\n' > "$quick/.claude/skills/vibe/SKILL.md"
 touch -t 202001010000 "$quick/tracked.txt"
 cat > "$quick/scripts/check.sh" <<'CHECK'
 #!/usr/bin/env bash
@@ -274,6 +277,7 @@ if [[ "${QUICK_FAIL:-0}" == 1 ]]; then
 fi
 CHECK
 (cd "$quick" && git init -q && git config core.trustctime false && git add -A && git -c user.name=t -c user.email=t@example.invalid commit -q -m fixture)
+printf '.claude/settings.local.json\n' >> "$quick/.git/info/exclude"
 export QUICK_COUNT="$tmp/quick-count"
 # Real LOW/LOW wrapper executed in the isolated fake-Codex fixture.
 standard_id="TASK-STANDARD-${id##*-}"
@@ -333,6 +337,67 @@ if (cd "$quick" && bash scripts/codex-standard.sh "$standard_id") > "$tmp/tamper
   echo 'FAIL: auto-run executed altered delegate' >&2; exit 1
 else [[ $? == 3 ]] || { echo 'FAIL: wrong integrity error code' >&2; exit 1; }; fi
 git -C "$quick" checkout -- scripts/codex-delegate.sh
+
+# Agent-control paths must be caught even when Git ignores them.
+for protected_case in .claude/settings.local.json .mcp.json CLAUDE.local.md .github/workflows/x.yml .claude/skills/vibe/SKILL.md scripts/hooks/new-hook.sh; do
+  if (cd "$quick" && FAKE_CHANGED_PATH="$protected_case" bash scripts/codex-delegate.sh "$id") > "$tmp/control-path.txt" 2>&1; then
+    echo "FAIL: accepted control path $protected_case" >&2; exit 1
+  else [[ $? == 4 ]] || { echo "FAIL: wrong control-path exit for $protected_case" >&2; exit 1; }; fi
+  control_run="$(ls -dt "$quick/.workflow/handoffs/$id"-run.* | head -n 1)"
+  grep -Fxq "$protected_case" "$control_run/protected-violations.txt" || { echo "FAIL: control violation omitted $protected_case" >&2; exit 1; }
+  [[ "$(grep -Fxc "$protected_case" "$control_run/protected-violations.txt")" == 1 ]] || { echo "FAIL: duplicate control violation $protected_case" >&2; exit 1; }
+  grep -qx 'QUICK_CHECK_EXIT=SKIPPED_PROTECTED' "$control_run/status.txt" || { echo "FAIL: control quick check ran for $protected_case" >&2; exit 1; }
+  [[ ! -e "$quick/.workflow/work-memory/$id/RUN-$(basename "$control_run").md" ]] || { echo "FAIL: control checkpoint recorded for $protected_case" >&2; exit 1; }
+  if [[ "$protected_case" == .claude/settings.local.json ]]; then
+    ! grep -Fxq "$protected_case" "$control_run/changed-paths.txt" || { echo 'FAIL: ignored control path appeared in Git changes' >&2; exit 1; }
+    grep -Fq "$protected_case" "$control_run/control-manifest-after.txt" || { echo 'FAIL: ignored control path missing from manifest' >&2; exit 1; }
+  fi
+  if [[ "$protected_case" == .claude/skills/vibe/SKILL.md ]]; then
+    printf 'original skill\n' > "$quick/$protected_case"
+  else
+    rm -f "$quick/$protected_case"
+  fi
+done
+for ordinary_case in .claude/handoffs/scratch.md ordinary-source.txt; do
+  (cd "$quick" && CODEX_QUICK_CHECK=0 FAKE_CHANGED_PATH="$ordinary_case" bash scripts/codex-delegate.sh "$id") > "$tmp/ordinary-path.txt"
+  ordinary_run="$(ls -dt "$quick/.workflow/handoffs/$id"-run.* | head -n 1)"
+  grep -qx 'FINAL_EXIT_CODE=0' "$ordinary_run/status.txt" || { echo "FAIL: ordinary path rejected $ordinary_case" >&2; exit 1; }
+  [[ ! -s "$ordinary_run/protected-violations.txt" ]] || { echo "FAIL: ordinary path listed $ordinary_case" >&2; exit 1; }
+  rm -f "$quick/$ordinary_case"
+done
+echo 'PASS: ignored and listed control paths rejected; exempt and ordinary paths accepted'
+
+# A failed control manifest must fail closed before Codex, and become a
+# protected violation after Codex. chmod 000 is not unreadable to root.
+if [[ "$(id -u)" == 0 ]]; then
+  echo 'SKIP: control-manifest chmod cases require a non-root user'
+else
+  manifest_id="TASK-MANIFEST-$$"
+  cp "$handoff" "$quick/.workflow/handoffs/$manifest_id.md"
+  manifest_file="$quick/.claude/settings.local.json"
+  printf 'secret\n' > "$manifest_file"
+  chmod 000 "$manifest_file"
+  manifest_invocations_before="$(wc -l < "$FAKE_INVOKED" | tr -d ' ')"
+  if (cd "$quick" && CODEX_QUICK_CHECK=0 bash scripts/codex-delegate.sh "$manifest_id") > "$tmp/manifest-before.txt" 2>&1; then
+    echo 'FAIL: pre-run manifest failure accepted' >&2; exit 1
+  else [[ $? == 6 ]] || { echo 'FAIL: pre-run manifest failure exit code' >&2; exit 1; }; fi
+  manifest_run="$(ls -dt "$quick/.workflow/handoffs/$manifest_id"-run.* | head -n 1)"
+  grep -qx 'RESULT=BLOCKED_CONTROL_MANIFEST' "$manifest_run/status.txt" || { echo 'FAIL: pre-run manifest status missing' >&2; exit 1; }
+  [[ "$(wc -l < "$FAKE_INVOKED" | tr -d ' ')" == "$manifest_invocations_before" ]] || { echo 'FAIL: pre-run manifest failure invoked Codex' >&2; exit 1; }
+  chmod 600 "$manifest_file"
+  rm -f "$manifest_file"
+
+  if (cd "$quick" && CODEX_QUICK_CHECK=1 FAKE_UNREADABLE_PATH=.claude/skills/vibe/unreadable.txt bash scripts/codex-delegate.sh "$manifest_id") > "$tmp/manifest-after.txt" 2>&1; then
+    echo 'FAIL: post-run manifest failure accepted' >&2; exit 1
+  else [[ $? == 4 ]] || { echo 'FAIL: post-run manifest failure exit code' >&2; exit 1; }; fi
+  manifest_run="$(ls -dt "$quick/.workflow/handoffs/$manifest_id"-run.* | head -n 1)"
+  grep -qx 'UNAVAILABLE' "$manifest_run/control-manifest-after.txt" || { echo 'FAIL: unavailable post-run manifest marker missing' >&2; exit 1; }
+  grep -qx 'UNAVAILABLE:control-manifest' "$manifest_run/protected-violations.txt" || { echo 'FAIL: unavailable manifest violation missing' >&2; exit 1; }
+  grep -qx 'FINAL_EXIT_CODE=4' "$manifest_run/status.txt" || { echo 'FAIL: post-run manifest final status missing' >&2; exit 1; }
+  grep -qx 'QUICK_CHECK_EXIT=SKIPPED_PROTECTED' "$manifest_run/status.txt" || { echo 'FAIL: post-run manifest did not skip quick check' >&2; exit 1; }
+  chmod 600 "$quick/.claude/skills/vibe/unreadable.txt"
+  rm -f "$quick/.claude/skills/vibe/unreadable.txt"
+fi
 
 stale_id="TASK-STALE-STAT-$$"
 cp "$handoff" "$quick/.workflow/handoffs/$stale_id.md"

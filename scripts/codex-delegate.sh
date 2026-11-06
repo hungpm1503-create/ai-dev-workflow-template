@@ -239,9 +239,38 @@ fi
 
 # Snapshot protected paths before Codex can change AGENTS.md.
 {
-  printf '%s\n' 'CLAUDE.md' 'AGENTS.md' 'docs/workflow/codex-rules.md' 'scripts/codex-delegate.sh' 'scripts/codex-standard.sh' 'scripts/workflow-memory.sh' 'scripts/hooks/guard-protected-paths.sh' 'scripts/hooks/auto-verify.sh' '.claude/settings.json' '.claude/skills/codex-delegate/SKILL.md'
+  printf '%s\n' 'CLAUDE.md' 'AGENTS.md' 'docs/workflow/codex-rules.md' 'scripts/codex-delegate.sh' 'scripts/codex-standard.sh' 'scripts/workflow-memory.sh' 'scripts/hooks/guard-protected-paths.sh' 'scripts/hooks/auto-verify.sh' '.claude/settings.json' '.claude/skills/codex-delegate/SKILL.md' '.claude/' '.github/workflows/' 'scripts/hooks/' '.mcp.json' 'CLAUDE.local.md'
   sed -n 's/^[[:space:]]*-[[:space:]]*Protected paths:[[:space:]]*//p' AGENTS.md | head -n 1 | tr ',' '\n'
 } | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | grep -v -E '^$|^\[NOT CONFIGURED\]$' > "$run_dir/protected-paths.txt" || :
+
+# Git status omits ignored control files. Hash their contents separately without
+# adding them to Git's object store; symlink targets are recorded as link values.
+control_manifest() {
+  local path relative value
+  {
+    if [[ -d .claude && ! -L .claude ]]; then
+      find .claude \( -path .claude/handoffs -o -path .claude/experience-drafts -o -path .claude/work-memory -o -path .claude/instinct-candidates -o -path .claude/benchmark-runs \) -prune -o \( -type f -o -type l \) -print0
+    elif [[ -L .claude ]]; then
+      printf '%s\0' .claude
+    fi
+    for path in .mcp.json CLAUDE.local.md; do
+      if [[ -f "$path" || -L "$path" ]]; then printf '%s\0' "$path"; fi
+    done
+  } | while IFS= read -r -d '' path; do
+    relative="${path#./}"
+    if [[ -L "$path" ]]; then
+      value="L:$(readlink "$path")"
+    else
+      value="F:$(git hash-object --no-filters "$path")" || return 1
+    fi
+    printf '%s\t%s\n' "$relative" "$value"
+  done | LC_ALL=C sort
+}
+if ! control_manifest > "$run_dir/control-manifest-before.txt"; then
+  echo 'ERROR: control-file manifest unavailable; refusing to run Codex.' >&2
+  printf '%s\n' 'RESULT=BLOCKED_CONTROL_MANIFEST' > "$status"
+  exit 6
+fi
 
 # Construct the complete prompt before launching Codex. No producer SIGPIPE if it exits early.
 {
@@ -309,6 +338,11 @@ fi
 
 git status --porcelain=v1 --untracked-files=all > "$run_dir/status-after.txt"
 { git diff --name-only HEAD; git ls-files --others --exclude-standard; } | sort -u > "$run_dir/changed-paths.txt"
+control_manifest_after_failed=0
+if ! control_manifest > "$run_dir/control-manifest-after.txt"; then
+  printf '%s\n' 'UNAVAILABLE' > "$run_dir/control-manifest-after.txt"
+  control_manifest_after_failed=1
+fi
 snapshot_failed=0
 if (( exit_code != 124 && exit_code != 125 )); then
   if ! worktree_tree > "$run_dir/tree-after.txt"; then
@@ -328,6 +362,9 @@ else
   { printf '%s\n' '# INCOMPLETE: untracked files are not included; read them from changed-paths.txt'; git diff HEAD 2>/dev/null || :; } > "$run_dir/diff.patch"
 fi
 : > "$run_dir/protected-violations.txt"
+if (( control_manifest_after_failed )); then
+  printf '%s\n' 'UNAVAILABLE:control-manifest' >> "$run_dir/protected-violations.txt"
+fi
 while IFS= read -r changed; do
   [[ -n "$changed" ]] || continue
   while IFS= read -r protected; do
@@ -335,12 +372,27 @@ while IFS= read -r changed; do
     case "$protected" in
       /*|*'..'*|*'*'*|*'?'*) continue ;; # Only literal repo-relative paths and directory prefixes
     esac
+    if [[ "$protected" == .claude/ ]]; then
+      case "$changed" in
+        .claude/handoffs/*|.claude/experience-drafts/*|.claude/work-memory/*|.claude/instinct-candidates/*|.claude/benchmark-runs/*) continue ;;
+      esac
+    fi
     if [[ "$changed" == "$protected" || ( "$protected" == */ && "$changed" == "$protected"* ) ]]; then
       printf '%s\n' "$changed" >> "$run_dir/protected-violations.txt"
       break
     fi
   done < "$run_dir/protected-paths.txt"
 done < "$run_dir/changed-paths.txt"
+awk -F '\t' '
+  FILENAME == ARGV[1] { before[$1] = substr($0, length($1) + 2); next }
+  { after[$1] = substr($0, length($1) + 2) }
+  END {
+    for (path in before) if (!(path in after) || before[path] != after[path]) print path
+    for (path in after) if (!(path in before)) print path
+  }
+' "$run_dir/control-manifest-before.txt" "$run_dir/control-manifest-after.txt" >> "$run_dir/protected-violations.txt"
+LC_ALL=C sort -u "$run_dir/protected-violations.txt" > "$run_dir/protected-violations-sorted.txt"
+mv "$run_dir/protected-violations-sorted.txt" "$run_dir/protected-violations.txt"
 if [[ -s "$run_dir/protected-violations.txt" ]]; then
   echo 'ERROR: protected paths changed; inspect diff and revert manually if needed.' >&2
   cat "$run_dir/protected-violations.txt" >&2

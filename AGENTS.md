@@ -12,6 +12,8 @@ Codex must follow `docs/workflow/codex-rules.md`; the delegation wrapper injects
 - Lint / typecheck command: [NOT CONFIGURED]
 - Quick check command: [NOT CONFIGURED]
   (fast lint + affected tests, under ~60s; run automatically by the Claude Code Stop hook when files changed, e.g. `npm run lint && npm test -- --run`)
+- Codex model (hard / review): gpt-6-sol
+- Codex model (standard / small fix): gpt-6-luna
 - Protected paths: [NOT CONFIGURED]
 - Project-specific constraints: [NOT CONFIGURED]
 

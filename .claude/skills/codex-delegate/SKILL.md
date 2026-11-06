@@ -27,18 +27,20 @@ The wrapper runs the configured quick check after Codex unless `CODEX_QUICK_CHEC
 
 Never auto-commit, push, merge or deploy. Never claim unrun tests passed.
 
-## Model selection (owned by this skill)
+## Model selection
 
 When delegating, choose the model and reasoning effort from the task's actual complexity and risk, without a separate classifier call:
 
 | Task type | Model | Reasoning effort |
 | --- | --- | --- |
-| HARD — Complex tasks or high data/PIT risk | `gpt-6-sol` | `high` |
-| STANDARD — Moderate tasks with established patterns | `gpt-6-luna` | `high` |
-| SMALL FIX — Minor follow-up fixes or test corrections | `gpt-6-luna` | `medium` |
-| INDEPENDENT REVIEW — Separate, read-only review | `gpt-6-sol` | `medium` |
+| HARD — Complex tasks or high data/PIT risk | `AGENTS.md` Codex model (hard / review) | `high` |
+| STANDARD — Moderate tasks with established patterns | `AGENTS.md` Codex model (standard / small fix) | `high` |
+| SMALL FIX — Minor follow-up fixes or test corrections | `AGENTS.md` Codex model (standard / small fix) | `medium` |
+| INDEPENDENT REVIEW — Separate, read-only review | `AGENTS.md` Codex model (hard / review) | `medium` |
 
-For implementation, choose a supported model ID. For **LOW-risk / LOW-traceability initial runs**, record `Codex model` and `Codex reasoning effort` in the handoff's `## Route`, then invoke `bash scripts/codex-standard.sh TASK-ID`; it validates and forwards the selected model/effort. For other runs invoke `CODEX_MODEL=<model-id> CODEX_REASONING_EFFORT=<effort> bash scripts/codex-delegate.sh TASK-ID`; insert `--dry-run` before TASK-ID when required. For independent Codex review, use a separate read-only session with `gpt-6-sol` and `medium` effort; do not use the implementation wrapper or allow the reviewer to modify code. The skill owns the selection, while the wrapper only validates and forwards the two optional environment variables (unset values preserve legacy CLI defaults). HIGH-risk data/PIT work, including its fixes, uses the HARD profile regardless of diff size. Other HIGH-governance tasks must follow their required approvals and independent review gates; never downgrade them just because the change is small.
+Read the two Codex model lines in `AGENTS.md > Project Configuration` when delegating; if either line is missing or `[NOT CONFIGURED]`, ask the user rather than guessing.
+
+For implementation, choose a supported model ID. For **LOW-risk / LOW-traceability initial runs**, record `Codex model` and `Codex reasoning effort` in the handoff's `## Route`, then invoke `bash scripts/codex-standard.sh TASK-ID`; it validates and forwards the selected model/effort. For other runs invoke `CODEX_MODEL=<model-id> CODEX_REASONING_EFFORT=<effort> bash scripts/codex-delegate.sh TASK-ID`; insert `--dry-run` before TASK-ID when required. For independent Codex review, use a separate read-only session with the hard / review model from `AGENTS.md` and `medium` effort; do not use the implementation wrapper or allow the reviewer to modify code. The skill owns the selection, while the wrapper only validates and forwards the two optional environment variables (unset values preserve legacy CLI defaults). HIGH-risk data/PIT work, including its fixes, uses the HARD profile regardless of diff size. Other HIGH-governance tasks must follow their required approvals and independent review gates; never downgrade them just because the change is small.
 
 ## Before delegation
 
