@@ -109,6 +109,12 @@ bash scripts/test-capture-experience.sh
 
 This is inspired by evidence-backed harness improvement; it is **not** the full Harness² recursive probing or automatic harness optimizer.
 
+## Optional TokenEconomizer cost pilot (not installed)
+
+[Microsoft TokenEconomizer](https://github.com/microsoft/TokenEconomizer) is an **optional, local experiment**, not a template dependency. The safe profile uses LLM-free environment facts, tool-pruning **proposals only**, and keeps the experimental loop guard **off** until explicitly enabled for a controlled fixture. It never relaxes Claude protected-path permissions, Codex sandbox/timeout, human approvals or real verification.
+
+After inspecting/installing the upstream plugin on a disposable checkout, run `bash scripts/token-economizer-pilot.sh configure`; check `status` and use `TE_HOST=codex` for Codex-specific observations. No plugin, hooks, or models are installed or called by the helper. Run `bash scripts/test-token-economizer-pilot.sh` for offline contract tests. See [pilot instructions and rollback](docs/workflow/token-economizer-pilot.md) before enabling anything.
+
 ## ECC-inspired additions (v0.4.0, no new model)
 
 The template now includes **low-cost patterns inspired by ECC** without installing ECC or the ECC runtime:
