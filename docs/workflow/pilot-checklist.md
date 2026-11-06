@@ -53,6 +53,14 @@ Give Claude each prompt in a fresh session. Expected behaviour is in the right c
 | C3 | Dirty worktree, then delegate | Blocked with exit 6; vibe skill offers commit / separate worktree / Claude finishes |
 | C4 | Handoff whose task edits `docs/workflow/codex-rules.md` | Run reports exit 4 and lists the protected path |
 
+## Optional TokenEconomizer external plugin (only if explicitly installed)
+
+- Before enablement, verify upstream CLI compatibility and record the plugin SHA, safety-profile state, and whether Claude Code and `codex exec` still reach their independent hooks.
+- Compare **plugin disabled** vs **envfacts + pruning proposals** on matched tasks. Record cached/uncached/output and plugin overhead, PASS/FAIL/UNVERIFIED, elapsed time, tool proposals, and repeated failures. See [TokenEconomizer pilot](token-economizer-pilot.md).
+- Confirm `PreToolUse` still asks on protected paths, `Stop` still runs auto-verification, and the Codex sandbox/timeout/approval gates still work. An optimization hook must never bypass these gates.
+- Leave loopguard **off** for parallel-tool and production runs while upstream [issue #142](https://github.com/microsoft/TokenEconomizer/issues/142) is unresolved; a controlled test is opt-in and advisory only.
+- Disable the plugin, restore any applied tool restrictions, and run the same checks again to prove rollback.
+
 ## Recording
 
 Add a short row per run to your project's notes (or a lesson draft via `learn-from-task` when something fails). A FAIL in section A means the rules are unclear to the model: fix the wording, then re-run that row rather than adding more rules.

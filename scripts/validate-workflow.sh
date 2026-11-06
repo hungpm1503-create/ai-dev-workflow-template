@@ -36,6 +36,9 @@ files=(
   .claude/skills/verify-change/SKILL.md
   .claude/lessons/INSTINCT_CANDIDATE_TEMPLATE.md
   docs/workflow/ecc-selective-integration.md
+  docs/workflow/token-economizer-pilot.md
+  scripts/token-economizer-pilot.sh
+  scripts/test-token-economizer-pilot.sh
   docs/workflow/benchmark-workflow-resume.md
   scripts/benchmark-workflow-resume.sh
   scripts/benchmark-codex-ab.sh
