@@ -53,7 +53,7 @@ for parser in "${parsers[@]}"; do
   # --- Protected: direct, relative, normalised, case, symlinks ---
   for p in "$root/CLAUDE.md" 'AGENTS.md' './CLAUDE.md' "$root/src/../CLAUDE.md" 'src/../../'"$(basename "$root")"'/AGENTS.md' \
            "$root/.claude/skills/codex-delegate/SKILL.md" "$root/scripts/hooks/guard-protected-paths.sh" "$root/scripts/hooks/auto-verify.sh" \
-           "$root/.claude/settings.json" "$root/scripts/workflow-memory.sh" "$root/scripts/codex-standard.sh" "$root/scripts/codex-delegate.sh" "$root/docs/workflow/codex-rules.md" "$root/claude.md" \
+           "$root/.claude/settings.json" "$root/scripts/workflow-memory.sh" "$root/scripts/workflow-metrics.sh" "$root/scripts/codex-standard.sh" "$root/scripts/codex-delegate.sh" "$root/docs/workflow/codex-rules.md" "$root/claude.md" \
            "$root/.hook-test-link-$$/settings.json" "$root/.hook-test-filelink-$$.md" "$root//CLAUDE.md" "$root/./.claude/skills/codex-delegate/SKILL.md"; do
     json_edit Edit "$p" | expect_ask "$p"
   done
@@ -139,9 +139,27 @@ mkdir -p "$settings_repo/scripts"
 cp "$hook" "$settings_repo/scripts/hooks/guard-protected-paths.sh"
 cp "$root/scripts/codex-standard.sh" "$settings_repo/scripts/codex-standard.sh"
 cp "$root/scripts/codex-delegate.sh" "$settings_repo/scripts/codex-delegate.sh"
-(cd "$settings_repo" && git add scripts/hooks/guard-protected-paths.sh scripts/codex-standard.sh scripts/codex-delegate.sh && git -c user.name=t -c user.email=t"@"example.invalid commit -q -m standard-runner)
+cp "$root/scripts/workflow-metrics.sh" "$settings_repo/scripts/workflow-metrics.sh"
+cp "$root/scripts/workflow-memory.sh" "$settings_repo/scripts/workflow-memory.sh"
+(cd "$settings_repo" && git add scripts/hooks/guard-protected-paths.sh scripts/codex-standard.sh scripts/codex-delegate.sh scripts/workflow-metrics.sh scripts/workflow-memory.sh && git -c user.name=t -c user.email=t"@"example.invalid commit -q -m standard-runner)
 json_bash 'bash scripts/codex-standard.sh TASK-SAFE' | run_settings > "$tmp/standard-trusted.json"
 [[ ! -s "$tmp/standard-trusted.json" ]] || { echo 'FAIL: intact standard runner wrongly required approval' >&2; exit 1; }
+for script in workflow-metrics.sh workflow-memory.sh; do
+  command="bash scripts/$script"
+  json_bash "$command report" | run_settings > "$tmp/$script-trusted.json"
+  [[ ! -s "$tmp/$script-trusted.json" ]] || { echo "FAIL: unchanged $script wrongly required approval" >&2; exit 1; }
+
+  printf '\n# unreviewed edit\nprintf x > "$CANARY"\n' >> "$settings_repo/scripts/$script"
+  json_bash "$command report" | CANARY="$tmp/$script-canary" run_settings > "$tmp/$script-tampered.json"
+  grep -Fq '"permissionDecision":"ask"' "$tmp/$script-tampered.json" || { echo "FAIL: changed $script executed without review" >&2; exit 1; }
+  [[ ! -e "$tmp/$script-canary" ]] || { echo "FAIL: changed $script canary ran" >&2; exit 1; }
+  git -C "$settings_repo" checkout -- "scripts/$script"
+
+  git -C "$settings_repo" rm -q --cached -- "scripts/$script"
+  json_bash "$command report" | run_settings > "$tmp/$script-untracked.json"
+  grep -Fq '"permissionDecision":"ask"' "$tmp/$script-untracked.json" || { echo "FAIL: untracked $script executed without review" >&2; exit 1; }
+  git -C "$settings_repo" add -- "scripts/$script"
+done
 # A prefix allow rule must not permit appended shell commands.
 for command in 'bash scripts/codex-standard.sh TASK-SAFE; echo unsafe' 'bash scripts/codex-standard.sh TASK-SAFE && echo unsafe' 'bash scripts/codex-standard.sh TASK-SAFE --unsafe'; do
   json_bash "$command" | run_settings > "$tmp/standard-command-injection.json"
@@ -168,6 +186,10 @@ printf '# Fixture\n- Protected paths: NONE\n' > "$no_head_repo/AGENTS.md"
 (cd "$no_head_repo" && git init -q)
 json_edit Edit "$no_head_repo/AGENTS.md" | (cd "$no_head_repo" && CLAUDE_PROJECT_DIR="$no_head_repo" bash -c "$pretool_command") > "$tmp/settings-no-head.json"
 grep -Fq '"permissionDecision":"ask"' "$tmp/settings-no-head.json" || { echo 'FAIL: no-HEAD repository did not run guard' >&2; exit 1; }
+for script in workflow-metrics.sh workflow-memory.sh; do
+  json_bash "bash scripts/$script report" | (cd "$no_head_repo" && CLAUDE_PROJECT_DIR="$no_head_repo" bash -c "$pretool_command") > "$tmp/$script-no-head.json"
+  grep -Fq '"permissionDecision":"ask"' "$tmp/$script-no-head.json" || { echo "FAIL: no-HEAD $script command did not ask" >&2; exit 1; }
+done
 
 non_git_dir="$tmp/non-git-dir"
 mkdir -p "$non_git_dir/scripts/hooks"

@@ -5,6 +5,8 @@ description: Delegate an approved task to Codex CLI using a unique ignored hando
 
 # Codex Delegation
 
+For each task, run `bash scripts/workflow-metrics.sh start TASK-ID` at the start and `bash scripts/workflow-metrics.sh finish TASK-ID --findings N` after review, using the actual review findings count.
+
 ## Tool ownership
 
 - Codex is the implementation executor, including for Large features planned through Spec Kit. Never delegate implementation to `/speckit-implement` or `/speckit.implement`.

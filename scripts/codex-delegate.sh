@@ -138,7 +138,7 @@ if (( dry_run )); then
   dry_network=false; if [[ "${CODEX_NETWORK:-0}" == 1 ]]; then dry_network=true; fi
   echo "Model: ${selected_model:-CLI default}"
   echo "Reasoning effort: ${reasoning_effort:-CLI default}"
-  echo "Would invoke: codex exec --sandbox workspace-write${selected_model:+ -m $selected_model} -c sandbox_workspace_write.network_access=$dry_network${reasoning_effort:+ -c model_reasoning_effort=\"$reasoning_effort\"} --output-last-message <run>/completion.md -"
+  echo "Would invoke: codex exec --json --sandbox workspace-write${selected_model:+ -m $selected_model} -c sandbox_workspace_write.network_access=$dry_network${reasoning_effort:+ -c model_reasoning_effort=\"$reasoning_effort\"} --output-last-message <run>/completion.md -"
   echo 'No Codex invocation or worktree modification performed.'
   exit 0
 fi
@@ -221,6 +221,9 @@ run_dir="$(mktemp -d "$handoff_dir/$task_id-run.XXXXXX")"
 result="$run_dir/completion.md"
 log="$run_dir/codex.log"
 status="$run_dir/status.txt"
+events="$run_dir/codex-events.jsonl"
+run_start="$(date +%s)"
+workflow_fingerprint="$(bash "$root/scripts/workflow-metrics.sh" fingerprint 2>/dev/null || printf 'N/A')"
 prompt="$run_dir/prompt.md"
 before="$run_dir/status-before.txt"
 head_sha="$(git rev-parse HEAD)"
@@ -239,7 +242,7 @@ fi
 
 # Snapshot protected paths before Codex can change AGENTS.md.
 {
-  printf '%s\n' 'CLAUDE.md' 'AGENTS.md' 'docs/workflow/codex-rules.md' 'scripts/codex-delegate.sh' 'scripts/codex-standard.sh' 'scripts/workflow-memory.sh' 'scripts/hooks/guard-protected-paths.sh' 'scripts/hooks/auto-verify.sh' '.claude/settings.json' '.claude/skills/codex-delegate/SKILL.md' '.claude/' '.github/workflows/' 'scripts/hooks/' '.mcp.json' 'CLAUDE.local.md'
+  printf '%s\n' 'CLAUDE.md' 'AGENTS.md' 'docs/workflow/codex-rules.md' 'scripts/codex-delegate.sh' 'scripts/codex-standard.sh' 'scripts/workflow-memory.sh' 'scripts/workflow-metrics.sh' 'scripts/hooks/guard-protected-paths.sh' 'scripts/hooks/auto-verify.sh' '.claude/settings.json' '.claude/skills/codex-delegate/SKILL.md' '.claude/' '.github/workflows/' 'scripts/hooks/' '.mcp.json' 'CLAUDE.local.md'
   sed -n 's/^[[:space:]]*-[[:space:]]*Protected paths:[[:space:]]*//p' AGENTS.md | head -n 1 | tr ',' '\n'
 } | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | grep -v -E '^$|^\[NOT CONFIGURED\]$' > "$run_dir/protected-paths.txt" || :
 
@@ -305,7 +308,7 @@ printf 'NETWORK_ACCESS=%s\n' "$network_access" > "$run_dir/network.txt"
 # Launch Codex in a dedicated process group (Bash job control also works on macOS Bash 3.2).
 # This lets the watchdog terminate child tools, not just the Codex parent.
 set -m
-codex "${codex_args[@]}" --output-last-message "$result" - < "$prompt" > "$log" 2>&1 &
+codex "${codex_args[@]}" --json --output-last-message "$result" - < "$prompt" > "$events" 2> "$log" &
 codex_pid=$!
 set +m
 (
@@ -426,6 +429,14 @@ if (( snapshot_failed && exit_code == 0 )); then
   exit_code=1
 fi
 printf 'CODEX_EXIT_CODE=%s\nQUICK_CHECK_EXIT=%s\nFINAL_EXIT_CODE=%s\nHEAD_BEFORE=%s\n' "$codex_exit_code" "$quick_check_exit" "$exit_code" "$head_sha" > "$status"
+if [[ -s "$run_dir/protected-violations.txt" ]]; then
+  usage='N/A N/A N/A'
+else
+  usage="$(bash "$root/scripts/workflow-metrics.sh" codex-usage "$events" 2>/dev/null || printf 'N/A N/A N/A')"
+fi
+read -r code_input code_cached code_output <<< "$usage"
+printf 'CODEX_INPUT_TOKENS=%s\nCODEX_CACHED_TOKENS=%s\nCODEX_OUTPUT_TOKENS=%s\nELAPSED_SECONDS=%s\nMODEL=%s\nEFFORT=%s\nWORKFLOW_FINGERPRINT=%s\n' \
+  "${code_input:-N/A}" "${code_cached:-N/A}" "${code_output:-N/A}" "$(( $(date +%s) - run_start ))" "${selected_model:-CLI default}" "${reasoning_effort:-default}" "$workflow_fingerprint" >> "$status"
 if (( snapshot_failed )); then printf 'TREE_AFTER=UNAVAILABLE\n' >> "$status"; fi
 if [[ -f "$run_dir/tree-after.txt" ]]; then printf 'DIFF_COMPLETE=1\n' >> "$status"; else printf 'DIFF_COMPLETE=0\n' >> "$status"; fi
 if [[ -n "$follow_up_of" ]]; then

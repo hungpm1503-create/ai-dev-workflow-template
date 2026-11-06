@@ -5,6 +5,8 @@ description: Fast build-run-adjust loop for SMALL/MEDIUM low-risk tasks - no han
 
 # Vibe Mode
 
+Assign a TASK-ID for each task, run `bash scripts/workflow-metrics.sh start TASK-ID` at the start and `bash scripts/workflow-metrics.sh finish TASK-ID --findings N` after review, using the actual review findings count.
+
 The default route for SMALL (and clear-path MEDIUM), LOW-risk, LOW-traceability work (see `CLAUDE.md`). Optimise for short loops; keep only the controls that catch real mistakes.
 
 ## 0. Gate check (one line, every task)
