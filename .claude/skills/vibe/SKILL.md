@@ -11,18 +11,18 @@ The default route for SMALL (and clear-path MEDIUM), LOW-risk, LOW-traceability 
 
 ## 0. Gate check (one line, every task)
 
-Classify complexity, governance risk and traceability independently, including the project's own rules; if unsure, read `docs/workflow/task-routing.md` first. Leave vibe mode and follow that routing if the request touches auth/permissions, payments or money, financial methodology or point-in-time rules, personal or sensitive data, destructive migrations or data deletion, infrastructure/deploy, secrets, autonomous execution, or anything the project's own rules (`AGENTS.md`, downstream governance) mark as HIGH risk, or grows into LARGE / HIGH-traceability work. Any HIGH risk → FULL GOVERNANCE.
+Use `CLAUDE.md §1` for classification, project HIGH-risk triggers and VIBE exit rules; any HIGH risk requires FULL GOVERNANCE, never VIBE.
 Say which trigger fired. Otherwise state in one line how you read the request and who implements it (see 2).
 
 ## 1. Understand just enough
 
 - Read only the files you will touch and their direct callers/tests.
-- Use the Simplicity Ladder: reuse existing code → standard library → installed dependency → minimal new code. No new dependency without asking.
+- Use the Simplicity Ladder and dependency boundaries from `CLAUDE.md §4`.
 - Ask a question only when a wrong guess would be expensive to undo; otherwise pick the sensible default and mention it.
 
 ## 2. Who implements
 
-**Implementer rule:** (1) Claude implements directly SMALL, LOW-risk changes — text/copy, styles, config values, or a local fix or small feature with simple logic in at most 3 source files (plus their tests), with no new module, schema, API or dependency. (2) Codex implements MEDIUM or larger work, anything beyond (1), and every HIGH-risk change, when Codex is installed. (3) If Codex is unavailable, Claude implements and says so. (4) Claude always reviews the diff and runs verification. An explicit user choice overrides (1)–(2).
+Follow the single implementer rule in `CLAUDE.md §2`; this skill only defines the LOW-risk fast execution path.
 
 ### Codex handoff (minimal form)
 
@@ -76,7 +76,7 @@ The wrapper needs a clean tree so Codex's diff can be attributed. Never stash si
 
 ## 4. Commits
 
-Do not ask about checkpoints by default. Offer one local commit only when the work is long and multi-step, before handing a dirty tree to Codex (see 2), or before a session handoff. Never push, merge or deploy.
+Do not ask about checkpoints by default. Offer one local commit only when the work is long and multi-step, before handing a dirty tree to Codex (see 2), or before a session handoff. Follow the commit/push/merge/deploy boundaries in `CLAUDE.md §4`.
 
 ## 5. When to stop vibing
 
