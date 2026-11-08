@@ -35,7 +35,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "mkdir -p \"$CLAUDE_PROJECT_DIR/.workflow/metrics\" && date -u '+%Y-%m-%dT%H:%M:%SZ' >> \"$CLAUDE_PROJECT_DIR/.workflow/metrics/permission-requests.log\""
+            "command": "if [ \"${WORKFLOW_METRICS:-0}\" = 1 ]; then mkdir -p \"$CLAUDE_PROJECT_DIR/.workflow/metrics\" && date -u '+%Y-%m-%dT%H:%M:%SZ' >> \"$CLAUDE_PROJECT_DIR/.workflow/metrics/permission-requests.log\"; fi"
           }
         ]
       }
@@ -58,6 +58,11 @@
             "type": "command",
             "command": "if ! git -C \"$CLAUDE_PROJECT_DIR\" rev-parse --is-inside-work-tree >/dev/null 2>&1 || git -C \"$CLAUDE_PROJECT_DIR\" diff --quiet HEAD -- scripts/hooks/auto-verify.sh; then bash \"$CLAUDE_PROJECT_DIR/scripts/hooks/auto-verify.sh\" --mark-turn-start; fi",
             "timeout": 60
+          },
+          {
+            "type": "command",
+            "command": "if [ \"${WORKFLOW_METRICS:-0}\" = 1 ]; then bash \"$CLAUDE_PROJECT_DIR/scripts/hooks/workflow-metrics.sh\" start >/dev/null 2>&1 || :; fi",
+            "timeout": 30
           }
         ]
       }
@@ -69,6 +74,11 @@
             "type": "command",
             "command": "if ! git -C \"$CLAUDE_PROJECT_DIR\" rev-parse --is-inside-work-tree >/dev/null 2>&1 || git -C \"$CLAUDE_PROJECT_DIR\" diff --quiet HEAD -- scripts/hooks/auto-verify.sh; then bash \"$CLAUDE_PROJECT_DIR/scripts/hooks/auto-verify.sh\"; else printf '%s\\n' '{\"systemMessage\":\"Auto-verify: quick check skipped until scripts/hooks/auto-verify.sh is reviewed and committed.\"}'; fi",
             "timeout": 600
+          },
+          {
+            "type": "command",
+            "command": "if [ \"${WORKFLOW_METRICS:-0}\" = 1 ]; then bash \"$CLAUDE_PROJECT_DIR/scripts/hooks/workflow-metrics.sh\" finish >/dev/null 2>&1 || :; fi",
+            "timeout": 30
           }
         ]
       }
