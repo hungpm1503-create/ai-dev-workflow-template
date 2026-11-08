@@ -22,9 +22,9 @@ Assess **three independent dimensions**:
 
 For SMALL or clear-path MEDIUM, LOW risk, LOW traceability. No formal plan or approval artifact is required; a Codex delegation uses the short handoff. Real verification (tests/lint/build with exit codes, PASS/FAIL/UNVERIFIED) is still mandatory.
 
-**Implementer rule:** (1) Claude implements directly SMALL, LOW-risk changes — text/copy, styles, config values, or a local fix or small feature with simple logic in at most 3 source files (plus their tests), with no new module, schema, API or dependency. (2) Codex implements MEDIUM or larger work, anything beyond (1), and every HIGH-risk change, when Codex is installed. (3) If Codex is unavailable, Claude implements and says so. (4) Claude always reviews the diff and runs verification. An explicit user choice overrides (1)–(2).
+Implementation ownership is defined in `CLAUDE.md §2`; do not duplicate the rule in this routing reference.
 
-**Exit triggers:** auth/permissions, payments or money, financial methodology or point-in-time rules, personal or sensitive data, destructive migrations or data deletion, infrastructure/deploy, secrets, autonomous execution, or anything the project's own rules (`AGENTS.md`, downstream governance) mark as HIGH risk; LARGE scope or HIGH traceability; or the same failure surviving three fix attempts. VIBE never applies to HIGH risk.
+**Exit triggers:** Follow `CLAUDE.md §1` for sensitive domains and project-specific HIGH-risk rules. LARGE scope, HIGH traceability or three failed fix attempts also leave VIBE; VIBE never applies to HIGH risk.
 
 ## One planning source
 
