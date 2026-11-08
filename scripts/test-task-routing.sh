@@ -33,7 +33,7 @@ need "$doc" 'CLAUDE.md §1' 'Routing doc must link authoritative exit triggers'
 need '.claude/skills/vibe/SKILL.md' '## 3. Verify (never skipped)' 'vibe skill must verify'
 need '.claude/skills/vibe/SKILL.md' 'CLAUDE.md §4' 'VIBE skill must reference push/merge restrictions'
 # One authoritative implementer rule in CLAUDE.md, referenced by consumers.
-[[ "$(grep -c '^\\*\\*Implementer rule:\\*\\*' CLAUDE.md)" == 1 ]] || fail 'CLAUDE.md must define one implementer rule'
+[[ "$(grep -Fc '**Implementer rule:**' CLAUDE.md)" == 1 ]] || fail 'CLAUDE.md must define one implementer rule'
 for f in .claude/skills/vibe/SKILL.md "$doc"; do
   grep -Fq 'CLAUDE.md §2' "$f" || fail "$f must reference CLAUDE.md §2"
   if grep -Fq '**Implementer rule:**' "$f"; then fail "$f duplicates implementer rule"; fi
