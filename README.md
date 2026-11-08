@@ -130,3 +130,9 @@ bash scripts/test-workflow-memory.sh
 Run metadata is captured from `scripts/codex-delegate.sh` on a best-effort basis, without copying raw logs. `.workflow/work-memory/` and `.workflow/instinct-candidates/` are gitignored. **They do not sync between devices/clones automatically.** No hooks, observers, cron jobs or new API calls are enabled.
 
 See `docs/workflow/ecc-selective-integration.md` for design, authority boundaries, limitations and acceptance scenarios. These additions do **not** make the harness an ECC Memory Vault installation.
+
+## Optional workflow metrics
+
+Metrics are disabled by default: Claude does not run `start` or `finish` commands. To collect turn-level measurements, launch Claude Code with `WORKFLOW_METRICS=1` in its environment. `UserPromptSubmit` and `Stop` hooks then silently capture a per-prompt `TASK-HOOK-...` record, and permission prompts are counted only while enabled. The hook needs Python 3 or jq, stores only session-derived IDs and transcript paths (never prompt text), and remains observational: no LLM calls, safety changes or verification shortcuts.
+
+Explicit TASK-ID experiments can still use `bash scripts/workflow-metrics.sh start TASK-ID` / `finish TASK-ID`. Auto-generated per-prompt IDs are **not** automatically linked to Codex handoff TASK-IDs; task-scoped A/B benchmarks should use the explicit commands outside the agent's normal workflow. Codex token usage and workflow fingerprints are collected by the wrapper only when `WORKFLOW_METRICS=1`.
