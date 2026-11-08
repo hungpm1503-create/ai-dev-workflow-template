@@ -15,7 +15,7 @@ For each task, run `bash scripts/workflow-metrics.sh start TASK-ID` at the start
 
 1. Verify `codex` is installed and authenticated, and this Git repository has a clean worktree (a `--follow-up` fix round instead needs the tree the previous round left).
 2. Confirm scope is approved. Material architecture, security, costs and irreversible operations still require explicit user approval.
-3. Review the one canonical plan proportionately when needed; for ANY/HIGH, ensure required independent project review and human approval gates without duplicated reviews. For HIGH risk, first check whether the user's explicit instruction already authorized the exact scope and material decisions; reference that approval rather than asking again. Otherwise present one concise plan (at most about 10 lines) with the consequential decisions in one approval question; write the handoff only after genuine approval. Use the skeleton below. Do not open `docs/workflow/handoff-template.md` when this skeleton covers the route; open it only for FULL GOVERNANCE. Write `.workflow/handoffs/TASK-ID.md` with **## Approval status** and exact **Status: APPROVED**, only after appropriate approval. This text is not cryptographic authorization.
+3. Apply HIGH-risk approval and review gates from `CLAUDE.md §1` and `docs/workflow/task-routing.md`. Reuse genuine approval for the exact scope; otherwise request consequential decisions once. Write the handoff with `Status: APPROVED` only after appropriate approval (the marker is not authentication). Read the full handoff template only for FULL GOVERNANCE.
 4. Verify `AGENTS.md > Protected paths` is configured for this project, if applicable.
 5. Dry run: mandatory for FULL GOVERNANCE (except `--follow-up` fix rounds), optional for STANDARD: `bash scripts/codex-delegate.sh --dry-run TASK-ID` (no model invocation). The real run performs the same pre-invocation validation.
 6. Execute only when permitted: use `bash scripts/codex-standard.sh TASK-ID` for LOW-risk/LOW-traceability initial runs; for HIGH risk, follow-ups or network-dependent work use `bash scripts/codex-delegate.sh TASK-ID` with the applicable approval.
@@ -27,7 +27,7 @@ The wrapper runs the configured quick check after Codex unless `CODEX_QUICK_CHEC
 
 **Important:** A protected-path postcheck detects changes **after** they happen and cannot prevent their creation; it never auto-reverts user files. The text approval marker can be edited and is not an independently verified user authorization. The secret scanner is heuristic. A timed-out Codex child may require manual inspection. If Codex cannot run, return the handoff and mark execution UNVERIFIED.
 
-Never auto-commit, push, merge or deploy. Never claim unrun tests passed.
+Follow `CLAUDE.md §3–4` for evidence and authorization boundaries; unchecked criteria remain UNVERIFIED.
 
 ## Model selection
 
@@ -48,7 +48,7 @@ For implementation, choose a supported model ID. For **LOW-risk / LOW-traceabili
 
 1. Inspect relevant files and confirm exact paths, types, APIs and project commands where practical.
 2. Distinguish verified facts, assumptions and unknowns; raise consequential ambiguity or simpler viable approaches before approval.
-3. Define scope, exclusions, constraints, observable acceptance criteria and proportionate verification evidence. Apply the Simplicity Ladder when shaping the handoff: is the work needed, can existing project code or patterns solve it, then standard library/native platform, then an installed dependency, then an obvious one-line solution, and only then minimum new code. Choose the first option that fully meets the criteria.
+3. Define scope, exclusions, constraints, observable acceptance criteria and verification evidence; follow the Simplicity Ladder in `CLAUDE.md §4` without adding a competing plan.
 4. Require a minimal complete change: include affected callers, tests, fixtures, configuration and exports; preserve necessary validation, error handling, security and accessibility. Apply only the selected route's required planning/review; escalate HIGH-risk or unresolved critical blockers before delegation.
 5. Reference the one approved Claude, Superpowers or Spec Kit planning source rather than copying it.
 
@@ -108,11 +108,11 @@ Approval status stays `PENDING` until the human approves; only then set exactly 
 ## After delegation
 
 1. Inspect Git diff, changed paths and actual command/test evidence; do not trust unsupported completion claims; confirm changed lines trace to approved scope. On exit 4 (protected paths changed) review those files first and run no tests, quick check or project script until the user accepts them: they can run commands from the changed files on the host.
-2. In headless or delegated runs, put each verification command in its own Bash call; do not chain them with `;` and `echo $?`, which the permission approver may deny and which costs an extra turn. Map acceptance criteria to PASS / FAIL / UNVERIFIED; skipped checks are UNVERIFIED. If the wrapper summary reports `Quick check: 0` (or `SKIPPED` with a reason) and the quick check covers the acceptance criteria, do not re-run lint or tests; review the diff and map the criteria from that evidence. Re-run only when the summary is missing or you change files afterwards.
+2. Follow `CLAUDE.md §3` for PASS/FAIL/UNVERIFIED evidence and avoid duplicate checks already passed on the same tree. In headless runs, issue each verification command as its own Bash call (not chained); only re-run when new changes or missing evidence require it.
 3. Review fixes:
-   - **HIGH-risk task: Claude never edits the code itself, however small the fix.** Do not touch the tree after the run. Write a short handoff `.workflow/handoffs/TASK-ID-fix-N.md` (finding, file and line, expected behaviour, the test that must prove it, a reference to the original approval) and run `bash scripts/codex-delegate.sh --follow-up <previous round's TASK-ID> TASK-ID-fix-N` (no dry-run needed). The wrapper refuses if anything changed since that round, and `diff.patch` then holds only the fix; review that diff. A fix handoff may stay only within the approved scope and files; anything new needs the human again. After 2 fix rounds, stop and report to the user. Claude stays the independent reviewer. Only if Codex is unavailable may Claude make the fix, and the report must then say `Fix <X> made by the reviewer: not independently reviewed; needs human review`.
+   - **HIGH-risk task:** Follow `CLAUDE.md §2`: Codex implements fixes and Claude independently reviews. Do not edit the tree after the run. Write a focused `.workflow/handoffs/TASK-ID-fix-N.md` citing the finding, expected behavior, test and original approval, then invoke `bash scripts/codex-delegate.sh --follow-up <parent TASK-ID> TASK-ID-fix-N` (no dry-run). The wrapper checks the exact parent tree; any new scope requires approval. After two fix rounds, stop and report. If Codex is unavailable and Claude must fix, mark the fix not independently reviewed.
    - Not HIGH risk and the fix fits implementer rule (1): Claude fixes it directly and runs the quick check once.
    - Otherwise re-delegate the fix only. Never re-delegate the whole task for a small fix.
-4. Escalate material architectural changes, sensitive actions, destructive actions, and consequential business decisions to the user.
+4. Escalate material decisions and sensitive actions per `CLAUDE.md §4`.
 5. Trigger `/learn-from-task` selectively for meaningful Medium/Large findings, critical defects or repeated rework.
 6. Do not treat one anomaly as proof of a systemic problem.
