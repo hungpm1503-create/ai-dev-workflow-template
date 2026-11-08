@@ -5,7 +5,7 @@ description: Delegate an approved task to Codex CLI using a unique ignored hando
 
 # Codex Delegation
 
-For each task, run `bash scripts/workflow-metrics.sh start TASK-ID` at the start and `bash scripts/workflow-metrics.sh finish TASK-ID --findings N` after review, using the actual review findings count.
+Metrics are recorded by opt-in hooks when `WORKFLOW_METRICS=1`; do not invoke metrics commands during normal tasks.
 
 ## Tool ownership
 
