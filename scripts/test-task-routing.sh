@@ -24,25 +24,29 @@ need 'CLAUDE.md' '**Leave VIBE mode immediately**' 'Claude VIBE exit triggers mi
 need 'CLAUDE.md' '**Classify first:** assess complexity (SMALL/MEDIUM/LARGE), governance risk (LOW/HIGH) and traceability (LOW/HIGH) independently' 'Claude must classify three dimensions before VIBE'
 need 'CLAUDE.md' '**Any HIGH risk goes to FULL GOVERNANCE, never VIBE.**' 'HIGH risk must override VIBE'
 need 'CLAUDE.md' 'If the classification is uncertain, read `docs/workflow/task-routing.md`' 'uncertain classification must read routing'
-for f in CLAUDE.md .claude/skills/vibe/SKILL.md "$doc"; do
-  for t in 'financial methodology or point-in-time rules' 'autonomous execution' "project's own rules"; do
-    grep -Fq -- "$t" "$f" || fail "VIBE exit trigger '$t' missing in $f"
-  done
+# Detailed exit triggers belong in CLAUDE.md; skills and docs refer to it.
+for t in 'financial methodology or point-in-time rules' 'autonomous execution' "project's own rules"; do
+  grep -Fq -- "$t" CLAUDE.md || fail "VIBE exit trigger '$t' missing from CLAUDE.md"
 done
+need '.claude/skills/vibe/SKILL.md' 'CLAUDE.md §1' 'VIBE skill must link authoritative routing'
+need "$doc" 'CLAUDE.md §1' 'Routing doc must link authoritative exit triggers'
 need '.claude/skills/vibe/SKILL.md' '## 3. Verify (never skipped)' 'vibe skill must verify'
-need '.claude/skills/vibe/SKILL.md' 'Never push, merge or deploy.' 'vibe skill must not push'
-# The implementer rule must be byte-identical wherever it appears, so the model gets one answer.
-rule="$(grep -o '\*\*Implementer rule:\*\*.*overrides (1)–(2)\.' .claude/skills/vibe/SKILL.md)" || fail 'vibe skill implementer rule missing'
-expected='**Implementer rule:** (1) Claude implements directly SMALL, LOW-risk changes — text/copy, styles, config values, or a local fix or small feature with simple logic in at most 3 source files (plus their tests), with no new module, schema, API or dependency. (2) Codex implements MEDIUM or larger work, anything beyond (1), and every HIGH-risk change, when Codex is installed. (3) If Codex is unavailable, Claude implements and says so. (4) Claude always reviews the diff and runs verification. An explicit user choice overrides (1)–(2).'
-[[ "$rule" == "$expected" ]] || fail 'implementer rule differs from approved wording'
-for f in CLAUDE.md "$doc"; do grep -Fq -- "$rule" "$f" || fail "implementer rule in $f differs from the vibe skill"; done
+need '.claude/skills/vibe/SKILL.md' 'CLAUDE.md §4' 'VIBE skill must reference push/merge restrictions'
+# One authoritative implementer rule in CLAUDE.md, referenced by consumers.
+[[ "$(grep -Fc '**Implementer rule:**' CLAUDE.md)" == 1 ]] || fail 'CLAUDE.md must define one implementer rule'
+for f in .claude/skills/vibe/SKILL.md "$doc"; do
+  grep -Fq 'CLAUDE.md §2' "$f" || fail "$f must reference CLAUDE.md §2"
+  if grep -Fq '**Implementer rule:**' "$f"; then fail "$f duplicates implementer rule"; fi
+done
+need '.claude/skills/codex-delegate/SKILL.md' 'CLAUDE.md §1' 'Codex skill must reference central approval rules'
+need '.claude/skills/codex-delegate/SKILL.md' 'CLAUDE.md §4' 'Codex skill must reference central authorization boundaries'
 need '.claude/skills/vibe/SKILL.md' 'Never stash silently.' 'dirty-tree handling missing'
 need '.claude/skills/vibe/SKILL.md' 'Do not ask about checkpoints by default.' 'checkpoint prompts must be opt-in'
 need 'CLAUDE.md' 'prefer **Superpowers**' 'Claude cannot choose Superpowers'
 need 'CLAUDE.md' 'prefer **Spec Kit**' 'Claude cannot choose Spec Kit'
 need 'CLAUDE.md' 'FULL GOVERNANCE' 'Claude High-risk override missing'
 need 'docs/workflow/codex-rules.md' 'Codex must not redo planning' 'Codex ownership missing'
-need '.claude/skills/codex-delegate/SKILL.md' '**HIGH-risk task: Claude never edits the code itself, however small the fix.**' 'HIGH-risk review fixes must go back to Codex'
+need '.claude/skills/codex-delegate/SKILL.md' '**HIGH-risk task:** Follow `CLAUDE.md §2`' 'HIGH-risk review fixes must follow Claude ownership rule'
 need '.claude/skills/codex-delegate/SKILL.md' 'bash scripts/codex-delegate.sh --follow-up' 'fix rounds must use --follow-up'
 need 'CLAUDE.md' 'send every code fix back to Codex' 'CLAUDE.md must route HIGH-risk review fixes to Codex'
 need 'docs/workflow/handoff-template.md' '- Traceability: LOW / HIGH' 'handoff traceability missing'
