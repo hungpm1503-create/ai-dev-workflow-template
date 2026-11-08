@@ -48,6 +48,7 @@ files=(
   scripts/hooks/guard-protected-paths.sh
   scripts/test-guard-hook.sh
   scripts/hooks/auto-verify.sh
+  scripts/hooks/workflow-metrics.sh
   scripts/test-auto-verify.sh
   docs/workflow/examples/TASK-EXAMPLE-001.md
   docs/workflow/pilot-checklist.md

@@ -223,7 +223,10 @@ log="$run_dir/codex.log"
 status="$run_dir/status.txt"
 events="$run_dir/codex-events.jsonl"
 run_start="$(date +%s)"
-workflow_fingerprint="$(bash "$root/scripts/workflow-metrics.sh" fingerprint 2>/dev/null || printf 'N/A')"
+workflow_fingerprint='N/A'
+if [[ "${WORKFLOW_METRICS:-0}" == 1 ]]; then
+  workflow_fingerprint="$(bash "$root/scripts/workflow-metrics.sh" fingerprint 2>/dev/null || printf 'N/A')"
+fi
 prompt="$run_dir/prompt.md"
 before="$run_dir/status-before.txt"
 head_sha="$(git rev-parse HEAD)"
@@ -429,9 +432,8 @@ if (( snapshot_failed && exit_code == 0 )); then
   exit_code=1
 fi
 printf 'CODEX_EXIT_CODE=%s\nQUICK_CHECK_EXIT=%s\nFINAL_EXIT_CODE=%s\nHEAD_BEFORE=%s\n' "$codex_exit_code" "$quick_check_exit" "$exit_code" "$head_sha" > "$status"
-if [[ -s "$run_dir/protected-violations.txt" ]]; then
-  usage='N/A N/A N/A'
-else
+usage='N/A N/A N/A'
+if [[ "${WORKFLOW_METRICS:-0}" == 1 && ! -s "$run_dir/protected-violations.txt" ]]; then
   usage="$(bash "$root/scripts/workflow-metrics.sh" codex-usage "$events" 2>/dev/null || printf 'N/A N/A N/A')"
 fi
 read -r code_input code_cached code_output <<< "$usage"

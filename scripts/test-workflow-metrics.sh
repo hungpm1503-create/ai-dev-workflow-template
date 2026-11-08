@@ -30,7 +30,7 @@ import json,sys
 print(json.load(open(sys.argv[1]))['hooks']['PermissionRequest'][0]['hooks'][0]['command'])
 PY
 )"
-hook_output="$(CLAUDE_PROJECT_DIR="$project" bash -c "$hook")"
+hook_output="$(CLAUDE_PROJECT_DIR="$project" WORKFLOW_METRICS=1 bash -c "$hook")"
 [[ -z "$hook_output" ]] || fail 'permission hook printed stdout'
 [[ "$(wc -l < "$metrics/permission-requests.log" | tr -d ' ')" == 1 ]] || fail 'permission hook line count'
 grep -Eq '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$' "$metrics/permission-requests.log" || fail 'permission timestamp'
@@ -146,4 +146,55 @@ import csv,sys
 row=next(r for r in csv.DictReader(open(sys.argv[1]),delimiter='\t') if r['task_id']==sys.argv[2])
 assert row['claude_input_tokens']=='N/A' and row['claude_requests']=='N/A',row
 PY
-echo 'PASS: workflow metrics transcript deduplication, run aggregation, permissions, note, report threshold and fingerprint'
+# Hooks run outside the model loop and write only when explicitly enabled.
+auto="$tmp/auto-project"
+mkdir -p "$auto/scripts/hooks" "$auto/.claude"
+cp "$root/scripts/workflow-metrics.sh" "$auto/scripts/"
+cp "$root/scripts/hooks/workflow-metrics.sh" "$auto/scripts/hooks/"
+cp "$root/.claude/settings.json" "$auto/.claude/"
+printf 'fixture\n' > "$auto/CLAUDE.md"
+printf '.workflow/metrics/\n' > "$auto/.gitignore"
+(cd "$auto" && git init -q)
+hooks_json="$auto/.claude/settings.json"
+hook_start="$(python3 - "$hooks_json" <<'PYHOOK'
+import json,sys
+d=json.load(open(sys.argv[1]))
+print(next(x["command"] for h in d["hooks"]["UserPromptSubmit"] for x in h["hooks"] if "workflow-metrics.sh" in x["command"]))
+PYHOOK
+)"
+hook_finish="$(python3 - "$hooks_json" <<'PYHOOK'
+import json,sys
+d=json.load(open(sys.argv[1]))
+print(next(x["command"] for h in d["hooks"]["Stop"] for x in h["hooks"] if "workflow-metrics.sh" in x["command"]))
+PYHOOK
+)"
+hook_permission="$(python3 - "$hooks_json" <<'PYHOOK'
+import json,sys
+print(json.load(open(sys.argv[1]))["hooks"]["PermissionRequest"][0]["hooks"][0]["command"])
+PYHOOK
+)"
+payload='{"session_id":"fixture-session","transcript_path":"'"$transcript"'","hook_event_name":"UserPromptSubmit","prompt":"PRIVATE FIXTURE TEXT"}'
+stop_payload='{"session_id":"fixture-session","transcript_path":"'"$transcript"'","hook_event_name":"Stop"}'
+printf '%s\n' "$payload" | (CLAUDE_PROJECT_DIR="$auto" WORKFLOW_METRICS=0 bash -c "$hook_start")
+printf '%s\n' "$stop_payload" | (CLAUDE_PROJECT_DIR="$auto" WORKFLOW_METRICS=0 bash -c "$hook_finish")
+(CLAUDE_PROJECT_DIR="$auto" WORKFLOW_METRICS=0 bash -c "$hook_permission")
+[[ ! -e "$auto/.workflow/metrics" ]] || fail 'disabled hooks wrote metrics'
+out="$(printf '%s\n' "$payload" | CLAUDE_PROJECT_DIR="$auto" WORKFLOW_METRICS=1 bash -c "$hook_start")"
+[[ -z "$out" ]] || fail 'metrics start hook leaked output to model context'
+(CLAUDE_PROJECT_DIR="$auto" WORKFLOW_METRICS=1 bash -c "$hook_permission")
+out="$(printf '%s\n' "$stop_payload" | CLAUDE_PROJECT_DIR="$auto" WORKFLOW_METRICS=1 bash -c "$hook_finish")"
+[[ -z "$out" ]] || fail 'metrics Stop hook leaked output to model context'
+tsv="$auto/.workflow/metrics/tasks.tsv"
+[[ -f "$tsv" ]] || fail 'metrics hook did not finish'
+[[ "$(wc -l < "$tsv" | tr -d ' ')" == 2 ]] || fail 'first hook turn row count'
+grep -Eq '^TASK-HOOK-[0-9a-f]{16}-[0-9]+-[0-9]+[[:space:]]' "$tsv" || fail 'generated hook task ID invalid'
+[[ "$(wc -l < "$auto/.workflow/metrics/permission-requests.log" | tr -d ' ')" == 1 ]] || fail 'permission count ignored opt-in'
+if grep -Rq 'PRIVATE FIXTURE TEXT' "$auto/.workflow/metrics"; then fail 'hook persisted private prompt'; fi
+printf '%s\n' "$stop_payload" | (CLAUDE_PROJECT_DIR="$auto" WORKFLOW_METRICS=1 bash -c "$hook_finish")
+[[ "$(wc -l < "$tsv" | tr -d ' ')" == 2 ]] || fail 'repeated Stop duplicated metric row'
+printf '%s\n' "$payload" | (CLAUDE_PROJECT_DIR="$auto" WORKFLOW_METRICS=1 bash -c "$hook_start")
+printf '%s\n' "$stop_payload" | (CLAUDE_PROJECT_DIR="$auto" WORKFLOW_METRICS=1 bash -c "$hook_finish")
+[[ "$(wc -l < "$tsv" | tr -d ' ')" == 3 ]] || fail 'second prompt was not measured separately'
+
+echo 'PASS: opt-in metrics hooks, disabled-by-default, transcript deduplication, run aggregation, permissions and report'
+

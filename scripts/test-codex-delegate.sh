@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Regression tests use a fake Codex binary only. No model/API use.
 set -euo pipefail
+# Existing token/fingerprint assertions explicitly opt in to analytics.
+export WORKFLOW_METRICS=1
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 tmp="$(mktemp -d)"
@@ -211,6 +213,11 @@ grep -Fq 'fake stderr text' "$first_run/codex.log" || { echo 'FAIL: stderr missi
 FAKE_USAGE=1 bash scripts/codex-delegate.sh "$id" > /dev/null
 usage_run="$(ls -dt "$handoffs/$id"-run.* | head -n 1)"
 grep -qx 'CODEX_INPUT_TOKENS=30' "$usage_run/status.txt" || { echo 'FAIL: input usage sum' >&2; exit 1; }
+# With metrics off, delegation must not invoke analytics or record a fingerprint.
+WORKFLOW_METRICS=0 FAKE_INVOKED="$tmp/metrics-off-invoked" bash scripts/codex-delegate.sh "$id" > "$tmp/metrics-off-run.txt"
+metrics_off_run="$(ls -dt "$handoffs/$id"-run.* | head -n 1)"
+grep -qx 'CODEX_INPUT_TOKENS=N/A' "$metrics_off_run/status.txt" || { echo 'FAIL: usage collected with metrics off' >&2; exit 1; }
+grep -qx 'WORKFLOW_FINGERPRINT=N/A' "$metrics_off_run/status.txt" || { echo 'FAIL: fingerprint collected with metrics off' >&2; exit 1; }
 grep -qx 'CODEX_CACHED_TOKENS=8' "$usage_run/status.txt" || { echo 'FAIL: cached usage sum' >&2; exit 1; }
 grep -qx 'CODEX_OUTPUT_TOKENS=6' "$usage_run/status.txt" || { echo 'FAIL: output usage sum' >&2; exit 1; }
 grep -Eq '^WORKFLOW_FINGERPRINT=[0-9a-f]{12}$' "$usage_run/status.txt" || { echo 'FAIL: fingerprint missing' >&2; exit 1; }
